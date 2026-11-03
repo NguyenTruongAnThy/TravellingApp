@@ -1,7 +1,6 @@
 import './global.css';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  StyleSheet,
   Text,
   View,
   FlatList,
@@ -15,13 +14,11 @@ import { StatusBar } from 'expo-status-bar';
 import { getPlaces } from './src/services/placesService';
 import type { Place } from './src/types';
 
-
 export default function App() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
 
   const fetchPlacesData = useCallback(async () => {
     setErrorMessage(null);
@@ -53,28 +50,24 @@ export default function App() {
         : 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
 
     return (
-      
-      <View style={styles.card}>
-        <Image source={{ uri: mainImage }} style={styles.cardImage} />
-        <View style={styles.cardBody}>
-          <View style={styles.rowBetween}>
-            <View className="bg-cardBg rounded-2xl p-4 mb-4">
-  <Text className="text-base font-bold text-textMain">{item.title}</Text>
-</View>
-
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>★ {item.rating ?? 'New'}</Text>
+      <View className="bg-cardBg rounded-2xl overflow-hidden mb-4">
+        <Image source={{ uri: mainImage }} className="w-full h-[200px] bg-gray-200" />
+        <View className="p-3.5">
+          <View className="flex-row justify-between items-center">
+            <Text className="flex-1 mr-2 text-base font-bold text-textMain">{item.title}</Text>
+            <View className="bg-gray-100 px-2 py-1 rounded-md">
+              <Text className="text-xs font-semibold text-textMain">★ {item.rating ?? 'New'}</Text>
             </View>
           </View>
-          <Text style={styles.cardLocation} numberOfLines={1}>
+          <Text className="text-[13px] text-textMuted mt-1" numberOfLines={1}>
             📍 {item.location}
           </Text>
-          <Text style={styles.cardCategory}>
+          <Text className="text-xs text-inactive mt-1">
             {item.place_type || item.category || 'Stay'} • {item.guests_capacity ?? 1} khách
           </Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceValue}>${item.price_per_night}</Text>
-            <Text style={styles.pricePeriod}> / đêm</Text>
+          <View className="flex-row items-baseline mt-2.5">
+            <Text className="text-base font-bold text-textMain">${item.price_per_night}</Text>
+            <Text className="text-[13px] text-textMuted"> / đêm</Text>
           </View>
         </View>
       </View>
@@ -82,44 +75,42 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-appBg">
       <StatusBar style="dark" />
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
+      <View className="px-5 py-3.5 bg-white border-b border-gray-200">
+        <View className="w-full max-w-[720px] self-center flex-row justify-between items-center">
           <View>
-            <Text style={styles.appName}>WanderStay</Text>
-            <Text style={styles.appSubtitle}>Kết nối Supabase</Text>
+            <Text className="text-[22px] font-bold text-brand">WanderStay</Text>
+            <Text className="text-xs text-textMuted mt-0.5">Kết nối Supabase</Text>
           </View>
-          <View style={[styles.statusDot, errorMessage ? styles.statusError : styles.statusSuccess]} />
+          <View className={`w-3 h-3 rounded-full ${errorMessage ? 'bg-red-500' : 'bg-emerald-500'}`} />
         </View>
       </View>
 
-      {/* Content */}
       {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#FF385C" />
-          <Text style={styles.helperText}>Đang tải dữ liệu từ Supabase...</Text>
+        <View className="flex-1 justify-center items-center px-6">
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text className="mt-3 text-sm text-textMuted">Đang tải dữ liệu từ Supabase...</Text>
         </View>
       ) : errorMessage ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorTitle}>Lỗi kết nối</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <Text style={styles.instructionText}>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className="text-lg font-semibold text-red-500 mb-2">Lỗi kết nối</Text>
+          <Text className="text-sm text-textMain text-center mb-4">{errorMessage}</Text>
+          <Text className="text-[13px] text-textMuted text-center leading-5 mb-5">
             💡 Lưu ý: Hãy đảm bảo bạn đã tạo bảng `places` trong Supabase SQL Editor bằng file `supabase/schema.sql` và chèn dữ liệu bằng `supabase/seed.sql`.
           </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchPlacesData}>
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+          <TouchableOpacity className="bg-brand py-2.5 px-6 rounded-lg" onPress={fetchPlacesData}>
+            <Text className="text-white font-semibold text-sm">Thử lại</Text>
           </TouchableOpacity>
         </View>
       ) : places.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyTitle}>Chưa có địa điểm nào</Text>
-          <Text style={styles.instructionText}>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className="text-lg font-semibold text-textMain mb-2">Chưa có địa điểm nào</Text>
+          <Text className="text-[13px] text-textMuted text-center leading-5 mb-5">
             Kết nối Supabase thành công nhưng bảng `places` đang trống. Hãy chạy file `supabase/seed.sql` trong SQL Editor của Supabase để nạp dữ liệu mẫu!
           </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchPlacesData}>
-            <Text style={styles.retryButtonText}>Làm mới</Text>
+          <TouchableOpacity className="bg-brand py-2.5 px-6 rounded-lg" onPress={fetchPlacesData}>
+            <Text className="text-white font-semibold text-sm">Làm mới</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -127,178 +118,13 @@ export default function App() {
           data={places}
           keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ padding: 16, maxWidth: 720, width: '100%', alignSelf: 'center' }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF385C']} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
           }
         />
       )}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  appName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FF385C',
-  },
-  appSubtitle: {
-    fontSize: 12,
-    color: '#666666',
-    marginTop: 2,
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  statusSuccess: {
-    backgroundColor: '#10B981',
-  },
-  statusError: {
-    backgroundColor: '#EF4444',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  helperText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666666',
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#EF4444',
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#333333',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  instructionText: {
-    fontSize: 13,
-    color: '#666666',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#FF385C',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  listContent: {
-    padding: 16,
-    maxWidth: 720,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  headerContent: {
-    maxWidth: 720,
-    width: '100%',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardImage: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#E5E7EB',
-  },
-  cardBody: {
-    padding: 14,
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    flex: 1,
-    marginRight: 8,
-  },
-  ratingBadge: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  cardLocation: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  cardCategory: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 10,
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  pricePeriod: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-});
