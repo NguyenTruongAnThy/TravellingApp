@@ -1,3 +1,4 @@
+import './global.css';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   StyleSheet,
@@ -9,15 +10,18 @@ import {
   TouchableOpacity,
   SafeAreaView,
   RefreshControl,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { getPlaces } from './src/services/placesService';
+import type { Place } from './src/types';
+
 
 export default function App() {
-  const [places, setPlaces] = useState([]);
+  const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
 
   const fetchPlacesData = useCallback(async () => {
     setErrorMessage(null);
@@ -25,7 +29,7 @@ export default function App() {
 
     if (error) {
       console.error('Lỗi khi tải dữ liệu từ Supabase:', error);
-      setErrorMessage(error.message || 'Không thể kết nối đến Supabase');
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể kết nối đến Supabase');
     } else {
       setPlaces(data || []);
     }
@@ -42,20 +46,22 @@ export default function App() {
     fetchPlacesData();
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item }: { item: Place }) => {
     const mainImage =
       Array.isArray(item.images) && item.images.length > 0
         ? item.images[0]
         : 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
 
     return (
+      
       <View style={styles.card}>
         <Image source={{ uri: mainImage }} style={styles.cardImage} />
         <View style={styles.cardBody}>
           <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {item.title}
-            </Text>
+            <View className="bg-cardBg rounded-2xl p-4 mb-4">
+  <Text className="text-base font-bold text-textMain">{item.title}</Text>
+</View>
+
             <View style={styles.ratingBadge}>
               <Text style={styles.ratingText}>★ {item.rating ?? 'New'}</Text>
             </View>
@@ -77,7 +83,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar style="dark" />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
