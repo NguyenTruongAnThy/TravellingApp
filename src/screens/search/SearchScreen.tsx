@@ -18,6 +18,10 @@ import PlaceCard from '../../components/PlaceCard';
 
 const CATEGORIES = ['Tất cả', 'Beach', 'Nature', 'Countryside'];
 
+function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  return (<View className="flex-row items-center justify-between py-2"><Text className="text-base text-textMain">{label}</Text><View className="flex-row items-center"><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(Math.max(0, value - 1))}><Text className="text-lg font-bold text-textMain">-</Text></Pressable><Text className="w-16 text-center text-base font-bold text-textMain">{value === 0 ? 'Bất kỳ' : value}</Text><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(value + 1)}><Text className="text-lg font-bold text-textMain">+</Text></Pressable></View></View>);
+}
+
 export default function SearchScreen({ navigation }: { navigation: any }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +30,15 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [category, setCategory] = useState('Tất cả');
+  const [showFilter, setShowFilter] = useState(false);
+  const [minPrice, setMinPrice] = useState('10');
+  const [maxPrice, setMaxPrice] = useState('250');
+  const [guests, setGuests] = useState(0);
+  const [minRooms, setMinRooms] = useState(0);
+  const [minBeds, setMinBeds] = useState(0);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
 
   // Debounce 400ms: chỉ tìm khi người dùng ngừng gõ 400ms
   useEffect(() => {
@@ -55,14 +68,47 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
     loadPlaces();
   }, [loadPlaces]);
 
+  const availableAmenities = useMemo(() => {
+    const s = new Set<string>();
+    places.forEach((pl) => (pl.amenities || []).forEach((a) => s.add(a)));
+    return Array.from(s).sort();
+  }, [places]);
+  const priceError = useMemo(() => {
+    const mn = Number(minPrice); const mx = Number(maxPrice);
+    if (minPrice === '' || maxPrice === '' || Number.isNaN(mn) || Number.isNaN(mx)) return 'Vui lòng nhập giá tối thiểu và tối đa.';
+    if (mn < 10 || mx > 250) return 'Giá lọc chỉ từ $10 đến $250 một đêm.';
+    if (mn > mx) return 'Giá tối thiểu không được lớn hơn giá tối đa.';
+    return '';
+  }, [minPrice, maxPrice]);
+  const dateError = useMemo(() => {
+    const pat = /^\d{4}-\d{2}-\d{2}$/;
+    if (checkIn && !pat.test(checkIn)) return 'Ngày check-in nhập dạng YYYY-MM-DD.';
+    if (checkOut && !pat.test(checkOut)) return 'Ngày check-out nhập dạng YYYY-MM-DD.';
+    if (checkIn && checkOut && checkOut <= checkIn) return 'Ngày check-out phải sau ngày check-in.';
+    return '';
+  }, [checkIn, checkOut]);
+  const activeFilterCount = useMemo(() => {
+    let c = 0;
+    if (minPrice !== '10' || maxPrice !== '250') c += 1;
+    if (guests > 0) c += 1; if (minRooms > 0) c += 1; if (minBeds > 0) c += 1;
+    if (selectedAmenities.length > 0) c += 1; if (checkIn || checkOut) c += 1;
+    return c;
+  }, [minPrice, maxPrice, guests, minRooms, minBeds, selectedAmenities, checkIn, checkOut]);
+  const clearFilters = () => { setMinPrice('10'); setMaxPrice('250'); setGuests(0); setMinRooms(0); setMinBeds(0); setSelectedAmenities([]); setCheckIn(''); setCheckOut(''); };
   const filteredPlaces = useMemo(() => {
     const q = normalizeText(debouncedQuery);
-    if (!q) return places;
+    const mn = Number(minPrice); const mx = Number(maxPrice);
     return places.filter((place) => {
-      const haystack = normalizeText(`${place.title} ${place.location}`);
-      return haystack.includes(q);
+      if (q) { const h = normalizeText(`${place.title} ${place.location}`); if (!h.includes(q)) return false; }
+      if (!Number.isNaN(mn) && place.price_per_night < mn) return false;
+      if (!Number.isNaN(mx) && place.price_per_night > mx) return false;
+      if (guests > 0 && (place.guests_capacity || 0) < guests) return false;
+      if (minRooms > 0 && (place.rooms || 0) < minRooms) return false;
+      if (minBeds > 0 && (place.beds || 0) < minBeds) return false;
+      if (selectedAmenities.length > 0) { const am = place.amenities || []; if (!selectedAmenities.every((a) => am.includes(a))) return false; }
+      return true;
     });
-  }, [places, debouncedQuery]);
+  }, [places, debouncedQuery, minPrice, maxPrice, guests, minRooms, minBeds, selectedAmenities]);
 
   if (loading) {
     return (
@@ -122,18 +168,54 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
         })}
       </ScrollView>
 
+      <View className="px-5 pb-3 flex-row items-center">
+        <Pressable className="flex-row items-center px-4 py-2 rounded-full border border-borderLight bg-white" onPress={() => setShowFilter(!showFilter)}>
+          <Ionicons name="options-outline" size={18} color="#4F46E5" />
+          <Text className="ml-2 text-sm font-bold text-textMain">Lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</Text>
+        </Pressable>
+        {activeFilterCount > 0 ? (<Pressable className="ml-3" onPress={() => { clearFilters(); setQuery(''); setCategory('Tất cả'); }}><Text className="text-sm font-bold text-brand">Xóa lọc</Text></Pressable>) : null}
+      </View>
+      {showFilter ? (
+        <ScrollView className="mx-5 mb-3 rounded-2xl bg-white border border-borderLight" style={{ maxHeight: 360 }}>
+          <View className="p-4">
+            <Text className="text-base font-bold text-textMain">Giá một đêm ($)</Text>
+            <View className="mt-2 flex-row items-center">
+              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" keyboardType="number-pad" placeholder="10" value={minPrice} onChangeText={setMinPrice} />
+              <Text className="mx-2 text-textMuted">đến</Text>
+              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" keyboardType="number-pad" placeholder="250" value={maxPrice} onChangeText={setMaxPrice} />
+            </View>
+            {priceError ? <Text className="mt-2 text-sm text-red-500">{priceError}</Text> : null}
+            <Text className="mt-4 text-base font-bold text-textMain">Số khách và phòng</Text>
+            <Stepper label="Số khách" value={guests} onChange={setGuests} />
+            <Stepper label="Số phòng tối thiểu" value={minRooms} onChange={setMinRooms} />
+            <Stepper label="Số giường tối thiểu" value={minBeds} onChange={setMinBeds} />
+            {availableAmenities.length > 0 ? (<><Text className="mt-4 text-base font-bold text-textMain">Tiện ích</Text><View className="mt-2 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{item}</Text></Pressable>); })}</View></>) : null}
+            <Text className="mt-4 text-base font-bold text-textMain">Khi nào (chọn trước cho bước đặt phòng)</Text>
+            <View className="mt-2 flex-row items-center">
+              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" placeholder="YYYY-MM-DD" autoCapitalize="none" value={checkIn} onChangeText={setCheckIn} />
+              <Text className="mx-2 text-textMuted">đến</Text>
+              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" placeholder="YYYY-MM-DD" autoCapitalize="none" value={checkOut} onChangeText={setCheckOut} />
+            </View>
+            {dateError ? <Text className="mt-2 text-sm text-red-500">{dateError}</Text> : null}
+            <Text className="mt-2 text-xs text-textMuted">Ngày không loại chỗ ở ra, vì places không có lịch trống riêng.</Text>
+            <View className="mt-4"><AppButton title="Áp dụng bộ lọc" onPress={() => setShowFilter(false)} disabled={!!priceError || !!dateError} /></View>
+            <Pressable className="mt-3 items-center" onPress={() => { clearFilters(); setShowFilter(false); }}><Text className="text-sm font-bold text-brand">Xóa tất cả bộ lọc</Text></Pressable>
+          </View>
+        </ScrollView>
+      ) : null}
       {filteredPlaces.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-lg font-bold text-textMain text-center">Không tìm thấy địa điểm nào</Text>
           <Text className="mt-2 text-sm text-textMuted text-center">
-            Thử từ khóa khác hoặc chọn danh mục khác. Màn Chi tiết sẽ được thêm ở patch tiếp theo.
+            Thử từ khóa khác, chọn danh mục khác hoặc nới bộ lọc ra.
           </Text>
           <View className="mt-6 w-full">
             <AppButton
-              title="Xóa tìm kiếm"
+              title="Xóa tìm kiếm và bộ lọc"
               onPress={() => {
                 setQuery('');
                 setCategory('Tất cả');
+                clearFilters();
               }}
             />
           </View>
