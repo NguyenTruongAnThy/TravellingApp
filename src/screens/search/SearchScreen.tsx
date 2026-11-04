@@ -20,9 +20,10 @@ import { normalizeText } from '../../utils/normalize';
 import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
 
-const CATEGORIES = ['Tất cả', 'Beach', 'Nature', 'Countryside'];
-const categoryLabel = (item: string) => item === 'Beach' ? 'Biển' : item === 'Nature' ? 'Thiên nhiên' : item === 'Countryside' ? 'Nông thôn' : item;
-const categoryIcon = (item: string): any => item === 'Beach' ? 'sunny-outline' : item === 'Nature' ? 'leaf-outline' : item === 'Countryside' ? 'home-outline' : 'apps-outline';
+// Pill loc theo LOAI CAN (place_type) da chuan hoa tren Supabase 2026-11-05: Apartment 1, Beachfront 1, Cabin 3, House 3, Treehouse 2, Villa 2. Khong loc theo category (vi tri thien nhien) nua.
+const PLACE_TYPES = ['Tất cả', 'Treehouse', 'Villa', 'Cabin', 'Beachfront', 'House', 'Apartment'];
+const placeTypeLabel = (item: string) => item === 'Treehouse' ? 'Nhà cây' : item === 'Villa' ? 'Biệt thự' : item === 'Cabin' ? 'Cabin gỗ' : item === 'Beachfront' ? 'Sát biển' : item === 'House' ? 'Nhà nguyên căn' : item === 'Apartment' ? 'Căn hộ' : item;
+const placeTypeIcon = (item: string): any => item === 'Treehouse' ? 'leaf-outline' : item === 'Villa' ? 'home-outline' : item === 'Cabin' ? 'bed-outline' : item === 'Beachfront' ? 'sunny-outline' : item === 'House' ? 'business-outline' : item === 'Apartment' ? 'layers-outline' : 'apps-outline';
 
 function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (<View className="flex-row items-center justify-between py-2"><Text className="text-base text-textMain">{label}</Text><View className="flex-row items-center"><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(Math.max(0, value - 1))}><Text className="text-lg font-bold text-textMain">-</Text></Pressable><Text className="w-16 text-center text-base font-bold text-textMain">{value === 0 ? 'Bất kỳ' : value}</Text><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(value + 1)}><Text className="text-lg font-bold text-textMain">+</Text></Pressable></View></View>);
@@ -37,11 +38,19 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [category, setCategory] = useState('Tất cả');
+  const [placeType, setPlaceType] = useState('Tất cả');
+  const [showWhere, setShowWhere] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [showGuests, setShowGuests] = useState(false);
+  const [adults, setAdults] = useState(0);
+  const [children, setChildren] = useState(0);
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
   const [showFilter, setShowFilter] = useState(false);
   const [minPrice, setMinPrice] = useState('10');
   const [maxPrice, setMaxPrice] = useState('250');
-  const [guests, setGuests] = useState(0);
+  // guests cu da tach thanh adults + children, khong con Infants/Pets (chot 2026-11-05)
   const [minRooms, setMinRooms] = useState(0);
   const [minBeds, setMinBeds] = useState(0);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
@@ -61,8 +70,8 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
       setLoading(true);
     }
     setErrorMessage('');
-    const categoryParam = category === 'Tất cả' ? null : category;
-    const { data, error } = await getPlaces({ category: categoryParam });
+    const placeTypeParam = placeType === 'Tất cả' ? null : placeType;
+    const { data, error } = await getPlaces({ place_type: placeTypeParam });
     if (error) {
       setErrorMessage('Không tải được danh sách chỗ ở. Vui lòng thử lại.');
     } else {
@@ -70,7 +79,7 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
     }
     setLoading(false);
     setRefreshing(false);
-  }, [category]);
+  }, [placeType]);
 
   useEffect(() => {
     loadPlaces();
@@ -81,6 +90,17 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
     getFavoritePlaceIds(session.user.id).then(setFavoriteIds).catch(() => {});
   }, [session]);
 
+  const guests = adults + children;
+  const availableLocations = useMemo(() => {
+    const s = new Set<string>();
+    places.forEach((pl) => { if (pl.location) s.add(pl.location); });
+    return Array.from(s).sort();
+  }, [places]);
+  const whereSuggestions = useMemo(() => {
+    const q = normalizeText(query);
+    if (!q) return places;
+    return places.filter((pl) => normalizeText(`${pl.title} ${pl.location}`).includes(q));
+  }, [places, query]);
   const availableAmenities = useMemo(() => {
     const s = new Set<string>();
     places.forEach((pl) => (pl.amenities || []).forEach((a) => s.add(a)));
@@ -103,11 +123,27 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
   const activeFilterCount = useMemo(() => {
     let c = 0;
     if (minPrice !== '10' || maxPrice !== '250') c += 1;
-    if (guests > 0) c += 1; if (minRooms > 0) c += 1; if (minBeds > 0) c += 1;
+    if (guests > 0) c += 1; if (placeType !== 'Tất cả') c += 1; if (minRooms > 0) c += 1; if (minBeds > 0) c += 1;
     if (selectedAmenities.length > 0) c += 1; if (checkIn || checkOut) c += 1;
     return c;
-  }, [minPrice, maxPrice, guests, minRooms, minBeds, selectedAmenities, checkIn, checkOut]);
-  const clearFilters = () => { setMinPrice('10'); setMaxPrice('250'); setGuests(0); setMinRooms(0); setMinBeds(0); setSelectedAmenities([]); setCheckIn(''); setCheckOut(''); };
+  }, [minPrice, maxPrice, guests, placeType, minRooms, minBeds, selectedAmenities, checkIn, checkOut]);
+  const clearFilters = () => { setMinPrice('10'); setMaxPrice('250'); setAdults(0); setChildren(0); setMinRooms(0); setMinBeds(0); setSelectedAmenities([]); setCheckIn(''); setCheckOut(''); };
+  const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const calDays = useMemo(() => {
+    const first = new Date(calYear, calMonth, 1);
+    const startOffset = (first.getDay() + 6) % 7; // Thu 2 = 0
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    return cells;
+  }, [calYear, calMonth]);
+  const onCalDay = (day: number) => {
+    const ds = fmtDate(new Date(calYear, calMonth, day));
+    if (!checkIn || (checkIn && checkOut)) { setCheckIn(ds); setCheckOut(''); }
+    else if (ds > checkIn) { setCheckOut(ds); }
+    else { setCheckIn(ds); setCheckOut(''); }
+  };
   const filteredPlaces = useMemo(() => {
     const q = normalizeText(debouncedQuery);
     const mn = Number(minPrice); const mx = Number(maxPrice);
@@ -167,22 +203,21 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
             </View>
           </View>
           <View className="mt-3 flex-row items-center rounded-full border border-borderLight bg-white pl-2 pr-2 py-2">
-            <View className="w-9 h-9 rounded-full bg-appBg items-center justify-center">
-              <Ionicons name="search-outline" size={18} color="#5A6478" />
-            </View>
-            <TextInput
-              className="flex-1 py-2 text-base text-textMain ml-2"
-              placeholder="Tìm Balian, Kuta, Ubud..."
-              value={query}
-              onChangeText={setQuery}
-              autoCapitalize="none"
-            />
+            <Pressable className="flex-1 flex-row items-center" onPress={() => setShowWhere(true)}>
+              <View className="w-9 h-9 rounded-full bg-appBg items-center justify-center">
+                <Ionicons name="search-outline" size={18} color="#5A6478" />
+              </View>
+              <View className="flex-1 ml-2">
+                <Text className="text-base text-textMain" numberOfLines={1}>{query || 'Where to?'}</Text>
+                <Text className="text-xs text-textMuted" numberOfLines={1}>{checkIn || checkOut ? `${checkIn || '...'} - ${checkOut || '...'}` : 'Chọn ngày'} • {guests > 0 ? `${guests} khách` : 'Thêm khách'}</Text>
+              </View>
+            </Pressable>
             {query ? (
               <Pressable onPress={() => setQuery('')}>
                 <Ionicons name="close-circle-outline" size={20} color="#5A6478" />
               </Pressable>
             ) : null}
-            <Pressable className="ml-2 w-9 h-9 rounded-full bg-white border border-borderLight items-center justify-center" onPress={() => setShowFilter(!showFilter)}>
+            <Pressable className="ml-2 w-9 h-9 rounded-full bg-white border border-borderLight items-center justify-center" onPress={() => setShowFilter(true)}>
               <Ionicons name="options-outline" size={16} color="#131B2E" />
             </Pressable>
           </View>
@@ -191,8 +226,8 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
       </LinearGradient>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 52 }} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, alignItems: 'center' }}>
-        {CATEGORIES.map((item) => {
-          const active = category === item;
+        {PLACE_TYPES.map((item) => {
+          const active = placeType === item;
           return (
             <Pressable
               key={item}
@@ -208,40 +243,111 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
                 alignItems: 'center',
                 backgroundColor: active ? '#4F46E5' : '#FFFFFF',
               }}
-              onPress={() => setCategory(item)}
+              onPress={() => setPlaceType(item)}
             >
-              <Ionicons name={categoryIcon(item)} size={14} color={active ? '#FFFFFF' : '#131B2E'} />
-              <Text style={{ marginLeft: 6, fontSize: 12, fontWeight: active ? '700' : '500', color: active ? '#FFFFFF' : '#131B2E' }}>{categoryLabel(item)}</Text>
+              <Ionicons name={placeTypeIcon(item)} size={14} color={active ? '#FFFFFF' : '#131B2E'} />
+              <Text style={{ marginLeft: 6, fontSize: 12, fontWeight: active ? '700' : '500', color: active ? '#FFFFFF' : '#131B2E' }}>{placeTypeLabel(item)}</Text>
             </Pressable>
           );
         })}
       </ScrollView>
 
-      {activeFilterCount > 0 ? (<View className="px-5 pb-3 flex-row items-center"><Pressable onPress={() => { clearFilters(); setQuery(''); setCategory('Tất cả'); }}><Text className="text-sm font-bold text-brand">Xóa lọc</Text></Pressable></View>) : null}
+      {activeFilterCount > 0 ? (<View className="px-5 pb-3 flex-row items-center"><Pressable onPress={() => { clearFilters(); setQuery(''); setPlaceType('Tất cả'); }}><Text className="text-sm font-bold text-brand">Xóa lọc</Text></Pressable></View>) : null}
+      {/* Figma where: bottom sheet, khong phai trang rieng */}
+      <Modal visible={showWhere} transparent animationType="slide" onRequestClose={() => setShowWhere(false)}>
+        <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowWhere(false)}>
+          <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }} onPress={() => {}}>
+            <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
+            <ScrollView>
+              <View className="p-5">
+                <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">Where to?</Text><Pressable onPress={() => setShowWhere(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
+                <View className="mt-3 flex-row items-center rounded-full border border-borderLight bg-appBg px-4">
+                  <Ionicons name="search-outline" size={18} color="#5A6478" />
+                  <TextInput className="flex-1 py-3 text-base text-textMain ml-2" placeholder="Search destinations" value={query} onChangeText={setQuery} autoCapitalize="none" onSubmitEditing={() => { if (whereSuggestions.length === 0) return; setShowWhere(false); setShowSchedule(true); }} returnKeyType="search" />
+                  {query ? (<Pressable onPress={() => setQuery('')}><Ionicons name="close-circle-outline" size={20} color="#5A6478" /></Pressable>) : null}
+                </View>
+                <Text className="mt-4 text-base font-bold text-textMain">{query ? 'Gợi ý' : 'Địa điểm phổ biến'}</Text>
+                <Text className="mt-1 text-sm text-textMuted">{query ? 'Gõ để lọc, bấm vào 1 gợi ý để chọn chỗ đó.' : 'Bấm vào 1 chỗ để chọn, không cần nhớ chính xác tên.'}</Text>
+                {whereSuggestions.length === 0 ? (
+                  <Text className="mt-3 text-base text-textMuted">Không có địa điểm này. WanderStay hiện chỉ có chỗ ở ở Bali, cậu thử từ khóa khác như Balian, Kuta hoặc Ubud.</Text>
+                ) : whereSuggestions.map((pl) => (<Pressable key={pl.id} className="flex-row items-center py-3" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => { setQuery(pl.title); setShowWhere(false); setShowSchedule(true); }}><Ionicons name="search-outline" size={18} color="#5A6478" /><View className="ml-3 flex-1"><Text className="text-base font-bold text-textMain">{pl.title}</Text><Text className="text-sm text-textMuted">{pl.location}</Text></View></Pressable>))}
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      {/* Figma Schaduel: lich that, khong copy luoi thang 2/2022 mau */}
+      <Modal visible={showSchedule} transparent animationType="slide" onRequestClose={() => setShowSchedule(false)}>
+        <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowSchedule(false)}>
+          <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }} onPress={() => {}}>
+            <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
+            <ScrollView>
+              <View className="p-5">
+                <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">When's your trip?</Text><Pressable onPress={() => setShowSchedule(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
+                <View className="mt-3 flex-row"><View className="flex-1 border border-borderLight rounded-xl px-3 py-2 mr-2"><Text className="text-xs text-textMuted">Check-in</Text><Text className="text-base text-textMain">{checkIn || 'Add date'}</Text></View><View className="flex-1 border border-borderLight rounded-xl px-3 py-2"><Text className="text-xs text-textMuted">Check-out</Text><Text className="text-base text-textMain">{checkOut || 'Add date'}</Text></View></View>
+                <View className="mt-4 flex-row items-center justify-between">
+                  <Pressable onPress={() => { const d = new Date(calYear, calMonth - 1, 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}><Text className="text-xl text-textMain">‹</Text></Pressable>
+                  <Text className="text-base font-bold text-textMain">Tháng {calMonth + 1}/{calYear}</Text>
+                  <Pressable onPress={() => { const d = new Date(calYear, calMonth + 1, 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}><Text className="text-xl text-textMain">›</Text></Pressable>
+                </View>
+                <View className="mt-2 flex-row">{['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (<Text key={d} className="flex-1 text-center text-xs text-textMuted">{d}</Text>))}</View>
+                <View className="flex-row flex-wrap">
+                  {calDays.map((day, i) => {
+                    if (day === null) return (<View key={i} style={{ width: '14.28%', aspectRatio: 1 }} />);
+                    const ds = fmtDate(new Date(calYear, calMonth, day));
+                    const sel = ds === checkIn || ds === checkOut;
+                    const between = checkIn && checkOut && ds > checkIn && ds < checkOut;
+                    return (<Pressable key={i} style={{ width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? '#4F46E5' : between ? '#E6E3F5' : 'transparent', borderRadius: 999 }} onPress={() => onCalDay(day)}><Text style={{ color: sel ? '#FFFFFF' : '#131B2E', fontWeight: sel ? '700' : '400' }}>{day}</Text></Pressable>);
+                  })}
+                </View>
+                {dateError ? <Text className="mt-2 text-sm text-red-500">{dateError}</Text> : null}
+                <View className="mt-4 flex-row items-center"><Pressable className="mr-4" onPress={() => { setCheckIn(''); setCheckOut(''); }}><Text className="text-base font-bold text-brand">Clear all</Text></Pressable><View className="flex-1"><AppButton title="Save" onPress={() => { setShowSchedule(false); setShowGuests(true); }} disabled={!!dateError} /></View></View>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      {/* Figma guest: chi Adults + Children, khong Infants, khong Pets */}
+      <Modal visible={showGuests} transparent animationType="slide" onRequestClose={() => setShowGuests(false)}>
+        <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowGuests(false)}>
+          <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }} onPress={() => {}}>
+            <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
+            <View className="p-5">
+              <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">Who's coming?</Text><Pressable onPress={() => setShowGuests(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
+              <Stepper label="Adults — Ages 13 or above" value={adults} onChange={setAdults} />
+              <Stepper label="Children — Ages 2 - 12" value={children} onChange={setChildren} />
+              <Text className="mt-2 text-sm text-textMuted">Số khách không vượt quá sức chứa của chỗ ở, bộ lọc sẽ loại chỗ không đủ chỗ.</Text>
+              <View className="mt-4 flex-row items-center"><Pressable className="mr-4" onPress={() => { setAdults(0); setChildren(0); }}><Text className="text-base font-bold text-brand">Clear all</Text></Pressable><View className="flex-1"><AppButton title="Search" onPress={() => setShowGuests(false)} /></View></View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Modal visible={showFilter} transparent animationType="slide" onRequestClose={() => setShowFilter(false)}>
         <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowFilter(false)}>
           <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }} onPress={() => {}}>
             <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
             <ScrollView>
           <View className="p-5">
-            <Text className="text-base font-bold text-textMain">Giá một đêm ($)</Text>
+            <Text className="text-base font-bold text-textMain">Price range — Giá một đêm ($)</Text>
+            <Text className="mt-1 text-xs text-textMuted">Price range là 1 mục trong tấm Filters này, không phải màn riêng. Giá từ $10 đến $250.</Text>
             <View className="mt-2 flex-row items-center">
               <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" keyboardType="number-pad" placeholder="10" value={minPrice} onChangeText={setMinPrice} />
               <Text className="mx-2 text-textMuted">đến</Text>
               <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" keyboardType="number-pad" placeholder="250" value={maxPrice} onChangeText={setMaxPrice} />
             </View>
             {priceError ? <Text className="mt-2 text-sm text-red-500">{priceError}</Text> : null}
+            <Text className="mt-4 text-base font-bold text-textMain">Type of place — Loại căn</Text>
+            <View className="mt-2 flex-row flex-wrap">{PLACE_TYPES.filter((x) => x !== 'Tất cả').map((item) => { const act = placeType === item; return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setPlaceType(item)}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></Pressable>); })}</View>
             <Text className="mt-4 text-base font-bold text-textMain">Số khách và phòng</Text>
-            <Stepper label="Số khách" value={guests} onChange={setGuests} />
+            <Stepper label="Người lớn (13 tuổi trở lên)" value={adults} onChange={setAdults} />
+            <Stepper label="Trẻ em (2-12 tuổi)" value={children} onChange={setChildren} />
             <Stepper label="Số phòng tối thiểu" value={minRooms} onChange={setMinRooms} />
             <Stepper label="Số giường tối thiểu" value={minBeds} onChange={setMinBeds} />
-            {availableAmenities.length > 0 ? (<><Text className="mt-4 text-base font-bold text-textMain">Tiện ích</Text><View className="mt-2 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{categoryLabel(item)}</Text></Pressable>); })}</View></>) : null}
+            {availableAmenities.length > 0 ? (<><Text className="mt-4 text-base font-bold text-textMain">Tiện ích</Text><View className="mt-2 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></Pressable>); })}</View></>) : null}
             <Text className="mt-4 text-base font-bold text-textMain">Khi nào (chọn trước cho bước đặt phòng)</Text>
-            <View className="mt-2 flex-row items-center">
-              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" placeholder="YYYY-MM-DD" autoCapitalize="none" value={checkIn} onChangeText={setCheckIn} />
-              <Text className="mx-2 text-textMuted">đến</Text>
-              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" placeholder="YYYY-MM-DD" autoCapitalize="none" value={checkOut} onChangeText={setCheckOut} />
-            </View>
+            <Pressable className="mt-2 border border-borderLight rounded-xl px-3 py-3" onPress={() => { setShowFilter(false); setShowSchedule(true); }}>
+              <Text className="text-base text-textMain">{checkIn ? `${checkIn} → ${checkOut || 'Chưa chọn ngày trả'}` : 'Chọn ngày trên lịch'}</Text>
+            </Pressable>
             {dateError ? <Text className="mt-2 text-sm text-red-500">{dateError}</Text> : null}
             <Text className="mt-2 text-xs text-textMuted">Ngày không loại chỗ ở ra, vì places không có lịch trống riêng.</Text>
             <View className="mt-4"><AppButton title="Áp dụng bộ lọc" onPress={() => setShowFilter(false)} disabled={!!priceError || !!dateError} /></View>
@@ -263,7 +369,7 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
               title="Xóa tìm kiếm và bộ lọc"
               onPress={() => {
                 setQuery('');
-                setCategory('Tất cả');
+                setPlaceType('Tất cả');
                 clearFilters();
               }}
             />
