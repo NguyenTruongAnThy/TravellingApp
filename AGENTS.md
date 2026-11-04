@@ -101,11 +101,12 @@ Dự án ánh xạ đầy đủ 28 file màn hình thiết kế có trong thư m
 
 1. **BR01 — Công thức tính tổng chi phí lưu trú (Minh bạch tuyệt đối)**:
    - Công thức:
-     $$\text{Total} = (\text{price\_per\_night} \times \text{nights}) + \text{service\_fee} + \text{kayak\_fee} + \text{parking\_fee}$$
-   - Tính toán tập trung tại [`src/services/pricing.ts`](file:///d:/TravellingApp/src/services/pricing.ts). Giá hiển thị ở màn tìm kiếm phải khớp chính xác 100% với màn hình thanh toán và biên nhận PDF, tuyệt đối không phát sinh phụ phí ẩn.
+     $$\text{Total} = (\text{price\_per\_night} \times \text{nights}) + \text{kayak\_fee} + \text{parking\_fee}$$
+   - Tính toán tập trung tại [`src/services/pricing.ts`](file:///d:/TravellingApp/src/services/pricing.ts). Giá hiển thị ở màn tìm kiếm phải khớp chính xác 100% với màn hình thanh toán và biên nhận PDF, tuyệt đối không phát sinh phụ phí ẩn (loại bỏ hoàn toàn phí dọn dẹp, phí dịch vụ và thuế VAT).
 2. **BR02 — Khớp đúng dữ liệu mẫu thực tế của đề tài (Balian Treehouse)**:
-   - **Gói đặt ngắn ngày (Confirm & Pay)**: $20 $\times$ 1 đêm + $5 Kayak fee + $5 Street parking fee = **$30 Total**.
-   - **Gói kỳ nghỉ dài ngày (Trip Receipt)**: $75 $\times$ 5 đêm ($375) + Phí dọn dẹp ($35) + Phí dịch vụ ($25) + Thuế VAT 4% ($15) = **$450 Total**.
+   - **Gói đặt 1 đêm (Confirm & Pay)**: $20 $\times$ 1 đêm + $5 Kayak fee + $5 Street parking fee = **$30 Total**.
+   - **Gói đặt nhiều đêm (Ví dụ 5 đêm)**: $20 $\times$ 5 đêm ($100) + $5 Kayak fee + $5 Parking fee = **$110 Total**.
+   - **Bỏ hoàn toàn gói dài ngày**: Không áp dụng phụ thu phí dọn dẹp ($35), phí dịch vụ ($25) hay thuế VAT (4%) để đảm bảo minh bạch chi phí tối đa.
 3. **BR03 — Giờ nhận/trả phòng & Điều kiện kích hoạt Smart Key**:
    - Check-in: từ **14:00**, Check-out: trước **12:00**.
    - Mã PIN mở khóa cổng (`4 8 2 1 #`) và nút mở khóa Bluetooth chỉ tự động kích hoạt hiệu lực từ 14:00 ngày nhận phòng và hết hiệu lực lúc 12:00 ngày trả phòng. Trước 14:00 ngày check-in, màn hình hiển thị thông báo chờ và vô hiệu hóa nút Bluetooth.
@@ -115,12 +116,15 @@ Dự án ánh xạ đầy đủ 28 file màn hình thiết kế có trong thư m
    - Kiểm tra trùng lịch trước khi tạo đơn: nếu khoảng ngày chọn trùng với đơn đã xác nhận, hệ thống từ chối và báo lỗi **409 Conflict**.
 5. **BR05 — Chính sách hủy phòng & Hoàn tiền minh bạch**:
    - Hủy trước giờ check-in từ **48 giờ** trở lên: Hoàn tiền **100%** miễn phí.
-   - Hủy trong vòng **48 giờ** trước giờ check-in: Phạt 1 đêm hoặc hoàn lại **50%** tiền phòng, không hoàn phí dịch vụ.
-   - Hủy sau giờ check-in hoặc vắng mặt (No-show): Không hoàn tiền.
-   - Mốc check-in tính theo ngày `check_in` lúc 14:00. Không thêm cột `cancellation_fee` vào database, phí hủy được tính toán động khi cần hiển thị.
+   - Hủy trong vòng **48 giờ** trước giờ check-in: **Phạt đúng 1 đêm** theo đơn giá phòng (`price_per_night`). Số tiền hoàn trả lại cho khách:
+     $$\text{Refund} = \text{Total} - \text{price\_per\_night}$$
+   - Hủy sau giờ check-in hoặc vắng mặt (No-show): Không hoàn tiền (0%).
+   - Mốc check-in tính theo ngày `check_in` lúc 14:00. Không thêm cột `cancellation_fee` vào database, phí hủy và tiền hoàn được tính toán động khi cần hiển thị.
 6. **BR06 — Cơ chế thanh toán linh hoạt (Pay in full / Pay a part now)**:
    - **Pay in full**: Thanh toán toàn bộ 100% tổng tiền ngay khi đặt phòng.
-   - **Pay a part now**: Hỗ trợ đặt cọc trước (tùy cấu hình gói: 30% đối với đơn thông thường hoặc 50% đối với gói dài hạn). Số tiền cọc được làm tròn 2 chữ số thập phân (`round(total * ratio, 2)`), số tiền còn lại trả khi nhận phòng.
+   - **Pay a part now**: Áp dụng tỷ lệ **đặt cọc cố định 50%** tổng chi phí cho mọi đơn đặt phòng (tỷ lệ duy nhất toàn hệ thống):
+     $$\text{deposit\_amount} = \text{round}(\text{total} \times 0.50, 2)$$
+     Số tiền còn lại là $\text{total} - \text{deposit\_amount}$, thanh toán khi nhận phòng (theo mô phỏng).
 7. **BR07 — Đánh giá nhận xét & Huy hiệu Verified Stay**:
    - Chỉ tài khoản thành viên có đơn đặt phòng thực tế ở trạng thái **`completed`** mới được viết đánh giá (UC017).
    - Đánh giá được hiển thị công khai kèm huy hiệu **Verified Stay**.
@@ -279,10 +283,10 @@ Dữ liệu gồm 7 bảng nghiệp vụ chính tại [`supabase/schema.sql`](fi
 3. [ ] **Phiên đăng nhập**: `AuthProvider` có cờ `loading`, hiển thị màn chờ khi đang khôi phục session, không để màn Login nháy lên trước.
 4. [ ] **Styling & Theme**: `babel.config.js` có cả `babel-preset-expo` và `nativewind/babel`; sử dụng đúng bảng màu quy định (`#4F46E5`, `#7C5CFC`, `#FFB020`...).
 5. [ ] **Bảo mật biến môi trường**: `.env.example` có đủ 2 biến placeholder; file `.env` thật nằm trong `.gitignore` và không bị commit.
-6. [ ] **Tính nhất quán của giá**: Không có phụ phí ẩn; công thức giá tập trung tại `src/services/pricing.ts`; kiểm thử đúng test case Balian Treehouse: $20 $\times$ 1 đêm + $5 kayak + $5 parking = $30.
+6. [ ] **Tính nhất quán của giá**: Không có phụ phí ẩn (đã bỏ hoàn toàn gói dài ngày, phí dọn dẹp $35, phí dịch vụ $25 và VAT 4%); công thức giá tập trung tại `src/services/pricing.ts`: $\text{Total} = (\text{price\_per\_night} \times \text{nights}) + \text{kayak\_fee} + \text{parking\_fee}$; kiểm thử đúng test case Balian Treehouse: $20 $\times$ 1 đêm + $5 kayak + $5 parking = $30.
 7. [ ] **Bộ lọc tìm kiếm**: Debounce tìm kiếm 400ms; lọc giá trong khoảng $10–$250 (giá 10 và 250 được lấy, giá 9 và 251 bị loại).
 8. [ ] **Mã tham chiếu booking**: `ref_code` có định dạng `#WS-ngày-4 ký tự`; tự động bắt lỗi Postgres 23505 để retry tạo mã mới 1–2 lần nếu trùng lặp.
-9. [ ] **Chính sách hủy & cọc**: Khớp đúng tỷ lệ cọc và chính sách hủy (miễn phí trước 48h check-in, mốc 14:00 ngày nhận phòng); không tự bịa thông số.
+9. [ ] **Chính sách hủy & cọc**: Cọc cố định đúng 50% cho mọi đơn (`deposit_amount = round(total * 0.50, 2)`); chính sách hủy phòng minh bạch: miễn phí trước 48h check-in, phạt đúng 1 đêm bằng `price_per_night` trong vòng 48h check-in (mốc 14:00 ngày nhận phòng), sau check-in không hoàn tiền; không tự bịa thông số.
 10. [ ] **Đánh giá & Smart Key**: Chỉ cho phép đánh giá booking ở trạng thái `completed`; Smart Key (mã PIN `4821#`, Bluetooth) chỉ kích hoạt sau 14:00 ngày check-in.
 11. [ ] **Trạng thái đọc tin nhắn**: Khi mở hội thoại tin nhắn trong app, tin nhắn từ đối phương chuyển từ `is_read = false` sang `true`.
 12. [ ] **Kiểm thử tĩnh hoàn tất**: Chạy `npx tsc --noEmit` đạt 0 lỗi và `npx expo-doctor` sạch sẽ trước khi báo cáo hoàn thành.
