@@ -39,7 +39,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
   const strengthScore =
     (passwordLongEnough ? 1 : 0) + (hasNumber ? 1 : 0) + (hasSpecial ? 1 : 0);
   const strengthLabel =
-    passwordLongEnough && hasNumber && hasSpecial ? 'Strong' : password ? 'Weak' : '';
+    strengthScore >= 3 ? 'Strong' : strengthScore === 2 ? 'Medium' : password ? 'Weak' : '';
 
   const handleRegister = async () => {
     setTouched(true);
@@ -140,7 +140,6 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
             <View className={`flex-1 h-2 rounded-full ${strengthScore >= 1 ? 'bg-brand' : 'bg-borderLight'}`} />
             <View className={`flex-1 h-2 rounded-full ${strengthScore >= 2 ? 'bg-brand' : 'bg-borderLight'}`} />
             <View className={`flex-1 h-2 rounded-full ${strengthScore >= 3 ? 'bg-brand' : 'bg-borderLight'}`} />
-            <View className="flex-1 h-2 rounded-full bg-borderLight" />
           </View>
         </View>
         <Text className={`mt-3 text-sm ${passwordLongEnough ? 'text-green-600 font-bold' : 'text-textMuted'}`}>
