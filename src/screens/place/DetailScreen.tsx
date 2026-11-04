@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlaceById } from '../../services/placesService';
-import type { Place } from '../../types';
+import { getReviewsByPlace } from '../../services/reviewService';
+import type { Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import AppButton from '../../components/AppButton';
 
@@ -12,6 +13,8 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   const [place, setPlace] = useState<Place | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsError, setReviewsError] = useState(false);
 
   const loadPlace = useCallback(async () => {
     if (!placeId) {
@@ -33,6 +36,18 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   useEffect(() => {
     loadPlace();
   }, [loadPlace]);
+
+  useEffect(() => {
+    if (!placeId) return;
+    getReviewsByPlace(placeId).then(({ data, error }) => {
+      if (error) {
+        setReviewsError(true);
+      } else {
+        setReviews(data || []);
+        setReviewsError(false);
+      }
+    });
+  }, [placeId]);
 
   if (loading) {
     return (
@@ -126,6 +141,34 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
             </View>
           </>
         ) : null}
+
+        <Text className="mt-5 text-base font-bold text-textMain">Đánh giá</Text>
+        {reviewsError ? (
+          <View className="mt-2">
+            <Text className="text-sm text-textMuted">Không tải được đánh giá. Vui lòng kéo xuống và thử lại sau.</Text>
+          </View>
+        ) : reviews.length === 0 ? (
+          <Text className="mt-2 text-base text-textMuted">Chưa có đánh giá nào cho chỗ ở này.</Text>
+        ) : (
+          <View className="mt-2">
+            {reviews.map((review) => (
+              <View key={review.id} className="mb-3 rounded-2xl bg-white border border-borderLight p-4">
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-base font-bold text-textMain">
+                    {review.users?.name || 'Khách đã ở'}
+                  </Text>
+                  <Text className="text-sm font-bold text-textMain">★ {review.rating}/5</Text>
+                </View>
+                {review.created_at ? (
+                  <Text className="mt-1 text-xs text-textMuted">{review.created_at.slice(0, 10)}</Text>
+                ) : null}
+                <Text className="mt-2 text-base text-textMuted">
+                  {review.comment || '(Không có bình luận)'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <Text className="mt-5 text-sm text-textMuted">
           Nhận phòng: {place.check_in_time || '14:00'} • Trả phòng: {place.check_out_time || '12:00'}

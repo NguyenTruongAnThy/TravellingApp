@@ -17,3 +17,14 @@ export interface Place {
   review_count?: number;
   is_visible?: boolean;
 }
+
+export interface Review {
+  id: string;
+  place_id?: string;
+  booking_id?: string | null;
+  user_id?: string;
+  rating: number;
+  comment?: string | null;
+  created_at?: string;
+  users?: { name?: string | null } | null;
+}
