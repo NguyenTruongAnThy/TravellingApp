@@ -8,6 +8,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import SearchScreen from '../screens/search/SearchScreen';
 import DetailScreen from '../screens/place/DetailScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
 
 const Stack = createNativeStackNavigator();
@@ -52,6 +53,14 @@ function GuardedScreen({ title, navigation }: { title: string; navigation: any }
       </Pressable>
     </View>
   );
+}
+
+function ProfileTab({ navigation }: { navigation: any }) {
+  const { session } = useAuth();
+  if (!session) {
+    return <GuardedScreen title="Profile" navigation={navigation} />;
+  }
+  return <ProfileScreen />;
 }
 
 function MainTabs() {
@@ -105,7 +114,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       >
-        {(props) => <GuardedScreen title="Profile" {...props} />}
+        {(props) => <ProfileTab {...props} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
