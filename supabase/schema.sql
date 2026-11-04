@@ -113,3 +113,27 @@ DROP POLICY IF EXISTS "Cho phep doc danh sach places" ON public.places;
 CREATE POLICY "Cho phep doc danh sach places"
 ON public.places FOR SELECT TO anon, authenticated
 USING (is_visible = true);
+
+create or replace function public.update_place_rating()
+returns trigger as $$
+begin
+  if tg_op = 'UPDATE' and old.place_id is distinct from new.place_id then
+    update public.places
+    set rating = coalesce((select round(avg(rating), 1) from public.reviews where place_id = old.place_id), 0),
+        review_count = (select count(*) from public.reviews where place_id = old.place_id),
+        updated_at = now()
+    where id = old.place_id;
+  end if;
+  update public.places
+  set rating = coalesce((select round(avg(rating), 1) from public.reviews where place_id = coalesce(new.place_id, old.place_id)), 0),
+      review_count = (select count(*) from public.reviews where place_id = coalesce(new.place_id, old.place_id)),
+      updated_at = now()
+  where id = coalesce(new.place_id, old.place_id);
+  return coalesce(new, old);
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_update_place_rating on public.reviews;
+create trigger trg_update_place_rating
+after insert or update or delete on public.reviews
+for each row execute function public.update_place_rating();
