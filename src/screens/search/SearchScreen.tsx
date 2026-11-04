@@ -11,18 +11,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlaces } from '../../services/placesService';
+import { getFavoritePlaceIds, toggleFavorite } from '../../services/favoritesService';
+import { useAuth } from '../../context/AuthContext';
 import type { Place } from '../../types';
 import { normalizeText } from '../../utils/normalize';
 import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
 
 const CATEGORIES = ['Tất cả', 'Beach', 'Nature', 'Countryside'];
+const categoryLabel = (item: string) => item === 'Beach' ? 'Biển' : item === 'Nature' ? 'Thiên nhiên' : item === 'Countryside' ? 'Nông thôn' : item;
 
 function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (<View className="flex-row items-center justify-between py-2"><Text className="text-base text-textMain">{label}</Text><View className="flex-row items-center"><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(Math.max(0, value - 1))}><Text className="text-lg font-bold text-textMain">-</Text></Pressable><Text className="w-16 text-center text-base font-bold text-textMain">{value === 0 ? 'Bất kỳ' : value}</Text><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(value + 1)}><Text className="text-lg font-bold text-textMain">+</Text></Pressable></View></View>);
 }
 
 export default function SearchScreen({ navigation }: { navigation: any }) {
+  const { session } = useAuth();
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +72,11 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     loadPlaces();
   }, [loadPlaces]);
+
+  useEffect(() => {
+    if (!session?.user?.id) { setFavoriteIds([]); return; }
+    getFavoritePlaceIds(session.user.id).then(setFavoriteIds).catch(() => {});
+  }, [session]);
 
   const availableAmenities = useMemo(() => {
     const s = new Set<string>();
@@ -153,16 +163,27 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-5 py-3" style={{ maxHeight: 60 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 52 }} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, alignItems: 'center' }}>
         {CATEGORIES.map((item) => {
           const active = category === item;
           return (
             <Pressable
               key={item}
-              className={`mr-2 px-4 py-2 rounded-full border ${active ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`}
+              style={{
+                marginRight: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: active ? '#4F46E5' : '#E6E3F5',
+                height: 40,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: active ? '#4F46E5' : '#FFFFFF',
+              }}
               onPress={() => setCategory(item)}
             >
-              <Text className={`text-sm font-bold ${active ? 'text-white' : 'text-textMain'}`}>{item}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: active ? '#FFFFFF' : '#131B2E' }}>{categoryLabel(item)}</Text>
             </Pressable>
           );
         })}
@@ -189,7 +210,7 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
             <Stepper label="Số khách" value={guests} onChange={setGuests} />
             <Stepper label="Số phòng tối thiểu" value={minRooms} onChange={setMinRooms} />
             <Stepper label="Số giường tối thiểu" value={minBeds} onChange={setMinBeds} />
-            {availableAmenities.length > 0 ? (<><Text className="mt-4 text-base font-bold text-textMain">Tiện ích</Text><View className="mt-2 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{item}</Text></Pressable>); })}</View></>) : null}
+            {availableAmenities.length > 0 ? (<><Text className="mt-4 text-base font-bold text-textMain">Tiện ích</Text><View className="mt-2 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{categoryLabel(item)}</Text></Pressable>); })}</View></>) : null}
             <Text className="mt-4 text-base font-bold text-textMain">Khi nào (chọn trước cho bước đặt phòng)</Text>
             <View className="mt-2 flex-row items-center">
               <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" placeholder="YYYY-MM-DD" autoCapitalize="none" value={checkIn} onChangeText={setCheckIn} />
@@ -225,12 +246,23 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
         <FlatList
           data={filteredPlaces}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable onPress={() => navigation.navigate('Detail', { placeId: item.id })}>
-              <PlaceCard place={item} />
-            </Pressable>
-          )}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          renderItem={({ item }) => {
+            const isFavorite = favoriteIds.includes(item.id);
+            return (
+              <Pressable onPress={() => navigation.navigate('Detail', { placeId: item.id })}>
+                <PlaceCard
+                  place={item}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={async () => {
+                    if (!session) { navigation.navigate('Login'); return; }
+                    await toggleFavorite(session.user.id, item.id, isFavorite);
+                    setFavoriteIds((prev) => isFavorite ? prev.filter((x) => x !== item.id) : [...prev, item.id]);
+                  }}
+                />
+              </Pressable>
+            );
+          }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => loadPlaces(true)} colors={['#4F46E5']} />

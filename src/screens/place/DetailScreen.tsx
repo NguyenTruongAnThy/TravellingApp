@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlaceById } from '../../services/placesService';
+import { getFavoritePlaceIds, toggleFavorite } from '../../services/favoritesService';
 import { getReviewsByPlace } from '../../services/reviewService';
 import type { Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +25,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [reviewsError, setReviewsError] = useState(false);
 
   const loadPlace = useCallback(async () => {
@@ -58,6 +60,11 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
       }
     });
   }, [placeId]);
+
+  useEffect(() => {
+    if (!placeId || !session?.user?.id) { setIsFavorite(false); return; }
+    getFavoritePlaceIds(session.user.id).then((ids) => setIsFavorite(ids.includes(placeId))).catch(() => {});
+  }, [placeId, session]);
 
   if (loading) {
     return (
@@ -113,6 +120,16 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
       <View className="mx-5 -mt-6 rounded-3xl bg-white border border-borderLight p-5">
         <View className="flex-row justify-between items-start">
           <Text className="flex-1 mr-2 text-2xl font-bold text-textMain">{place.title}</Text>
+          <Pressable
+            className="w-10 h-10 rounded-full bg-white border border-borderLight items-center justify-center mr-2"
+            onPress={async () => {
+              if (!session) { navigation.navigate('Login'); return; }
+              await toggleFavorite(session.user.id, place.id, isFavorite);
+              setIsFavorite(!isFavorite);
+            }}
+          >
+            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? '#EF4444' : '#131B2E'} />
+          </Pressable>
           <View className="bg-dealAmber px-2 py-1 rounded-md">
             <Text className="text-sm font-bold text-textMain">
               ★ {place.rating != null ? place.rating.toFixed(1) : 'New'}
@@ -122,7 +139,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         </View>
         <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
         <Text className="mt-1 text-sm text-textMuted">
-          {place.place_type || place.category || 'Stay'}
+          {place.place_type || place.category || 'Chỗ ở'}
           {place.rooms != null ? ` • ${place.rooms} phòng` : ''}
           {place.beds != null ? ` • ${place.beds} giường` : ''}
           {place.guests_capacity != null ? ` • ${place.guests_capacity} khách` : ''}

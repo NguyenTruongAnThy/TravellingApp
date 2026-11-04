@@ -1,8 +1,8 @@
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Place } from '../types';
 
-export default function PlaceCard({ place }: { place: Place }) {
+export default function PlaceCard({ place, isFavorite = false, onToggleFavorite }: { place: Place; isFavorite?: boolean; onToggleFavorite?: () => void }) {
   const mainImage =
     Array.isArray(place.images) && place.images.length > 0
       ? place.images[0]
@@ -10,13 +10,23 @@ export default function PlaceCard({ place }: { place: Place }) {
 
   return (
     <View className="bg-cardBg rounded-3xl overflow-hidden mb-4 border border-borderLight">
-      <Image source={{ uri: mainImage }} style={{ width: '100%', height: 200 }} resizeMode="cover" />
+      <View>
+        <Image source={{ uri: mainImage }} style={{ width: '100%', height: 200 }} resizeMode="cover" />
+        {onToggleFavorite ? (
+          <Pressable
+            style={{ position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 999, padding: 8 }}
+            onPress={onToggleFavorite}
+          >
+            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? '#EF4444' : '#FFFFFF'} />
+          </Pressable>
+        ) : null}
+      </View>
       <View className="p-3.5">
         <View className="flex-row justify-between items-center">
           <Text className="flex-1 mr-2 text-base font-bold text-textMain">{place.title}</Text>
           <View className="bg-dealAmber px-2 py-1 rounded-md">
             <Text className="text-xs font-semibold text-textMain">
-              ★ {place.rating != null ? place.rating.toFixed(1) : 'New'}
+              ★ {place.rating != null ? place.rating.toFixed(1) : 'Mới'}
             </Text>
           </View>
         </View>

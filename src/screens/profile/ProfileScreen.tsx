@@ -100,7 +100,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView className="flex-1 bg-appBg" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 48, paddingBottom: 24 }}>
-      <Text className="text-2xl font-bold text-textMain">Profile</Text>
+      <Text className="text-2xl font-bold text-textMain">Hồ sơ</Text>
       <Text className="mt-1 text-sm text-textMuted">Hồ sơ của bạn, dữ liệu thật từ Supabase</Text>
 
       <View className="mt-6 items-center">
@@ -114,15 +114,15 @@ export default function ProfileScreen() {
       <View className="mt-6 flex-row justify-between">
         <View className="flex-1 mx-1 rounded-2xl bg-white border border-borderLight py-4 items-center">
           <Text className="text-2xl font-bold text-textMain">{counts.trips}</Text>
-          <Text className="mt-1 text-xs font-bold text-textMuted">TRIPS</Text>
+          <Text className="mt-1 text-xs font-bold text-textMuted">CHUYẾN ĐI</Text>
         </View>
         <View className="flex-1 mx-1 rounded-2xl bg-white border border-borderLight py-4 items-center">
           <Text className="text-2xl font-bold text-textMain">{counts.reviews}</Text>
-          <Text className="mt-1 text-xs font-bold text-textMuted">REVIEWS</Text>
+          <Text className="mt-1 text-xs font-bold text-textMuted">ĐÁNH GIÁ</Text>
         </View>
         <View className="flex-1 mx-1 rounded-2xl bg-white border border-borderLight py-4 items-center">
           <Text className="text-2xl font-bold text-textMain">{counts.wishlists}</Text>
-          <Text className="mt-1 text-xs font-bold text-textMuted">WISHLISTS</Text>
+          <Text className="mt-1 text-xs font-bold text-textMuted">YÊU THÍCH</Text>
         </View>
       </View>
       <Text className="mt-3 text-xs text-textMuted text-center">
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
           <>
             <View className="mt-5">
               <AppInput
-                label="YOUR NAME"
+                label="HỌ TÊN"
                 icon="person-outline"
                 placeholder="Nguyễn Văn A"
                 value={name}
@@ -150,7 +150,7 @@ export default function ProfileScreen() {
             </View>
             <View className="mt-5">
               <AppInput
-                label="PHONE"
+                label="SỐ ĐIỆN THOẠI"
                 icon="call-outline"
                 placeholder="0912 345 678"
                 keyboardType="phone-pad"
@@ -169,11 +169,11 @@ export default function ProfileScreen() {
         ) : (
           <>
             <View className="mt-5">
-              <Text className="text-xs font-bold tracking-wide text-textMain">YOUR NAME</Text>
+              <Text className="text-xs font-bold tracking-wide text-textMain">HỌ TÊN</Text>
               <Text className="mt-2 text-base text-textMain">{savedName || 'Chưa đặt tên'}</Text>
             </View>
             <View className="mt-5">
-              <Text className="text-xs font-bold tracking-wide text-textMain">PHONE</Text>
+              <Text className="text-xs font-bold tracking-wide text-textMain">SỐ ĐIỆN THOẠI</Text>
               <Text className="mt-2 text-base text-textMain">{savedPhone || 'Chưa có số điện thoại'}</Text>
             </View>
             {saveMessage ? <Text className="mt-3 text-sm text-textMuted">{saveMessage}</Text> : null}
@@ -185,7 +185,7 @@ export default function ProfileScreen() {
       </View>
 
       <Pressable className="mt-8 items-center" onPress={() => signOut()}>
-        <Text className="text-base font-bold text-red-500">Log out</Text>
+        <Text className="text-base font-bold text-red-500">Đăng xuất</Text>
       </Pressable>
     </ScrollView>
   );

@@ -39,7 +39,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
   const strengthScore =
     (passwordLongEnough ? 1 : 0) + (hasNumber ? 1 : 0) + (hasSpecial ? 1 : 0);
   const strengthLabel =
-    strengthScore >= 3 ? 'Strong' : strengthScore === 2 ? 'Medium' : password ? 'Weak' : '';
+    strengthScore >= 3 ? 'Mạnh' : strengthScore === 2 ? 'Trung bình' : password ? 'Yếu' : '';
 
   const handleRegister = async () => {
     setTouched(true);
@@ -77,14 +77,14 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
     >
       <AuthHeader onBack={() => navigation.goBack?.()} />
 
-      <Text className="mt-6 text-3xl font-bold text-textMain">Create an account</Text>
+      <Text className="mt-6 text-3xl font-bold text-textMain">Tạo tài khoản</Text>
       <Text className="mt-2 text-base text-textMuted">
-        Find and book your perfect stay around the world
+        Tìm và đặt chỗ ở phù hợp cho chuyến đi của bạn
       </Text>
 
       <AuthCard>
         <AppInput
-          label="YOUR NAME"
+          label="HỌ TÊN"
           icon="person-outline"
           placeholder="Nguyễn Văn A"
           value={name}
@@ -95,7 +95,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="ENTER YOUR EMAIL"
+            label="NHẬP EMAIL"
             icon="mail-outline"
             placeholder="name@example.com"
             autoCapitalize="none"
@@ -109,7 +109,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="PHONE (OPTIONAL)"
+            label="SỐ ĐIỆN THOẠI (KHÔNG BẮT BUỘC)"
             icon="call-outline"
             placeholder="0912 345 678"
             keyboardType="phone-pad"
@@ -120,9 +120,9 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="ENTER YOUR PASSWORD"
+            label="NHẬP MẬT KHẨU"
             icon="lock-closed-outline"
-            placeholder="Create strong password"
+            placeholder="Tạo mật khẩu mạnh"
             secure
             value={password}
             onChangeText={setPassword}
@@ -133,7 +133,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-3">
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-textMuted">Password strength</Text>
+            <Text className="text-sm text-textMuted">Độ mạnh mật khẩu</Text>
             <Text className="text-sm font-bold text-brand">{strengthLabel}</Text>
           </View>
           <View className="mt-2 flex-row gap-2">
@@ -143,21 +143,21 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
         <Text className={`mt-3 text-sm ${passwordLongEnough ? 'text-green-600 font-bold' : 'text-textMuted'}`}>
-          {passwordLongEnough ? '✓' : '○'} At least 8 characters
+          {passwordLongEnough ? '✓' : '○'} Ít nhất 8 ký tự
         </Text>
         <Text
           className={`mt-1 text-sm ${passwordHasNumberAndSpecial ? 'text-green-600 font-bold' : 'text-textMuted'}`}
         >
-          {passwordHasNumberAndSpecial ? '✓' : '○'} Contains a number &amp; special character
+          {passwordHasNumberAndSpecial ? '✓' : '○'} Có số và ký tự đặc biệt
         </Text>
 
         {submitError ? <Text className="mt-3 text-sm text-red-500">{submitError}</Text> : null}
 
         <View className="mt-6">
-          <AppButton title="Continue →" onPress={handleRegister} disabled={!isValid} loading={loading} />
+          <AppButton title="Tiếp tục →" onPress={handleRegister} disabled={!isValid} loading={loading} />
         </View>
 
-        <Text className="mt-5 text-center text-sm text-textMuted">OR CONTINUE WITH</Text>
+        <Text className="mt-5 text-center text-sm text-textMuted">HOẶC TIẾP TỤC BẰNG</Text>
         <View className="mt-3 flex-row justify-between">
           <SocialButton source={require('../../../assets/Apple.png')} />
           <SocialButton source={require('../../../assets/GG.png')} />
@@ -165,13 +165,13 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
         </View>
 
         <Text className="mt-5 text-center text-xs text-textMuted">
-          By signing up, you agree to our Terms of Service and Privacy Policy.
+          Khi đăng ký, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.
         </Text>
       </AuthCard>
 
       <Pressable className="mt-8 items-center" onPress={() => navigation.navigate('Login')}>
         <Text className="text-base text-textMuted">
-          Already have an account? <Text className="font-bold text-brand">Log in</Text>
+          Đã có tài khoản? <Text className="font-bold text-brand">Đăng nhập</Text>
         </Text>
       </Pressable>
     </ScrollView>
