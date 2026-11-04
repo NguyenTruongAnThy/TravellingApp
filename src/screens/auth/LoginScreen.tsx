@@ -37,6 +37,12 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
+      // Login-guard: nếu Login được mở từ một tab/màn khác (ví dụ từ Detail),
+      // quay lại màn đó sau khi đăng nhập thành công. Nếu Login là màn đầu
+      // tiên và không quay lại được thì ở lại, vì session đã đổi.
+      if (navigation.canGoBack && navigation.canGoBack()) {
+        navigation.goBack();
+      }
     } catch (err) {
       setSubmitError('Email hoặc mật khẩu chưa đúng. Vui lòng thử lại.');
     } finally {
