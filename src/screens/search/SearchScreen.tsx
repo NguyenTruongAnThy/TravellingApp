@@ -203,6 +203,7 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
           </View>
         </ScrollView>
       ) : null}
+      <Text className="px-5 pb-2 text-sm text-textMuted">{filteredPlaces.length} chỗ ở phù hợp</Text>
       {filteredPlaces.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-lg font-bold text-textMain text-center">Không tìm thấy địa điểm nào</Text>

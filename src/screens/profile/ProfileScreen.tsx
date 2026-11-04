@@ -104,7 +104,7 @@ export default function ProfileScreen() {
       <Text className="mt-1 text-sm text-textMuted">Hồ sơ của bạn, dữ liệu thật từ Supabase</Text>
 
       <View className="mt-6 items-center">
-        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center">
+        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center border-4 border-white">
           <Text className="text-3xl font-bold text-white">{initial}</Text>
         </View>
         <Text className="mt-3 text-xl font-bold text-textMain">{savedName || 'Chưa đặt tên'}</Text>
