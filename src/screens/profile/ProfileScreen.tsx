@@ -103,31 +103,24 @@ export default function ProfileScreen() {
       <Text className="text-2xl font-bold text-textMain">Hồ sơ</Text>
       <Text className="mt-1 text-sm text-textMuted">Hồ sơ của bạn, dữ liệu thật từ Supabase</Text>
 
-      <View className="mt-6 items-center">
-        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center border-4 border-white">
+      {/* Figma Profile: 1 the trang duy nhat gom avatar/ten/email/Verified + hang so lieu co gach doc */}
+      <View className="mt-6 rounded-3xl bg-white border border-borderLight p-5 items-center">
+        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center">
           <Text className="text-3xl font-bold text-white">{initial}</Text>
         </View>
         <Text className="mt-3 text-xl font-bold text-textMain">{savedName || 'Chưa đặt tên'}</Text>
         <Text className="mt-1 text-sm text-textMuted">{sessionEmail}</Text>
-      </View>
-
-      <View className="mt-6 flex-row justify-between">
-        <View className="flex-1 mx-1 rounded-2xl bg-white border border-borderLight py-4 items-center">
-          <Text className="text-2xl font-bold text-textMain">{counts.trips}</Text>
-          <Text className="mt-1 text-xs font-bold text-textMuted">CHUYẾN ĐI</Text>
+        <View className="mt-3 px-3 py-1 rounded-full bg-brand">
+          <Text className="text-xs font-bold text-white">Verified Traveler</Text>
         </View>
-        <View className="flex-1 mx-1 rounded-2xl bg-white border border-borderLight py-4 items-center">
-          <Text className="text-2xl font-bold text-textMain">{counts.reviews}</Text>
-          <Text className="mt-1 text-xs font-bold text-textMuted">ĐÁNH GIÁ</Text>
-        </View>
-        <View className="flex-1 mx-1 rounded-2xl bg-white border border-borderLight py-4 items-center">
-          <Text className="text-2xl font-bold text-textMain">{counts.wishlists}</Text>
-          <Text className="mt-1 text-xs font-bold text-textMuted">YÊU THÍCH</Text>
+        <View className="mt-4 flex-row w-full">
+          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.trips}</Text><Text className="mt-1 text-xs text-textMuted">Chuyến đi</Text></View>
+          <View style={{ width: 1, backgroundColor: '#E6E3F5' }} />
+          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.reviews}</Text><Text className="mt-1 text-xs text-textMuted">Đánh giá</Text></View>
+          <View style={{ width: 1, backgroundColor: '#E6E3F5' }} />
+          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.wishlists}</Text><Text className="mt-1 text-xs text-textMuted">Yêu thích</Text></View>
         </View>
       </View>
-      <Text className="mt-3 text-xs text-textMuted text-center">
-        Trips = booking chưa hủy • Reviews = đánh giá của bạn • Wishlists = chỗ ở đã lưu
-      </Text>
 
       <View className="mt-6 rounded-3xl bg-white p-5">
         <Text className="text-xs font-bold tracking-wide text-textMain">EMAIL (KHÔNG ĐỔI ĐƯỢC)</Text>
@@ -182,6 +175,38 @@ export default function ProfileScreen() {
             </View>
           </>
         )}
+      </View>
+
+      {/* Chi Personal Information la that (mo form sua o tren). Cac dong con lai chi hien thi, khong phai tinh nang that o MVP, khong bam duoc */}
+      <View className="mt-6 rounded-3xl bg-white border border-borderLight px-5">
+        <Pressable className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => setIsEditing(true)}>
+          <Text className="text-base text-textMain">Personal Information</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </Pressable>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Login & Security</Text>
+          <Text className="text-sm text-textMuted">Email đã khóa</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Currency & Language</Text>
+          <Text className="text-sm text-textMuted">USD ($) • Tiếng Việt</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Notifications</Text>
+          <Text className="text-sm text-textMuted">ON</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Dark Appearance</Text>
+          <Text className="text-sm text-textMuted">OFF</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Help Center & Safety</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4">
+          <Text className="text-base text-textMain">Terms & Privacy</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </View>
       </View>
 
       <Pressable className="mt-8 items-center" onPress={() => signOut()}>

@@ -51,8 +51,8 @@ export default function MyListsScreen({ navigation }: { navigation: any }) {
   return (
     <View className="flex-1 bg-appBg">
       <View className="px-5 pt-12 pb-3 bg-white border-b border-borderLight">
-        <Text className="text-2xl font-bold text-textMain">Yêu thích</Text>
-        <Text className="mt-1 text-sm text-textMuted">Những chỗ ở bạn đã lưu bằng trái tim</Text>
+        <Text className="text-2xl font-bold text-textMain">Places you liked</Text>
+        <Text className="mt-1 text-sm text-textMuted">{places.length} chỗ ở bạn đã lưu bằng trái tim</Text>
       </View>
       {places.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">

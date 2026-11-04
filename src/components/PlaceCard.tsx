@@ -11,23 +11,35 @@ export default function PlaceCard({ place, isFavorite = false, onToggleFavorite 
   return (
     <View className="bg-cardBg rounded-3xl overflow-hidden mb-4 border border-borderLight">
       <View>
-        <Image source={{ uri: mainImage }} style={{ width: '100%', height: 200 }} resizeMode="cover" />
+        {(place.rating ?? 0) >= 4.8 ? (
+          <View className="flex-row items-center px-2.5 py-1 rounded-full bg-white" style={{ position: 'absolute', top: 12, left: 12, zIndex: 1 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4F46E5' }} />
+            <Text className="ml-1.5 text-[11px] font-bold text-brand">Khách yêu thích</Text>
+          </View>
+        ) : null}
+        {Array.isArray(place.images) && place.images.length > 1 ? (
+          <View className="flex-row items-center justify-center" style={{ position: 'absolute', bottom: 10, left: 0, right: 0 }}>
+            {place.images.slice(0, 5).map((_, i) => (
+              <View key={i} style={{ width: i === 0 ? 16 : 6, height: 6, borderRadius: 3, marginHorizontal: 2, backgroundColor: i === 0 ? '#FFFFFF' : 'rgba(255,255,255,0.6)' }} />
+            ))}
+          </View>
+        ) : null}
+        <Image source={{ uri: mainImage }} style={{ width: '100%', height: 220 }} resizeMode="cover" />
         {onToggleFavorite ? (
           <Pressable
-            style={{ position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 999, padding: 8 }}
+            style={{ position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 999, padding: 8 }}
             onPress={onToggleFavorite}
           >
-            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? '#EF4444' : '#FFFFFF'} />
+            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? '#EF4444' : '#131B2E'} />
           </Pressable>
         ) : null}
       </View>
       <View className="p-3.5">
         <View className="flex-row justify-between items-center">
-          <Text className="flex-1 mr-2 text-base font-bold text-textMain">{place.title}</Text>
-          <View className="bg-dealAmber px-2 py-1 rounded-md">
-            <Text className="text-xs font-semibold text-textMain">
-              ★ {place.rating != null ? place.rating.toFixed(1) : 'Mới'}
-            </Text>
+          <Text className="flex-1 mr-2 text-[15px] font-bold text-textMain">{place.title}</Text>
+          <View className="flex-row items-center">
+            <Text className="text-xs font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'Mới'}</Text>
+            {place.review_count ? <Text className="ml-1 text-[11px] text-textMuted">({place.review_count})</Text> : null}
           </View>
         </View>
         <View className="flex-row items-center mt-1">
@@ -37,9 +49,10 @@ export default function PlaceCard({ place, isFavorite = false, onToggleFavorite 
           </Text>
         </View>
         <Text className="text-xs text-inactive mt-1">
-          {place.place_type || place.category || 'Stay'}
+          {place.place_type || place.category || 'Chỗ ở'}
+          {place.rooms != null ? ` • ${place.rooms} phòng` : ''}
+          {place.beds != null ? ` • ${place.beds} giường` : ''}
           {place.guests_capacity ? ` • ${place.guests_capacity} khách` : ''}
-          {place.review_count ? ` • ${place.review_count} đánh giá` : ''}
         </Text>
         <View className="flex-row items-baseline mt-2.5">
           <Text className="text-lg font-bold text-brand">${place.price_per_night}</Text>
