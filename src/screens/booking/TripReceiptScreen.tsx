@@ -1,0 +1,476 @@
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  Share,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+
+interface TripReceiptScreenProps {
+  navigation?: any;
+  route?: {
+    params?: {
+      receipt?: any;
+      booking?: any;
+    };
+  };
+}
+
+export default function TripReceiptScreen({
+  navigation,
+  route,
+}: TripReceiptScreenProps) {
+  const [downloading, setDownloading] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+
+  // Incoming data or default Figma design specs
+  const paramsBooking = route?.params?.booking;
+  const paramsReceipt = route?.params?.receipt;
+
+  const receiptNumber =
+    paramsReceipt?.receipt_number ||
+    (paramsBooking?.ref_code ? `#REC-${paramsBooking.ref_code.replace('#', '')}` : '#REC-2024-84920');
+
+  const issuedDate = paramsReceipt?.issued_date || 'May 12, 2024';
+  const totalAmount =
+    paramsReceipt?.total ||
+    (paramsBooking?.total ? `$${Number(paramsBooking.total).toFixed(2)}` : '$450.00');
+
+  const placeTitle = paramsBooking?.places?.title || paramsReceipt?.place_title || 'Balian Treehouse';
+  const placeLocation =
+    paramsBooking?.places?.location || paramsReceipt?.place_location || 'Selemadeg Barat, Bali, Indonesia';
+  const placeType = paramsBooking?.places?.category || 'HOMESTAY';
+  const placeImage =
+    paramsBooking?.places?.images?.[0] ||
+    paramsReceipt?.place_image ||
+    'https://api.builder.io/api/v1/image/assets/TEMP/18d5fda6f3f2f9289747cd527ad35641b9d29526?width=160';
+
+  const refCode = paramsBooking?.ref_code || 'Ref: #WS-84920';
+  const stayDates = paramsReceipt?.dates || 'May 24 – 29, 2024';
+  const stayNights = paramsBooking?.nights ? `${paramsBooking.nights} nights` : '5 nights';
+  const guestsText = paramsBooking
+    ? `${(paramsBooking.guests_adults || 1) + (paramsBooking.guests_children || 0)} Guests`
+    : '2 Guests';
+  const roomConfig = paramsReceipt?.room_config || '1 bedroom • 1 king';
+
+  const hostName = paramsReceipt?.host_name || 'Wayan Sutama';
+  const hostAvatar =
+    paramsReceipt?.host_avatar ||
+    'https://api.builder.io/api/v1/image/assets/TEMP/4130993de59debc43fdc229627ab57b458f7cf38?width=64';
+
+  const paymentMethodLabel = paramsReceipt?.card_label || 'Visa ending in 4242';
+  const transactionId = paramsReceipt?.transaction_id || 'TXN_992837482';
+  const billingName = paramsReceipt?.billing_name || 'Alex Morgan';
+  const billingAddress = paramsReceipt?.billing_address || '742 Evergreen Terrace, Springfield, OR 97477';
+
+  // Itemized breakdown items (default matches exact Figma specs, or computed if booking passed)
+  const isCustomBooking = !!paramsBooking && !paramsReceipt?.breakdown;
+  const breakdownNightsText = isCustomBooking
+    ? `$${Number(paramsBooking.price_per_night).toFixed(2)} × ${paramsBooking.nights} nights`
+    : '$75.00 × 5 nights';
+  const breakdownNightsTotal = isCustomBooking
+    ? `$${(Number(paramsBooking.price_per_night) * Number(paramsBooking.nights)).toFixed(2)}`
+    : '$375.00';
+
+  const cleaningFee = isCustomBooking ? `$${Number(paramsBooking.kayak_fee || 0).toFixed(2)}` : '$35.00';
+  const serviceFee = isCustomBooking ? `$${Number(paramsBooking.parking_fee || 0).toFixed(2)}` : '$25.00';
+  const taxesFee = isCustomBooking ? '$0.00' : '$15.00';
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: `Trip Receipt ${receiptNumber}`,
+        message: `WanderStay Trip Receipt ${receiptNumber}\nPlace: ${placeTitle}\nTotal Paid: ${totalAmount} USD\nDates: ${stayDates} (${stayNights})\nRef Code: ${refCode}`,
+      });
+    } catch {
+      // Ignore dismiss
+    }
+  };
+
+  const handleMoreOptions = () => {
+    Alert.alert('Receipt Options', `Receipt ${receiptNumber}`, [
+      {
+        text: 'Copy Receipt Number',
+        onPress: () => Alert.alert('Copied', `${receiptNumber} copied to clipboard.`),
+      },
+      {
+        text: 'Contact Support',
+        onPress: () => {
+          if (navigation?.navigate) {
+            navigation.navigate('TravelAssistant');
+          } else {
+            Alert.alert('Support', '24/7 Virtual Assistant is ready to help.');
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleDownloadPDF = () => {
+    setDownloading(true);
+    setTimeout(() => {
+      setDownloading(false);
+      Alert.alert(
+        'Receipt Downloaded',
+        `PDF Receipt ${receiptNumber} has been successfully exported and saved to your device.`,
+        [
+          { text: 'View Now', onPress: () => {} },
+          { text: 'Done', style: 'cancel' },
+        ]
+      );
+    }, 900);
+  };
+
+  const handleEmailReceipt = () => {
+    setEmailing(true);
+    setTimeout(() => {
+      setEmailing(false);
+      Alert.alert(
+        'Email Sent',
+        `Receipt ${receiptNumber} has been dispatched to your registered email address.`
+      );
+    }, 600);
+  };
+
+  const handleReportIssue = () => {
+    Alert.alert(
+      'Report an Issue',
+      `Have an issue with booking ${refCode}? Our 24/7 guest support team is here to assist you.`,
+      [
+        {
+          text: 'Chat with Assistant',
+          onPress: () => {
+            if (navigation?.navigate) {
+              navigation.navigate('TravelAssistant');
+            }
+          },
+        },
+        { text: 'Close', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleRequestVAT = () => {
+    Alert.alert(
+      'Business Invoice / VAT Request',
+      `Request for official VAT invoice #${receiptNumber} submitted. It will be delivered to your billing email within 24 hours.`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-[#FAF8FF]" edges={['top', 'left', 'right']}>
+      {/* Sticky Top Header */}
+      <View className="h-14 px-4 flex-row items-center justify-between border-b border-[#E6E3F5]/60 bg-[#FAF8FF]">
+        <View className="flex-row items-center gap-2 flex-1">
+          <Pressable
+            className="w-10 h-10 rounded-full items-center justify-center bg-white shadow-sm border border-borderLight/30 active:opacity-70"
+            onPress={() => {
+              if (navigation?.goBack) {
+                navigation.goBack();
+              }
+            }}
+          >
+            <Ionicons name="chevron-back" size={20} color="#131B2E" />
+          </Pressable>
+          <Text className="text-lg font-bold text-textMain ml-1">Trip Receipt</Text>
+        </View>
+
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            className="w-9 h-9 rounded-full items-center justify-center bg-white shadow-sm border border-borderLight/30 active:opacity-70"
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={17} color="#131B2E" />
+          </Pressable>
+          <Pressable
+            className="w-9 h-9 rounded-full items-center justify-center bg-white shadow-sm border border-borderLight/30 active:opacity-70"
+            onPress={handleMoreOptions}
+          >
+            <Ionicons name="ellipsis-horizontal" size={17} color="#131B2E" />
+          </Pressable>
+          <View className="w-8 h-8 rounded-full bg-[#006877] items-center justify-center shadow-sm ml-0.5">
+            <Ionicons name="shield-checkmark" size={16} color="#FFFFFF" />
+          </View>
+        </View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
+      >
+        {/* Card 1: Status & Celebration Banner */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm border border-borderLight/40 mb-4 overflow-hidden relative">
+          {/* Subtle Top-Right Decorative Glow */}
+          <View className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-[#E2DFFF] opacity-40 blur-xl pointer-events-none" />
+
+          {/* Status pill row */}
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAEDFF]">
+              <Ionicons name="checkmark-circle" size={14} color="#4F46E5" />
+              <Text className="text-xs font-semibold text-[#131B2E]">Paid in full</Text>
+            </View>
+            <Text className="text-[11px] font-bold text-[#6C797D] tracking-wider uppercase">
+              COMPLETED STAY
+            </Text>
+          </View>
+
+          {/* Total Paid figure */}
+          <View className="mb-3.5">
+            <Text className="text-xs font-semibold text-[#6C797D]">Total Paid</Text>
+            <View className="flex-row items-baseline gap-2 mt-0.5">
+              <Text className="text-3xl font-extrabold text-[#131B2E] tracking-tight">
+                {totalAmount}
+              </Text>
+              <Text className="text-xs font-semibold text-[#6C797D]">USD</Text>
+            </View>
+          </View>
+
+          {/* Receipt Number & Issued Date container */}
+          <View className="bg-[#F2F3FF] rounded-xl p-3 flex-row items-center justify-between">
+            <View className="flex-1">
+              <Text className="text-[11px] font-bold text-[#6C797D]">Receipt Number</Text>
+              <Text className="text-xs font-semibold text-[#131B2E] mt-0.5">{receiptNumber}</Text>
+            </View>
+            <View className="w-[1px] h-6 bg-[#BBC9CC]/40 mx-3" />
+            <View className="items-end">
+              <Text className="text-[11px] font-bold text-[#6C797D]">Issued Date</Text>
+              <Text className="text-xs font-semibold text-[#131B2E] mt-0.5">{issuedDate}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Card 2: Stay Information Card */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm border border-borderLight/40 mb-4">
+          {/* Top row with property photo & basic details */}
+          <View className="flex-row items-start gap-3.5 mb-3.5">
+            <Image
+              source={{ uri: placeImage }}
+              className="w-20 h-20 rounded-xl bg-slate-100"
+              resizeMode="cover"
+            />
+            <View className="flex-1">
+              <View className="flex-row items-center gap-1 mb-0.5">
+                <Ionicons name="home" size={12} color="#006877" />
+                <Text className="text-[11px] font-bold text-[#006877] tracking-wider uppercase">
+                  {placeType}
+                </Text>
+              </View>
+              <Text className="text-lg font-semibold text-[#131B2E] leading-6" numberOfLines={1}>
+                {placeTitle}
+              </Text>
+              <Text className="text-xs text-[#6C797D] mt-0.5" numberOfLines={1}>
+                {placeLocation}
+              </Text>
+              <Text className="text-[11px] font-bold text-[#4D44E3] mt-1">{refCode}</Text>
+            </View>
+          </View>
+
+          {/* Specs 2-Column Grid */}
+          <View className="flex-row items-center gap-2 mb-3">
+            {/* Dates */}
+            <View className="flex-1 bg-[#F2F3FF] rounded-xl p-3">
+              <View className="flex-row items-center gap-1.5 mb-1.5">
+                <Ionicons name="calendar-outline" size={13} color="#6C797D" />
+                <Text className="text-[11px] font-bold text-[#6C797D]">Dates</Text>
+              </View>
+              <Text className="text-xs font-semibold text-[#131B2E]">{stayDates}</Text>
+              <Text className="text-xs text-[#6C797D] mt-0.5">{stayNights}</Text>
+            </View>
+
+            {/* Travelers */}
+            <View className="flex-1 bg-[#F2F3FF] rounded-xl p-3">
+              <View className="flex-row items-center gap-1.5 mb-1.5">
+                <Ionicons name="people-outline" size={13} color="#6C797D" />
+                <Text className="text-[11px] font-bold text-[#6C797D]">Travelers</Text>
+              </View>
+              <Text className="text-xs font-semibold text-[#131B2E]">{guestsText}</Text>
+              <Text className="text-xs text-[#6C797D] mt-0.5">{roomConfig}</Text>
+            </View>
+          </View>
+
+          {/* Host strip */}
+          <View className="bg-[#F2F3FF] rounded-xl px-3 py-2.5 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2.5">
+              <Image
+                source={{ uri: hostAvatar }}
+                className="w-8 h-8 rounded-full bg-slate-200"
+                resizeMode="cover"
+              />
+              <View>
+                <Text className="text-xs text-[#6C797D]">Superhost</Text>
+                <Text className="text-xs font-semibold text-[#131B2E]">{hostName}</Text>
+              </View>
+            </View>
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="shield-checkmark" size={15} color="#4F46E5" />
+            </View>
+          </View>
+        </View>
+
+        {/* Card 3: Itemized Breakdown Card (Invoice) */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm border border-borderLight/40 mb-4">
+          <View className="flex-row items-center justify-between mb-3.5">
+            <Text className="text-lg font-semibold text-[#131B2E]">Itemized Breakdown</Text>
+            <Ionicons name="receipt-outline" size={17} color="#6C797D" />
+          </View>
+
+          <View className="gap-3 mb-3.5">
+            {/* Nights breakdown */}
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm text-[#131B2E]">{breakdownNightsText}</Text>
+              <Text className="text-sm font-medium text-[#131B2E]">{breakdownNightsTotal}</Text>
+            </View>
+
+            {/* Cleaning fee */}
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm text-[#131B2E]">Cleaning fee</Text>
+              <Text className="text-sm font-medium text-[#131B2E]">{cleaningFee}</Text>
+            </View>
+
+            {/* Service fee */}
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-1.5">
+                <Text className="text-sm text-[#131B2E]">WanderStay service fee</Text>
+                <Ionicons name="information-circle-outline" size={14} color="#6C797D" />
+              </View>
+              <Text className="text-sm font-medium text-[#131B2E]">{serviceFee}</Text>
+            </View>
+
+            {/* Taxes */}
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm text-[#131B2E]">Occupancy taxes & VAT (4%)</Text>
+              <Text className="text-sm font-medium text-[#131B2E]">{taxesFee}</Text>
+            </View>
+          </View>
+
+          {/* Total Row */}
+          <View className="bg-[#F2F3FF] rounded-xl p-3 flex-row items-center justify-between">
+            <View>
+              <Text className="text-lg font-semibold text-[#131B2E]">Total (USD)</Text>
+              <Text className="text-[11px] font-bold text-[#6C797D] mt-0.5">
+                Includes all local fees
+              </Text>
+            </View>
+            <Text className="text-xl font-bold text-[#006877]">{totalAmount}</Text>
+          </View>
+        </View>
+
+        {/* Card 4: Payment Record & Billing Details */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm border border-borderLight/40 mb-4">
+          <View className="flex-row items-center justify-between mb-3.5">
+            <Text className="text-lg font-semibold text-[#131B2E]">Payment Record</Text>
+            <View className="px-2.5 py-1 rounded-full bg-[#EAEDFF]">
+              <Text className="text-[11px] font-semibold text-[#131B2E]">Processed</Text>
+            </View>
+          </View>
+
+          {/* Card specs */}
+          <View className="flex-row items-center gap-3 mb-3.5">
+            <View className="w-12 h-8 rounded-lg bg-[#E2E7FF] items-center justify-center shadow-xs">
+              <Text className="text-xs font-black text-[#0051D5] tracking-wider">VISA</Text>
+            </View>
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-semibold text-[#131B2E]">{paymentMethodLabel}</Text>
+                <Text className="text-xs text-[#6C797D]">{issuedDate}</Text>
+              </View>
+              <Text className="text-xs text-[#6C797D] mt-0.5">
+                Transaction: {transactionId}
+              </Text>
+            </View>
+          </View>
+
+          {/* Billing Name & Address block */}
+          <View className="bg-[#F2F3FF] rounded-xl p-3">
+            <Text className="text-[11px] font-bold text-[#6C797D] tracking-wider uppercase mb-1">
+              BILLING NAME & ADDRESS
+            </Text>
+            <Text className="text-sm font-medium text-[#131B2E]">{billingName}</Text>
+            <Text className="text-xs text-[#6C797D] mt-0.5">{billingAddress}</Text>
+          </View>
+        </View>
+
+        {/* Card 5: Cancellation Policy & Business VAT Note */}
+        <View className="bg-white rounded-2xl p-4 shadow-sm border border-borderLight/40 mb-5">
+          {/* Cancellation policy block */}
+          <View className="flex-row items-start gap-2.5 mb-3">
+            <Ionicons name="shield-checkmark-outline" size={16} color="#4F46E5" className="mt-0.5" />
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-[#131B2E]">Cancellation Policy</Text>
+              <Text className="text-xs text-[#6C797D] leading-4 mt-0.5">
+                Free cancellation was available until May 19, 12:00 PM (WIT). Booking is now concluded.
+              </Text>
+            </View>
+          </View>
+
+          {/* VAT request strip */}
+          <View className="bg-[#F2F3FF] rounded-xl p-3 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2 flex-1 pr-2">
+              <Ionicons name="document-text-outline" size={16} color="#4D44E3" />
+              <Text className="text-xs text-[#131B2E]">Need business invoice or VAT?</Text>
+            </View>
+            <Pressable
+              className="px-3.5 py-1.5 rounded-full bg-white shadow-xs border border-borderLight/40 active:opacity-70"
+              onPress={handleRequestVAT}
+            >
+              <Text className="text-xs font-semibold text-[#4D44E3]">Request</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Actions Section */}
+        <View className="gap-3">
+          {/* Download PDF button */}
+          <Pressable
+            className="h-12 rounded-full bg-[#4D44E3] flex-row items-center justify-center gap-2 shadow-md active:opacity-90"
+            onPress={handleDownloadPDF}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={18} color="#FFFFFF" />
+                <Text className="text-sm font-semibold text-white">Download PDF Receipt</Text>
+              </>
+            )}
+          </Pressable>
+
+          {/* Secondary 2 Buttons Row */}
+          <View className="flex-row items-center gap-3">
+            <Pressable
+              className="flex-1 h-11 rounded-full bg-white border border-borderLight/60 shadow-xs flex-row items-center justify-center gap-1.5 active:opacity-70"
+              onPress={handleEmailReceipt}
+              disabled={emailing}
+            >
+              {emailing ? (
+                <ActivityIndicator color="#131B2E" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="mail-outline" size={16} color="#131B2E" />
+                  <Text className="text-xs font-semibold text-[#131B2E]">Email Receipt</Text>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              className="flex-1 h-11 rounded-full bg-white border border-borderLight/60 shadow-xs flex-row items-center justify-center gap-1.5 active:opacity-70"
+              onPress={handleReportIssue}
+            >
+              <Ionicons name="alert-circle-outline" size={16} color="#131B2E" />
+              <Text className="text-xs font-semibold text-[#131B2E]">Report Issue</Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

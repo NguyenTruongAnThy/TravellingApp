@@ -98,8 +98,12 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
   };
 
   const handleOpenReceipt = (item: any) => {
-    setSelectedReceipt(item);
-    setReceiptModalVisible(true);
+    if (navigation?.navigate) {
+      navigation.navigate('TripReceipt', { receipt: item, booking: item });
+    } else {
+      setSelectedReceipt(item);
+      setReceiptModalVisible(true);
+    }
   };
 
   return (

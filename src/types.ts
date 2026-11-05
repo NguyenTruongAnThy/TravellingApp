@@ -56,3 +56,16 @@ export interface Booking {
   created_at?: string;
   places?: Place | null;
 }
+
+export interface PaymentReceipt {
+  id: string;
+  booking_id: string;
+  amount: number;
+  payment_method?: string;
+  paid_at?: string;
+  receipt_number?: string;
+  transaction_id?: string;
+  billing_name?: string;
+  billing_address?: string;
+}
+
