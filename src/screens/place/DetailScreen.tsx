@@ -148,8 +148,11 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         {/* Cac muc rieng biet, khong long the trang trong the trang */}
         {place.description ? (
           <View className="mx-5 mt-5">
-            <Text className="text-base font-bold text-textMain">Mô tả</Text>
-            <Text className="mt-2 text-base text-textMuted leading-6">{place.description}</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-base font-bold text-textMain">Mô tả</Text>
+              <Pressable onPress={() => navigation.navigate('Description', { placeId: place.id })}><Text className="text-sm font-bold text-brand">View more ›</Text></Pressable>
+            </View>
+            <Text className="mt-2 text-base text-textMuted leading-6" numberOfLines={3}>{place.description}</Text>
           </View>
         ) : null}
 
@@ -157,7 +160,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           <View className="mx-5 mt-5">
             <Text className="text-base font-bold text-textMain">Tiện nghi</Text>
             <View className="mt-2">
-              {place.amenities.map((item, i) => (
+              {place.amenities.slice(0, 3).map((item, i) => (
                 <View key={item} className="flex-row items-center py-2.5" style={{ borderBottomWidth: i === place.amenities!.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
                   <Ionicons name={amenityIcon(item)} size={18} color="#4F46E5" />
                   <Text className="ml-3 text-base text-textMain">{item}</Text>
@@ -167,6 +170,11 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           </View>
         ) : null}
 
+        {Array.isArray(place.amenities) && place.amenities.length > 3 ? (
+          <Pressable className="mx-5 mt-2" onPress={() => navigation.navigate('Facilities', { placeId: place.id })}><Text className="text-sm font-bold text-brand">Show all {place.amenities.length} facilities ›</Text></Pressable>
+        ) : Array.isArray(place.amenities) && place.amenities.length > 0 ? (
+          <Pressable className="mx-5 mt-2" onPress={() => navigation.navigate('Facilities', { placeId: place.id })}><Text className="text-sm font-bold text-brand">Show all facilities ›</Text></Pressable>
+        ) : null}
         <View className="mx-5 mt-5">
           <Text className="text-base font-bold text-textMain">Chính sách</Text>
           <Text className="mt-2 text-base text-textMuted">Nhận phòng: từ {place.check_in_time || '14:00'}</Text>
@@ -179,14 +187,17 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         </View>
 
         <View className="mx-5 mt-5">
-          <Text className="text-base font-bold text-textMain">Đánh giá</Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-bold text-textMain">Đánh giá</Text>
+            <Pressable onPress={() => navigation.navigate('Reviews', { placeId: place.id })}><Text className="text-sm font-bold text-brand">Show all reviews ›</Text></Pressable>
+          </View>
           {reviewsError ? (
             <Text className="mt-2 text-base text-textMuted">Không tải được đánh giá. Vui lòng thử lại sau.</Text>
           ) : reviews.length === 0 ? (
             <Text className="mt-2 text-base text-textMuted">Chưa có đánh giá nào cho chỗ ở này.</Text>
           ) : (
             <View className="mt-2">
-              {reviews.map((review, i) => (
+              {reviews.slice(0, 2).map((review, i) => (
                 <View key={review.id} className="py-3" style={{ borderBottomWidth: i === reviews.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
                   <View className="flex-row justify-between items-center">
                     <Text className="text-base font-bold text-textMain">{review.users?.name || 'Khách đã ở'}</Text>

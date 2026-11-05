@@ -8,6 +8,9 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import SearchScreen from '../screens/search/SearchScreen';
 import DetailScreen from '../screens/place/DetailScreen';
+import DescriptionScreen from '../screens/place/DescriptionScreen';
+import FacilitiesScreen from '../screens/place/FacilitiesScreen';
+import ReviewsScreen from '../screens/place/ReviewsScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
@@ -147,6 +150,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
+        <Stack.Screen name="Description" component={DescriptionScreen} />
+        <Stack.Screen name="Facilities" component={FacilitiesScreen} />
+        <Stack.Screen name="Reviews" component={ReviewsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
