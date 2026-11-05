@@ -17,6 +17,7 @@ import BookingsScreen from '../screens/booking/BookingsScreen';
 import TripReceiptScreen from '../screens/booking/TripReceiptScreen';
 import SmartKeyScreen from '../screens/booking/SmartKeyScreen';
 import DirectionsScreen from '../screens/booking/DirectionsScreen';
+import InboxListScreen from '../screens/inbox/InboxListScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
@@ -89,6 +90,14 @@ function BookingsTab({ navigation }: { navigation: any }) {
   return <BookingsScreen navigation={navigation} />;
 }
 
+function InboxTab({ navigation }: { navigation: any }) {
+  const { session } = useAuth();
+  if (!session) {
+    return <GuardedScreen title="Inbox" navigation={navigation} />;
+  }
+  return <InboxListScreen navigation={navigation} />;
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -131,7 +140,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline" size={size} color={color} />,
         }}
       >
-        {(props) => <GuardedScreen title="Inbox" {...props} />}
+        {(props) => <InboxTab {...props} />}
       </Tab.Screen>
       <Tab.Screen
         name="Profile"
@@ -168,6 +177,7 @@ export default function AppNavigator() {
         <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
         <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
         <Stack.Screen name="Directions" component={DirectionsScreen} />
+        <Stack.Screen name="InboxList" component={InboxListScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
