@@ -25,6 +25,7 @@ export interface Review {
   place_id?: string;
   booking_id?: string | null;
   user_id?: string;
+  reviewer_name?: string | null;
   rating: number;
   comment?: string | null;
   photos?: string[];

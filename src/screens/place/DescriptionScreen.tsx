@@ -48,15 +48,18 @@ export default function DescriptionScreen({ route, navigation }: { route: any; n
       <Image source={{ uri: mainImage }} style={{ width: '100%', height: 320 }} resizeMode="cover" />
       <View className="mx-5 mt-5">
         <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
-        <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
+        <View className="mt-2 flex-row items-center">
+          <Ionicons name="location-outline" size={18} color="#4F46E5" />
+          <Text className="ml-1 text-base text-textMuted flex-1">{place.location}</Text>
+        </View>
         <View className="mt-2 flex-row items-center"><Ionicons name="star" size={16} color="#FFB020" /><Text className="ml-1 text-base font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}{place.review_count ? ` (${place.review_count} reviews)` : ''}</Text></View>
       </View>
-      <View className="mx-5 mt-5">
+      <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
         <Text className="text-base font-bold text-textMain">About this place</Text>
         <Text className="mt-2 text-base text-textMuted leading-6">{place.description || 'No description for this stay yet.'}</Text>
       </View>
       {Array.isArray(place.amenities) && place.amenities.length > 0 ? (
-        <View className="mx-5 mt-5">
+        <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
           <Text className="text-base font-bold text-textMain">Key Highlights</Text>
           <Text className="mt-1 text-sm text-textMuted">Highlights come from this stay's real amenities, nothing invented.</Text>
           <View className="mt-2">
@@ -69,11 +72,14 @@ export default function DescriptionScreen({ route, navigation }: { route: any; n
           </View>
         </View>
       ) : null}
-      <View className="mx-5 mt-5">
+      <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
         <Text className="text-base font-bold text-textMain">Location</Text>
-        <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
+        <View className="mt-2 flex-row items-center">
+          <Ionicons name="location-outline" size={18} color="#4F46E5" />
+          <Text className="ml-1 text-base font-bold text-textMain flex-1">{place.location}</Text>
+        </View>
         <Pressable
-          className="mt-3 rounded-3xl bg-white border border-borderLight p-4 flex-row items-center"
+          className="mt-3 rounded-3xl bg-appBg border border-borderLight p-4 flex-row items-center"
           onPress={() => navigation.navigate('Map', { placeId: place.id })}
         >
           <View className="w-11 h-11 rounded-2xl bg-appBg items-center justify-center">

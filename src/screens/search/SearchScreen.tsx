@@ -26,8 +26,22 @@ const placeTypeLabel = (item: string) => item;
 const placeTypeIcon = (item: string): any => item === 'Treehouse' ? 'leaf-outline' : item === 'Villa' ? 'home-outline' : item === 'Cabin' ? 'bed-outline' : item === 'Beachfront' ? 'sunny-outline' : item === 'House' ? 'business-outline' : item === 'Apartment' ? 'layers-outline' : 'apps-outline';
 
 function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
-  return (<View className="flex-row items-center justify-between py-2"><Text className="text-base text-textMain">{label}</Text><View className="flex-row items-center"><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(Math.max(0, value - 1))}><Text className="text-lg font-bold text-textMain">-</Text></Pressable><Text className="w-16 text-center text-base font-bold text-textMain">{value === 0 ? 'Any' : value}</Text><Pressable className="w-9 h-9 rounded-full border border-borderLight bg-white items-center justify-center" onPress={() => onChange(value + 1)}><Text className="text-lg font-bold text-textMain">+</Text></Pressable></View></View>);
+  return (<View className="flex-row items-center justify-between py-2.5"><Text className="text-base text-textMain">{label}</Text><View className="flex-row items-center"><Pressable className="w-9 h-9 rounded-full border border-brand bg-white items-center justify-center" onPress={() => onChange(Math.max(0, value - 1))}><Text className="text-lg font-bold text-brand">-</Text></Pressable><Text className={`w-16 text-center text-base font-bold ${value > 0 ? 'text-brand' : 'text-textMain'}`}>{value === 0 ? 'Any' : value}</Text><Pressable className="w-9 h-9 rounded-full border border-brand bg-white items-center justify-center" onPress={() => onChange(value + 1)}><Text className="text-lg font-bold text-brand">+</Text></Pressable></View></View>);
 }
+
+// Filters sheet section title: small brand icon in a lavender circle + bold title.
+function FilterSectionTitle({ icon, title }: { icon: any; title: string }) {
+  return (
+    <View className="flex-row items-center">
+      <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: '#EDE9FE' }}>
+        <Ionicons name={icon} size={16} color="#4F46E5" />
+      </View>
+      <Text className="ml-2 text-base font-bold text-textMain">{title}</Text>
+    </View>
+  );
+}
+
+const FilterDivider = () => (<View className="mt-6" style={{ height: 1, backgroundColor: '#E6E3F5' }} />);
 
 export default function SearchScreen({ navigation }: { navigation: any }) {
   const { session } = useAuth();
@@ -333,36 +347,52 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
       </Modal>
       <Modal visible={showFilter} transparent animationType="slide" onRequestClose={() => setShowFilter(false)}>
         <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowFilter(false)}>
-          <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }} onPress={() => {}}>
+          <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '88%' }} onPress={() => {}}>
             <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
+            <View className="px-5 pt-2 pb-3 flex-row items-center">
+              <View className="flex-1" />
+              <Text className="text-lg font-bold text-textMain">Filters</Text>
+              <View className="flex-1 items-end">
+                <Pressable className="w-8 h-8 rounded-full bg-appBg items-center justify-center" onPress={() => setShowFilter(false)}>
+                  <Ionicons name="close" size={20} color="#5A6478" />
+                </Pressable>
+              </View>
+            </View>
+            <View style={{ height: 1, backgroundColor: '#E6E3F5' }} />
             <ScrollView>
           <View className="p-5">
-            <Text className="text-base font-bold text-textMain">Price range — Price per night ($)</Text>
-            <Text className="mt-1 text-xs text-textMuted">Price range is one section inside this Filters sheet, not a separate screen. Price from $10 to $250.</Text>
-            <View className="mt-2 flex-row items-center">
-              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" keyboardType="number-pad" placeholder="10" value={minPrice} onChangeText={setMinPrice} />
+            <FilterSectionTitle icon="pricetag-outline" title="Price range — Price per night ($)" />
+            <Text className="mt-2 text-xs text-textMuted">Price range is one section inside this Filters sheet, not a separate screen. Price from $10 to $250.</Text>
+            <View className="mt-3 flex-row items-center">
+              <TextInput className="flex-1 rounded-xl px-3 py-3 text-base font-bold text-textMain" style={{ backgroundColor: '#F8F7FF', borderWidth: 1, borderColor: priceError ? '#EF4444' : '#4F46E5' }} keyboardType="number-pad" placeholder="10" placeholderTextColor="#8A90A6" value={minPrice} onChangeText={setMinPrice} />
               <Text className="mx-2 text-textMuted">to</Text>
-              <TextInput className="flex-1 border border-borderLight rounded-xl px-3 py-2 text-base text-textMain" keyboardType="number-pad" placeholder="250" value={maxPrice} onChangeText={setMaxPrice} />
+              <TextInput className="flex-1 rounded-xl px-3 py-3 text-base font-bold text-textMain" style={{ backgroundColor: '#F8F7FF', borderWidth: 1, borderColor: priceError ? '#EF4444' : '#4F46E5' }} keyboardType="number-pad" placeholder="250" placeholderTextColor="#8A90A6" value={maxPrice} onChangeText={setMaxPrice} />
             </View>
             {priceError ? <Text className="mt-2 text-sm text-red-500">{priceError}</Text> : null}
-            <Text className="mt-4 text-base font-bold text-textMain">Type of place</Text>
-            <View className="mt-2 flex-row flex-wrap">{PLACE_TYPES.filter((x) => x !== 'All').map((item) => { const act = placeType === item; return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setPlaceType(item)}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></Pressable>); })}</View>
-            <Text className="mt-4 text-base font-bold text-textMain">Guests and rooms</Text>
+            <FilterDivider />
+            <View className="mt-6"><FilterSectionTitle icon="home-outline" title="Type of place" /></View>
+            <View className="mt-3 flex-row flex-wrap">{PLACE_TYPES.filter((x) => x !== 'All').map((item) => { const act = placeType === item; return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setPlaceType(item)}><View className="flex-row items-center"><Ionicons name={placeTypeIcon(item)} size={14} color={act ? '#FFFFFF' : '#4F46E5'} /><Text className={`ml-1.5 text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></View></Pressable>); })}</View>
+            <FilterDivider />
+            <View className="mt-6"><FilterSectionTitle icon="people-outline" title="Guests and rooms" /></View>
             <Stepper label="Adults (13 or above)" value={adults} onChange={setAdults} />
             <Stepper label="Children (2-12)" value={children} onChange={setChildren} />
             <Stepper label="Minimum rooms" value={minRooms} onChange={setMinRooms} />
             <Stepper label="Minimum beds" value={minBeds} onChange={setMinBeds} />
-            {availableAmenities.length > 0 ? (<><Text className="mt-4 text-base font-bold text-textMain">Facilities</Text><View className="mt-2 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-3 py-2 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><Text className={`text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></Pressable>); })}</View></>) : null}
-            <Text className="mt-4 text-base font-bold text-textMain">When (pick ahead for booking)</Text>
-            <Pressable className="mt-2 border border-borderLight rounded-xl px-3 py-3" onPress={() => { setShowFilter(false); setShowSchedule(true); }}>
-              <Text className="text-base text-textMain">{checkIn ? `${checkIn} → ${checkOut || 'No check-out date yet'}` : 'Pick dates on the calendar'}</Text>
+            {availableAmenities.length > 0 ? (<><FilterDivider /><View className="mt-6"><FilterSectionTitle icon="checkmark-circle-outline" title="Facilities" /></View><View className="mt-3 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><View className="flex-row items-center">{act ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}<Text className={`text-sm font-bold ${act ? 'text-white ml-1' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></View></Pressable>); })}</View></>) : null}
+            <FilterDivider />
+            <View className="mt-6"><FilterSectionTitle icon="calendar-outline" title="When (pick ahead for booking)" /></View>
+            <Pressable className="mt-3 rounded-xl px-3 py-3 flex-row items-center" style={{ backgroundColor: '#F8F7FF', borderWidth: 1, borderColor: '#E6E3F5' }} onPress={() => { setShowFilter(false); setShowSchedule(true); }}>
+              <Ionicons name="calendar-outline" size={18} color="#4F46E5" />
+              <Text className="ml-2 text-base text-textMain">{checkIn ? `${checkIn} → ${checkOut || 'No check-out date yet'}` : 'Pick dates on the calendar'}</Text>
             </Pressable>
             {dateError ? <Text className="mt-2 text-sm text-red-500">{dateError}</Text> : null}
             <Text className="mt-2 text-xs text-textMuted">Dates do not filter stays out, because places have no separate availability calendar.</Text>
-            <View className="mt-4"><AppButton title="Apply filters" onPress={() => setShowFilter(false)} disabled={!!priceError || !!dateError} /></View>
-            <Pressable className="mt-3 items-center" onPress={() => { clearFilters(); setShowFilter(false); }}><Text className="text-sm font-bold text-brand">Clear all filters</Text></Pressable>
           </View>
             </ScrollView>
+            <View className="px-5 py-4 flex-row items-center" style={{ borderTopWidth: 1, borderTopColor: '#E6E3F5' }}>
+              <Pressable onPress={() => { clearFilters(); setShowFilter(false); }}><Text className="text-sm font-bold text-textMuted" style={{ textDecorationLine: 'underline' }}>Clear all filters</Text></Pressable>
+              <View className="flex-1 ml-4"><AppButton title="Apply filters" onPress={() => setShowFilter(false)} disabled={!!priceError || !!dateError} /></View>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>

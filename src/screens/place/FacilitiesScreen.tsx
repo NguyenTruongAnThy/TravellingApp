@@ -48,16 +48,19 @@ export default function FacilitiesScreen({ route, navigation }: { route: any; na
           <Text className="ml-3 text-lg font-bold text-textMain flex-1">Facilities & Services</Text>
         </View>
         <Image source={{ uri: mainImage }} style={{ width: '100%', height: 320 }} resizeMode="cover" />
-        <View className="mx-5 mt-5">
+        <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
           <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
-          <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
+          <View className="mt-2 flex-row items-center">
+            <Ionicons name="location-outline" size={18} color="#4F46E5" />
+            <Text className="ml-1 text-base text-textMuted flex-1">{place.location}</Text>
+          </View>
           <View className="mt-3 flex-row flex-wrap">
-            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.guests_capacity} guests</Text></View> : null}
-            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.rooms} rooms</Text></View> : null}
-            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.beds} beds</Text></View> : null}
+            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight flex-row items-center"><Ionicons name="people-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.guests_capacity} guests</Text></View> : null}
+            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight flex-row items-center"><Ionicons name="home-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.rooms} rooms</Text></View> : null}
+            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight flex-row items-center"><Ionicons name="bed-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.beds} beds</Text></View> : null}
           </View>
         </View>
-        <View className="mx-5 mt-5">
+        <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
           <Text className="text-base font-bold text-textMain">Facilities</Text>
           <Text className="mt-1 text-sm text-textMuted">{amenities.length} facilities, all from this stay's real data. No invented descriptions.</Text>
           {amenities.length === 0 ? <Text className="mt-2 text-base text-textMuted">No facilities for this stay yet.</Text> : (
