@@ -12,6 +12,7 @@ import DetailScreen from '../screens/place/DetailScreen';
 import DescriptionScreen from '../screens/place/DescriptionScreen';
 import FacilitiesScreen from '../screens/place/FacilitiesScreen';
 import ReviewsScreen from '../screens/place/ReviewsScreen';
+import MapScreen from '../screens/place/MapScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
@@ -151,6 +152,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Description" component={DescriptionScreen} />
         <Stack.Screen name="Facilities" component={FacilitiesScreen} />
         <Stack.Screen name="Reviews" component={ReviewsScreen} />
+        <Stack.Screen name="Map" component={MapScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

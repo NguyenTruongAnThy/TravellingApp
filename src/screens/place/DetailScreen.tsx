@@ -176,6 +176,20 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     navigation.navigate('MainTabs', { screen: 'Booking' });
   };
 
+  const handleOpenMap = () => {
+    if (place?.id) {
+      navigation.navigate('Map', {
+        placeId: place.id,
+        latitude: (place as any).latitude,
+        longitude: (place as any).longitude,
+        title: place.title,
+        location: place.location,
+      });
+    } else {
+      setNeighborhoodVisible(true);
+    }
+  };
+
   // Resolved dynamic values with Figma design defaults
   const title = place?.title || 'Balian treehouse';
   const location = place?.location || 'Bali, Indonesia';
@@ -308,7 +322,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
               <Pressable
                 className="py-1 px-2"
-                onPress={() => setNeighborhoodVisible(true)}
+                onPress={handleOpenMap}
               >
                 <Text className="text-sm font-semibold text-brand">View map</Text>
               </Pressable>
@@ -594,7 +608,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
               <View className="absolute inset-0 bg-brand/10" />
 
               <Pressable
-                onPress={() => setNeighborhoodVisible(true)}
+                onPress={handleOpenMap}
                 className="bg-white px-4 py-2 rounded-full flex-row items-center gap-1.5 shadow-md border border-borderLight"
               >
                 <Ionicons name="navigate" size={14} color="#4F46E5" />
