@@ -190,3 +190,69 @@ export const DEFAULT_WALLET_DATA: WalletData = {
     },
   ],
 };
+
+export interface SecurityDevice {
+  id: string;
+  name: string;
+  location: string;
+  lastActive: string;
+  isCurrent: boolean;
+  deviceType: 'phone' | 'laptop' | 'tablet';
+}
+
+export interface SecurityHealthData {
+  score: number;
+  status: string;
+  level: string;
+  safeguardsConfigured: number;
+  totalSafeguards: number;
+  masterPasswordLastUpdated: string;
+  googleConnectedEmail: string;
+  appleConnected: boolean;
+  twoFactorEnabled: boolean;
+  smsPhone: string;
+  authenticatorApp: string;
+  backupCodesRemaining: number;
+  devices: SecurityDevice[];
+}
+
+export const DEFAULT_SECURITY_DATA: SecurityHealthData = {
+  score: 92,
+  status: 'Strong',
+  level: 'Optimal',
+  safeguardsConfigured: 4,
+  totalSafeguards: 4,
+  masterPasswordLastUpdated: '3 months ago',
+  googleConnectedEmail: 'alex.morgan@gmail.com',
+  appleConnected: true,
+  twoFactorEnabled: true,
+  smsPhone: '+1 (555) •••-5678',
+  authenticatorApp: 'Google Authenticator',
+  backupCodesRemaining: 8,
+  devices: [
+    {
+      id: 'dev-1',
+      name: 'iPhone 15 Pro',
+      location: 'Bali, Indonesia',
+      lastActive: 'Active now',
+      isCurrent: true,
+      deviceType: 'phone',
+    },
+    {
+      id: 'dev-2',
+      name: 'MacBook Pro 16"',
+      location: 'Denpasar, Bali',
+      lastActive: 'Active 2 hours ago',
+      isCurrent: false,
+      deviceType: 'laptop',
+    },
+    {
+      id: 'dev-3',
+      name: 'iPad Air',
+      location: 'Oregon, USA',
+      lastActive: 'May 10, 2024',
+      isCurrent: false,
+      deviceType: 'tablet',
+    },
+  ],
+};
