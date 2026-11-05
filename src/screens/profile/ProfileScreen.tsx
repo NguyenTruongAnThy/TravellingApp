@@ -103,8 +103,9 @@ export default function ProfileScreen() {
       <Text className="text-2xl font-bold text-textMain">Profile</Text>
       <Text className="mt-1 text-sm text-textMuted">Your profile details from Supabase</Text>
 
-      <View className="mt-6 items-center">
-        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center border-4 border-white">
+      {/* Figma Profile: 1 the trang duy nhat gom avatar/ten/email/Verified + hang so lieu co gach doc */}
+      <View className="mt-6 rounded-3xl bg-white border border-borderLight p-5 items-center">
+        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center">
           <Text className="text-3xl font-bold text-white">{initial}</Text>
         </View>
         <Text className="mt-3 text-xl font-bold text-textMain">{savedName || 'Unnamed User'}</Text>
@@ -182,6 +183,38 @@ export default function ProfileScreen() {
             </View>
           </>
         )}
+      </View>
+
+      {/* Chi Personal Information la that (mo form sua o tren). Cac dong con lai chi hien thi, khong phai tinh nang that o MVP, khong bam duoc */}
+      <View className="mt-6 rounded-3xl bg-white border border-borderLight px-5">
+        <Pressable className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => setIsEditing(true)}>
+          <Text className="text-base text-textMain">Personal Information</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </Pressable>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Login & Security</Text>
+          <Text className="text-sm text-textMuted">Email is locked</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Currency & Language</Text>
+          <Text className="text-sm text-textMuted">USD ($) • English</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Notifications</Text>
+          <Text className="text-sm text-textMuted">ON</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Dark Appearance</Text>
+          <Text className="text-sm text-textMuted">OFF</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+          <Text className="text-base text-textMain">Help Center & Safety</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </View>
+        <View className="flex-row items-center justify-between py-4">
+          <Text className="text-base text-textMain">Terms & Privacy</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </View>
       </View>
 
       <Pressable className="mt-8 items-center" onPress={() => signOut()}>

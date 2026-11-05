@@ -7,7 +7,7 @@ export async function getReviewsByPlace(
   try {
     const { data, error } = await supabase
       .from('reviews')
-      .select('id, rating, comment, created_at, user_id, users(name)')
+      .select('id, rating, comment, helpful_count, created_at, user_id, users(name)')
       .eq('place_id', placeId)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -16,3 +16,16 @@ export async function getReviewsByPlace(
     return { data: null, error: err };
   }
 }
+
+export async function incrementHelpful(reviewId: string, currentCount: number): Promise<{ error: unknown }> {
+  try {
+    const { error } = await supabase
+      .from('reviews')
+      .update({ helpful_count: currentCount + 1 })
+      .eq('id', reviewId);
+    return { error };
+  } catch (err) {
+    return { error: err };
+  }
+}
+

@@ -122,9 +122,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     setLoading(false);
   }, [placeId]);
 
-  useEffect(() => {
-    loadPlace();
-  }, [loadPlace]);
+  useEffect(() => { loadPlace(); }, [loadPlace]);
 
   useEffect(() => {
     if (!placeId) return;

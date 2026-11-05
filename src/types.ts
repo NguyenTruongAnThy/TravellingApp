@@ -25,6 +25,7 @@ export interface Review {
   user_id?: string;
   rating: number;
   comment?: string | null;
+  helpful_count?: number;
   created_at?: string;
   users?: { name?: string | null } | null;
 }

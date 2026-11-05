@@ -1,7 +1,15 @@
 import { supabase } from '../lib/supabase';
 import type { Place } from '../types';
 
-export async function getPlaces({ category = null, limit = 50 }: { category?: string | null; limit?: number } = {}): Promise<{ data: Place[] | null; error: unknown }> {
+export async function getPlaces({
+  category = null,
+  place_type = null,
+  limit = 50,
+}: {
+  category?: string | null;
+  place_type?: string | null;
+  limit?: number;
+} = {}): Promise<{ data: Place[] | null; error: unknown }> {
   try {
     let query = supabase
       .from('places')
@@ -12,6 +20,9 @@ export async function getPlaces({ category = null, limit = 50 }: { category?: st
 
     if (category) {
       query = query.eq('category', category);
+    }
+    if (place_type) {
+      query = query.eq('place_type', place_type);
     }
 
     const { data, error } = await query;

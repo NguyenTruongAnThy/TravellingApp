@@ -37,6 +37,9 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
+      // Login-guard: if Login was opened from another tab/screen (e.g. Detail),
+      // go back to that screen after a successful sign-in. If Login is the first
+      // screen and cannot go back, stay, because the session has changed.
       if (navigation.canGoBack && navigation.canGoBack()) {
         navigation.goBack();
       }
