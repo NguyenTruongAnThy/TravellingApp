@@ -360,7 +360,13 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                   </Pressable>
 
                   <Pressable
-                    onPress={() => setDirectionsModalVisible(true)}
+                    onPress={() => {
+                      if (navigation?.navigate) {
+                        navigation.navigate('Directions', { booking: bookings[0] });
+                      } else {
+                        setDirectionsModalVisible(true);
+                      }
+                    }}
                     className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
                   >
                     <Ionicons name="navigate-outline" size={16} color="#131B2E" />

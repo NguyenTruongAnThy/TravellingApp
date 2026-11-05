@@ -16,6 +16,7 @@ import MapScreen from '../screens/place/MapScreen';
 import BookingsScreen from '../screens/booking/BookingsScreen';
 import TripReceiptScreen from '../screens/booking/TripReceiptScreen';
 import SmartKeyScreen from '../screens/booking/SmartKeyScreen';
+import DirectionsScreen from '../screens/booking/DirectionsScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
@@ -166,6 +167,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
         <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
+        <Stack.Screen name="Directions" component={DirectionsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
