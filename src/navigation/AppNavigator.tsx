@@ -18,6 +18,7 @@ import TripReceiptScreen from '../screens/booking/TripReceiptScreen';
 import SmartKeyScreen from '../screens/booking/SmartKeyScreen';
 import DirectionsScreen from '../screens/booking/DirectionsScreen';
 import InboxListScreen from '../screens/inbox/InboxListScreen';
+import TravelAssistantScreen from '../screens/inbox/TravelAssistantScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
@@ -178,6 +179,7 @@ export default function AppNavigator() {
         <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
         <Stack.Screen name="Directions" component={DirectionsScreen} />
         <Stack.Screen name="InboxList" component={InboxListScreen} />
+        <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
