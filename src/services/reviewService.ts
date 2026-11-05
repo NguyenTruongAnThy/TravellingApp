@@ -7,7 +7,7 @@ export async function getReviewsByPlace(
   try {
     const { data, error } = await supabase
       .from('reviews')
-      .select('id, rating, comment, helpful_count, created_at, user_id, users(name)')
+      .select('id, rating, comment, photos, helpful_count, created_at, user_id, users(name)')
       .eq('place_id', placeId)
       .order('created_at', { ascending: false })
       .limit(50);

@@ -16,6 +16,8 @@ export interface Place {
   rating?: number;
   review_count?: number;
   is_visible?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface Review {
@@ -25,6 +27,7 @@ export interface Review {
   user_id?: string;
   rating: number;
   comment?: string | null;
+  photos?: string[];
   helpful_count?: number;
   created_at?: string;
   users?: { name?: string | null } | null;
