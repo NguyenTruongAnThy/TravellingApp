@@ -18,19 +18,19 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const nameError = !name.trim() ? 'Vui lòng nhập họ tên.' : '';
+  const nameError = !name.trim() ? 'Please enter your full name.' : '';
   const emailError = useMemo(() => {
-    if (!email) return 'Vui lòng nhập email.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email chưa đúng định dạng.';
+    if (!email) return 'Please enter your email.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Invalid email format.';
     return '';
   }, [email]);
 
   const passwordLongEnough = password.length >= 8;
   const passwordHasNumberAndSpecial = /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
   const passwordError = !password
-    ? 'Vui lòng nhập mật khẩu.'
+    ? 'Please enter your password.'
     : !passwordLongEnough || !passwordHasNumberAndSpecial
-      ? 'Mật khẩu chưa đạt yêu cầu bên dưới.'
+      ? 'Password does not meet requirements below.'
       : '';
 
   const isValid = !nameError && !emailError && !passwordError;
@@ -39,7 +39,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
   const strengthScore =
     (passwordLongEnough ? 1 : 0) + (hasNumber ? 1 : 0) + (hasSpecial ? 1 : 0);
   const strengthLabel =
-    strengthScore >= 3 ? 'Mạnh' : strengthScore === 2 ? 'Trung bình' : password ? 'Yếu' : '';
+    strengthScore >= 3 ? 'Strong' : strengthScore === 2 ? 'Medium' : password ? 'Weak' : '';
 
   const handleRegister = async () => {
     setTouched(true);
@@ -50,7 +50,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
       await signUp(email.trim(), password, name.trim(), phone.trim() || undefined);
       setSuccess(true);
     } catch (err) {
-      setSubmitError('Không tạo được tài khoản. Email này có thể đã được đăng ký.');
+      setSubmitError('Unable to create account. This email may already be registered.');
     } finally {
       setLoading(false);
     }
@@ -59,12 +59,12 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
   if (success) {
     return (
       <View className="flex-1 bg-appBg px-6 pt-16 items-center">
-        <Text className="text-3xl font-bold text-textMain text-center">Đăng ký thành công</Text>
+        <Text className="text-3xl font-bold text-textMain text-center">Registration successful</Text>
         <Text className="mt-3 text-base text-textMuted text-center">
-          Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để tiếp tục.
+          Your account has been created. Please sign in to continue.
         </Text>
         <View className="mt-8 w-full">
-          <AppButton title="Đăng nhập ngay" onPress={() => navigation.navigate('Login')} />
+          <AppButton title="Sign in now" onPress={() => navigation.navigate('Login')} />
         </View>
       </View>
     );
@@ -77,16 +77,16 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
     >
       <AuthHeader onBack={() => navigation.goBack?.()} />
 
-      <Text className="mt-6 text-3xl font-bold text-textMain">Tạo tài khoản</Text>
+      <Text className="mt-6 text-3xl font-bold text-textMain">Create an account</Text>
       <Text className="mt-2 text-base text-textMuted">
-        Tìm và đặt chỗ ở phù hợp cho chuyến đi của bạn
+        Find and book the perfect places for your trips
       </Text>
 
       <AuthCard>
         <AppInput
-          label="HỌ TÊN"
+          label="FULL NAME"
           icon="person-outline"
-          placeholder="Nguyễn Văn A"
+          placeholder="John Doe"
           value={name}
           onChangeText={setName}
           error={nameError}
@@ -95,7 +95,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="NHẬP EMAIL"
+            label="EMAIL"
             icon="mail-outline"
             placeholder="name@example.com"
             autoCapitalize="none"
@@ -109,9 +109,9 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="SỐ ĐIỆN THOẠI (KHÔNG BẮT BUỘC)"
+            label="PHONE NUMBER (OPTIONAL)"
             icon="call-outline"
-            placeholder="0912 345 678"
+            placeholder="+1 234 567 890"
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
@@ -120,9 +120,9 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="NHẬP MẬT KHẨU"
+            label="PASSWORD"
             icon="lock-closed-outline"
-            placeholder="Tạo mật khẩu mạnh"
+            placeholder="Create a strong password"
             secure
             value={password}
             onChangeText={setPassword}
@@ -133,7 +133,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-3">
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-textMuted">Độ mạnh mật khẩu</Text>
+            <Text className="text-sm text-textMuted">Password strength</Text>
             <Text className="text-sm font-bold text-brand">{strengthLabel}</Text>
           </View>
           <View className="mt-2 flex-row gap-2">
@@ -143,21 +143,21 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
         <Text className={`mt-3 text-sm ${passwordLongEnough ? 'text-green-600 font-bold' : 'text-textMuted'}`}>
-          {passwordLongEnough ? '✓' : '○'} Ít nhất 8 ký tự
+          {passwordLongEnough ? '✓' : '○'} At least 8 characters
         </Text>
         <Text
           className={`mt-1 text-sm ${passwordHasNumberAndSpecial ? 'text-green-600 font-bold' : 'text-textMuted'}`}
         >
-          {passwordHasNumberAndSpecial ? '✓' : '○'} Có số và ký tự đặc biệt
+          {passwordHasNumberAndSpecial ? '✓' : '○'} Contains numbers and special characters
         </Text>
 
         {submitError ? <Text className="mt-3 text-sm text-red-500">{submitError}</Text> : null}
 
         <View className="mt-6">
-          <AppButton title="Tiếp tục →" onPress={handleRegister} disabled={!isValid} loading={loading} />
+          <AppButton title="Continue →" onPress={handleRegister} disabled={!isValid} loading={loading} />
         </View>
 
-        <Text className="mt-5 text-center text-sm text-textMuted">HOẶC TIẾP TỤC BẰNG</Text>
+        <Text className="mt-5 text-center text-sm text-textMuted">OR CONTINUE WITH</Text>
         <View className="mt-3 flex-row justify-between">
           <SocialButton source={require('../../../assets/Apple.png')} />
           <SocialButton source={require('../../../assets/GG.png')} />
@@ -165,13 +165,13 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
         </View>
 
         <Text className="mt-5 text-center text-xs text-textMuted">
-          Khi đăng ký, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.
+          By signing up, you agree to our Terms of Service and Privacy Policy.
         </Text>
       </AuthCard>
 
       <Pressable className="mt-8 items-center" onPress={() => navigation.navigate('Login')}>
         <Text className="text-base text-textMuted">
-          Đã có tài khoản? <Text className="font-bold text-brand">Đăng nhập</Text>
+          Already have an account? <Text className="font-bold text-brand">Sign In</Text>
         </Text>
       </Pressable>
     </ScrollView>

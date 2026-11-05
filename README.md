@@ -24,12 +24,13 @@ thanh toán, bấm yêu thích, viết đánh giá hay nhắn tin trong app.
 
 ## Quy tắc đã chốt
 
-- Pay a part now: cọc 30% tổng tiền, một tỷ lệ duy nhất toàn hệ thống,
-  deposit_amount = round(total * 0.30, 2), phần còn lại là
+- Pay a part now: cọc cố định 50% tổng tiền cho mọi đơn (một tỷ lệ duy nhất toàn hệ thống),
+  deposit_amount = round(total * 0.50, 2), phần còn lại là
   total - deposit_amount, trả khi nhận phòng theo mô phỏng.
-- Hủy: trước check-in từ 24 giờ trở lên thì miễn phí, trong vòng 24 giờ
-  trước check-in thì mất 1 đêm bằng price_per_night, thời điểm check-in
-  tính theo ngày check_in lúc 14:00. Không thêm cột cancellation_fee.
+- Hủy phòng: trước check-in từ 48 giờ trở lên thì miễn phí 100%, trong vòng 48 giờ
+  trước check-in thì phạt đúng 1 đêm bằng price_per_night (hoàn lại total - price_per_night),
+  thời điểm check-in tính theo ngày check_in lúc 14:00. Sau check-in không hoàn tiền. Không thêm cột cancellation_fee.
+- Giá lưu trú: công thức Total = (price_per_night * nights) + kayak_fee + parking_fee. Bỏ hoàn toàn gói dài ngày, phí dọn dẹp $35, phí dịch vụ $25 và VAT 4%.
 - places.rating và review_count chỉ do trigger trong Postgres tự tính lại
   từ bảng reviews, service chỉ insert review, không tự sửa 2 cột này.
 

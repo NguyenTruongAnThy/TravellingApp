@@ -8,7 +8,7 @@ export async function signUp(
 ) {
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
-  if (!data.user) throw new Error('Không tạo được tài khoản.');
+  if (!data.user) throw new Error('Could not create account.');
 
   const { error: profileError } = await supabase.from('users').insert({
     id: data.user.id,
