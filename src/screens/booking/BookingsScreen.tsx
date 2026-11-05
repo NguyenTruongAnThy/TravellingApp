@@ -334,7 +334,13 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="View Details and Check-in"
-                  onPress={() => setSmartKeyModalVisible(true)}
+                  onPress={() => {
+                    if (navigation?.navigate) {
+                      navigation.navigate('SmartKey', { booking: bookings[0] });
+                    } else {
+                      setSmartKeyModalVisible(true);
+                    }
+                  }}
                   className="bg-brand rounded-full py-3.5 items-center justify-center shadow-md shadow-brand/30 flex-row gap-2"
                 >
                   <Ionicons name="key-outline" size={16} color="#FFF" />
