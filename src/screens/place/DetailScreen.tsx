@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlaceById } from '../../services/placesService';
 import { getFavoritePlaceIds, toggleFavorite } from '../../services/favoritesService';
+import { addPlaceToCollection, createCollection, getCollections, getCollectionsContainingPlace, removePlaceFromCollection } from '../../services/collectionsService';
 import { getReviewsByPlace, incrementHelpful } from '../../services/reviewService';
-import type { Place, Review } from '../../types';
+import type { Collection, Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import AppButton from '../../components/AppButton';
 
@@ -30,6 +31,13 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   const [descExpanded, setDescExpanded] = useState(false);
   const [facExpanded, setFacExpanded] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  // Save to collection: which of the user's collections already hold this place.
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [saveCollections, setSaveCollections] = useState<Collection[]>([]);
+  const [inCollectionIds, setInCollectionIds] = useState<Set<string>>(new Set());
+  const [newSaveName, setNewSaveName] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [saveBusy, setSaveBusy] = useState(false);
   // Swipeable hero photos: current page index, updated as the user swipes.
   const [photoIndex, setPhotoIndex] = useState(0);
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index?: number | null }> }) => {
@@ -68,8 +76,9 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   }, [placeId]);
 
   useEffect(() => {
-    if (!placeId || !session?.user?.id) { setIsFavorite(false); return; }
+    if (!placeId || !session?.user?.id) { setIsFavorite(false); setInCollectionIds(new Set()); return; }
     getFavoritePlaceIds(session.user.id).then((ids) => setIsFavorite(ids.includes(placeId))).catch(() => {});
+    getCollectionsContainingPlace(session.user.id, placeId).then((ids) => setInCollectionIds(new Set(ids))).catch(() => {});
   }, [placeId, session]);
 
   if (loading) {
@@ -124,6 +133,60 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     setIsFavorite(!isFavorite);
   };
 
+  const openSaveModal = async () => {
+    if (!session) { navigation.navigate('Login'); return; }
+    setSaveError('');
+    setNewSaveName('');
+    try {
+      const cols = await getCollections(session.user.id);
+      setSaveCollections(cols);
+      setInCollectionIds(new Set(await getCollectionsContainingPlace(session.user.id, place.id)));
+    } catch {
+      setSaveError('Could not load your collections. Please try again.');
+    }
+    setSaveModalVisible(true);
+  };
+
+  const toggleSaveToCollection = async (collection: Collection) => {
+    if (!session) { navigation.navigate('Login'); return; }
+    setSaveBusy(true);
+    setSaveError('');
+    try {
+      if (inCollectionIds.has(collection.id)) {
+        await removePlaceFromCollection(collection.id, place.id);
+        setInCollectionIds((prev) => { const next = new Set(prev); next.delete(collection.id); return next; });
+      } else {
+        await addPlaceToCollection(collection.id, place.id);
+        setInCollectionIds((prev) => new Set(prev).add(collection.id));
+      }
+    } catch {
+      setSaveError('Could not save to this collection. Please try again.');
+    } finally {
+      setSaveBusy(false);
+    }
+  };
+
+  const createAndSaveToCollection = async () => {
+    if (!session) { navigation.navigate('Login'); return; }
+    if (!newSaveName.trim()) {
+      setSaveError('Please enter a name.');
+      return;
+    }
+    setSaveBusy(true);
+    setSaveError('');
+    try {
+      const created = await createCollection(session.user.id, newSaveName.trim());
+      await addPlaceToCollection(created.id, place.id);
+      setSaveCollections((prev) => [...prev, created]);
+      setInCollectionIds((prev) => new Set(prev).add(created.id));
+      setNewSaveName('');
+    } catch {
+      setSaveError('Could not create the collection. Please try again.');
+    } finally {
+      setSaveBusy(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-appBg">
       <ScrollView className="flex-1 bg-appBg" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -144,6 +207,9 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           />
           <Pressable className="w-9 h-9 rounded-full bg-white items-center justify-center border border-borderLight" style={{ position: 'absolute', top: 48, left: 16 }} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={20} color="#131B2E" />
+          </Pressable>
+          <Pressable className="w-10 h-10 rounded-full bg-white items-center justify-center border border-borderLight" style={{ position: 'absolute', top: 48, right: 64 }} onPress={openSaveModal}>
+            <Ionicons name={inCollectionIds.size > 0 ? 'bookmark' : 'bookmark-outline'} size={22} color={inCollectionIds.size > 0 ? '#4F46E5' : '#131B2E'} />
           </Pressable>
           <Pressable className="w-10 h-10 rounded-full bg-white items-center justify-center border border-borderLight" style={{ position: 'absolute', top: 48, right: 16 }} onPress={toggleFav}>
             <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? '#EF4444' : '#131B2E'} />
@@ -174,6 +240,10 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
             <Text className="text-3xl font-bold text-brand">${place.price_per_night}</Text>
             <Text className="text-base text-textMuted"> / night</Text>
           </View>
+          <Pressable className="mt-3 flex-row items-center self-start px-3 py-2 rounded-full bg-appBg border border-borderLight" onPress={openSaveModal}>
+            <Ionicons name={inCollectionIds.size > 0 ? 'bookmark' : 'bookmark-outline'} size={16} color="#4F46E5" />
+            <Text className="ml-1.5 text-sm font-bold text-brand">{inCollectionIds.size > 0 ? 'Saved to collection' : 'Save to collection'}</Text>
+          </Pressable>
         </View>
 
         {/* Figma rating card: light-purple, real rating/review_count only, taps to Reviews */}
@@ -316,6 +386,51 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           <AppButton title="Reserve Now" onPress={handleBook} />
         </View>
       </View>
+
+      {/* Save to collection modal */}
+      <Modal visible={saveModalVisible} animationType="slide" transparent onRequestClose={() => setSaveModalVisible(false)}>
+        <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(19,27,46,0.5)' }} onPress={() => setSaveModalVisible(false)}>
+          <Pressable className="bg-white rounded-t-3xl p-5" onPress={(e) => e.stopPropagation()}>
+            <Text className="text-lg font-bold text-textMain">Save to collection</Text>
+            <Text className="mt-1 text-sm text-textMuted" numberOfLines={1}>{place.title}</Text>
+            {saveError ? <Text className="mt-2 text-sm text-red-500">{saveError}</Text> : null}
+            <ScrollView style={{ maxHeight: 320 }} className="mt-3" showsVerticalScrollIndicator={false}>
+              {saveCollections.length === 0 ? (
+                <Text className="py-3 text-base text-textMuted">No collections yet.</Text>
+              ) : (
+                saveCollections.map((collection) => {
+                  const saved = inCollectionIds.has(collection.id);
+                  return (
+                    <Pressable key={collection.id} className="flex-row items-center py-3" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => toggleSaveToCollection(collection)} disabled={saveBusy}>
+                      <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: '#EDE9FE' }}>
+                        <Ionicons name="bookmark-outline" size={18} color="#4F46E5" />
+                      </View>
+                      <Text className="flex-1 ml-3 text-base font-bold text-textMain">{collection.name}</Text>
+                      {saved ? <Ionicons name="checkmark-circle" size={24} color="#4F46E5" /> : <Ionicons name="ellipse-outline" size={24} color="#8A90A6" />}
+                    </Pressable>
+                  );
+                })
+              )}
+              <View className="flex-row items-center mt-3">
+                <TextInput
+                  className="flex-1 px-4 py-3 rounded-2xl border border-borderLight bg-appBg text-base text-textMain"
+                  placeholder="New collection name"
+                  placeholderTextColor="#8A90A6"
+                  value={newSaveName}
+                  onChangeText={(text) => { setNewSaveName(text); setSaveError(''); }}
+                  maxLength={50}
+                />
+                <Pressable className="ml-2 px-4 py-3 rounded-full bg-brand items-center" onPress={createAndSaveToCollection} disabled={saveBusy}>
+                  <Text className="text-base font-bold text-white">Add</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+            <Pressable className="mt-4 py-3 rounded-full bg-brand items-center" onPress={() => setSaveModalVisible(false)}>
+              <Text className="text-base font-bold text-white">Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

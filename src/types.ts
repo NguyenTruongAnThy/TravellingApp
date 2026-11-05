@@ -20,6 +20,13 @@ export interface Place {
   longitude?: number | null;
 }
 
+export interface Collection {
+  id: string;
+  user_id?: string;
+  name: string;
+  created_at?: string;
+}
+
 export interface Review {
   id: string;
   place_id?: string;
