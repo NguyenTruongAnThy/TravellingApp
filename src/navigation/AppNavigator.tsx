@@ -22,6 +22,7 @@ import TravelAssistantScreen from '../screens/inbox/TravelAssistantScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
+import PaymentsWalletScreen from '../screens/profile/PaymentsWalletScreen';
 import AppButton from '../components/AppButton';
 
 const Stack = createNativeStackNavigator();
@@ -182,6 +183,7 @@ export default function AppNavigator() {
         <Stack.Screen name="InboxList" component={InboxListScreen} />
         <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
+        <Stack.Screen name="PaymentsWallet" component={PaymentsWalletScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

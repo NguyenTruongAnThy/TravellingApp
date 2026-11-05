@@ -201,6 +201,18 @@ export default function ProfileScreen({ navigation }: { navigation?: any } = {})
           <Text className="text-base text-textMain">Personal Information</Text>
           <Text className="text-base text-textMuted">›</Text>
         </Pressable>
+        <Pressable
+          className="flex-row items-center justify-between py-4"
+          style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}
+          onPress={() => {
+            if (navigation?.navigate) {
+              navigation.navigate('PaymentsWallet');
+            }
+          }}
+        >
+          <Text className="text-base text-textMain">Payments & Payouts</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </Pressable>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
           <Text className="text-base text-textMain">Login & Security</Text>
           <Text className="text-sm text-textMuted">Email is locked</Text>

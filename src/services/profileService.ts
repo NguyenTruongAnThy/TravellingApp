@@ -84,3 +84,109 @@ export async function saveProfile(
     .upsert({ id: userId, email, name: name.trim(), phone: phone.trim() || null });
   if (error) throw error;
 }
+
+export interface PaymentCardItem {
+  id: string;
+  type: 'visa' | 'mastercard' | 'apple_pay' | 'paypal';
+  title: string;
+  subtitle: string;
+  expiry?: string;
+  isDefault?: boolean;
+  badge?: string;
+  secondaryText?: string;
+  actionText?: string;
+}
+
+export interface PayoutAccountItem {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  accountType: string;
+  status: string;
+}
+
+export interface WalletTransactionItem {
+  id: string;
+  title: string;
+  dateText: string;
+  amount: number;
+  badge: string;
+  isCredit: boolean;
+  receiptBookingId?: string;
+}
+
+export interface WalletData {
+  balance: number;
+  currency: string;
+  autoApply: boolean;
+  cards: PaymentCardItem[];
+  payouts: PayoutAccountItem[];
+  transactions: WalletTransactionItem[];
+}
+
+export const DEFAULT_WALLET_DATA: WalletData = {
+  balance: 120.0,
+  currency: 'USD',
+  autoApply: true,
+  cards: [
+    {
+      id: 'card-1',
+      type: 'visa',
+      title: 'Visa ending in 4242',
+      subtitle: 'Expires 08/27',
+      isDefault: true,
+      badge: 'Default payment method',
+      secondaryText: 'Physical Card',
+    },
+    {
+      id: 'card-2',
+      type: 'mastercard',
+      title: 'Mastercard ending in 8831',
+      subtitle: 'Expires 11/26',
+      isDefault: false,
+      secondaryText: 'Backup for automatic renewals',
+      actionText: 'Make default',
+    },
+    {
+      id: 'wallet-1',
+      type: 'apple_pay',
+      title: 'Apple Pay',
+      subtitle: 'Ready for 1-tap checkout',
+      isDefault: false,
+    },
+    {
+      id: 'wallet-2',
+      type: 'paypal',
+      title: 'PayPal',
+      subtitle: 'alex.morgan@example.com',
+      isDefault: false,
+    },
+  ],
+  payouts: [
+    {
+      id: 'payout-1',
+      bankName: 'Chase Bank',
+      accountNumber: '...9012',
+      accountType: 'Direct Deposit (ACH)',
+      status: 'Active & Verified',
+    },
+  ],
+  transactions: [
+    {
+      id: 'tx-1',
+      title: 'Balian Treehouse Stay',
+      dateText: 'May 12, 2024 • Paid',
+      amount: -450.0,
+      badge: 'Receipt',
+      isCredit: false,
+    },
+    {
+      id: 'tx-2',
+      title: 'Travel Credit Promo',
+      dateText: 'Apr 20, 2024 • Bonus',
+      amount: 50.0,
+      badge: 'Applied',
+      isCredit: true,
+    },
+  ],
+};
