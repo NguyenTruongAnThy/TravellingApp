@@ -13,6 +13,7 @@ import DescriptionScreen from '../screens/place/DescriptionScreen';
 import FacilitiesScreen from '../screens/place/FacilitiesScreen';
 import ReviewsScreen from '../screens/place/ReviewsScreen';
 import MapScreen from '../screens/place/MapScreen';
+import BookingsScreen from '../screens/booking/BookingsScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import AppButton from '../components/AppButton';
@@ -77,6 +78,14 @@ function MyListsTab({ navigation }: { navigation: any }) {
   return <MyListsScreen navigation={navigation} />;
 }
 
+function BookingsTab({ navigation }: { navigation: any }) {
+  const { session } = useAuth();
+  if (!session) {
+    return <GuardedScreen title="Bookings" navigation={navigation} />;
+  }
+  return <BookingsScreen navigation={navigation} />;
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -110,7 +119,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       >
-        {(props) => <GuardedScreen title="Bookings" {...props} />}
+        {(props) => <BookingsTab {...props} />}
       </Tab.Screen>
       <Tab.Screen
         name="Inbox"
