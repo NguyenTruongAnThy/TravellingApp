@@ -49,7 +49,7 @@ export default function DescriptionScreen({ route, navigation }: { route: any; n
       <View className="mx-5 mt-5">
         <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
         <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
-        <Text className="mt-2 text-base font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}{place.review_count ? ` (${place.review_count} reviews)` : ''}</Text>
+        <View className="mt-2 flex-row items-center"><Ionicons name="star" size={16} color="#FFB020" /><Text className="ml-1 text-base font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}{place.review_count ? ` (${place.review_count} reviews)` : ''}</Text></View>
       </View>
       <View className="mx-5 mt-5">
         <Text className="text-base font-bold text-textMain">About this place</Text>

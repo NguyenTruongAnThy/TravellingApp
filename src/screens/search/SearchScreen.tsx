@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -56,6 +56,9 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const listRef = useRef<any>(null);
 
   // Debounce 400ms: search only after the user stops typing for 400ms
   useEffect(() => {
@@ -158,6 +161,11 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
       return true;
     });
   }, [places, debouncedQuery, minPrice, maxPrice, guests, minRooms, minBeds, selectedAmenities]);
+  const totalPages = Math.max(1, Math.ceil(filteredPlaces.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagePlaces = filteredPlaces.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [debouncedQuery, placeType, minPrice, maxPrice, guests, minRooms, minBeds, selectedAmenities, checkIn, checkOut]);
+  const goToPage = (n: number) => { setPage(Math.min(Math.max(1, n), totalPages)); listRef.current?.scrollToOffset({ offset: 0, animated: false }); };
 
   if (loading) {
     return (
@@ -225,7 +233,7 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
         </View>
       </LinearGradient>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 52 }} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, alignItems: 'center' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: 48, flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, alignItems: 'center' }}>
         {PLACE_TYPES.map((item) => {
           const active = placeType === item;
           return (
@@ -233,12 +241,13 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
               key={item}
               style={{
                 marginRight: 8,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
                 borderRadius: 999,
                 borderWidth: 1,
                 borderColor: active ? '#4F46E5' : '#E6E3F5',
-                height: 40,
+                height: 36,
+                flexDirection: 'row',
                 justifyContent: 'center',
                 alignItems: 'center',
                 backgroundColor: active ? '#4F46E5' : '#FFFFFF',
@@ -377,7 +386,9 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
         </View>
       ) : (
         <FlatList
-          data={filteredPlaces}
+          ref={listRef}
+          style={{ flex: 1 }}
+          data={pagePlaces}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
             const isFavorite = favoriteIds.includes(item.id);
@@ -399,6 +410,26 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => loadPlaces(true)} colors={['#4F46E5']} />
+          }
+          ListFooterComponent={
+            <View>
+              <View className="pt-3 pb-2 flex-row items-center justify-between">
+                <Pressable className={`px-3 py-2 rounded-full border ${safePage <= 1 ? 'border-borderLight' : 'border-brand'}`} disabled={safePage <= 1} onPress={() => goToPage(safePage - 1)}>
+                  <Text className={`text-sm font-bold ${safePage <= 1 ? 'text-textMuted' : 'text-brand'}`}>‹ Prev</Text>
+                </Pressable>
+                <View className="flex-row items-center">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                    <Pressable key={n} className={`w-9 h-9 mx-1 rounded-full items-center justify-center ${n === safePage ? 'bg-brand' : 'bg-white border border-borderLight'}`} onPress={() => goToPage(n)}>
+                      <Text className={`text-sm font-bold ${n === safePage ? 'text-white' : 'text-textMain'}`}>{n}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable className={`px-3 py-2 rounded-full border ${safePage >= totalPages ? 'border-borderLight' : 'border-brand'}`} disabled={safePage >= totalPages} onPress={() => goToPage(safePage + 1)}>
+                  <Text className={`text-sm font-bold ${safePage >= totalPages ? 'text-textMuted' : 'text-brand'}`}>Next ›</Text>
+                </Pressable>
+              </View>
+              <Text className="pb-2 text-center text-xs text-textMuted">Page {safePage} of {totalPages} • {filteredPlaces.length} matching stays</Text>
+            </View>
           }
         />
       )}

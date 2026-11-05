@@ -128,7 +128,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
           <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
           <View className="mt-2 flex-row items-center">
-            <Text className="text-base font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}</Text>
+            <Ionicons name="star" size={16} color="#FFB020" /><Text className="ml-1 text-base font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}</Text>
             {place.rating != null && place.rating >= 4.5 ? <Text className="ml-2 text-sm font-bold text-brand">Exceptional</Text> : null}
             {place.review_count ? <Text className="ml-2 text-sm text-textMuted">({place.review_count} reviews)</Text> : null}
           </View>
@@ -201,7 +201,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
                 <View key={review.id} className="py-3" style={{ borderBottomWidth: i === reviews.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
                   <View className="flex-row justify-between items-center">
                     <Text className="text-base font-bold text-textMain">{review.users?.name || 'Guest'}</Text>
-                    <Text className="text-sm font-bold text-textMain">★ {review.rating}/5</Text>
+                    <View className="flex-row items-center"><Ionicons name="star" size={13} color="#FFB020" /><Text className="ml-1 text-sm font-bold text-textMain">{review.rating}/5</Text></View>
                   </View>
                   {review.created_at ? <Text className="mt-1 text-xs text-textMuted">{review.created_at.slice(0, 10)}</Text> : null}
                   <Text className="mt-2 text-base text-textMuted">{review.comment || '(No comment)'}</Text>

@@ -55,7 +55,8 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
       </View>
       <View className="mx-5 mt-2">
         <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
-        <Text className="mt-2 text-4xl font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}</Text>
+        <View className="mt-2 flex-row items-center"><Ionicons name="star" size={28} color="#FFB020" /><Text className="ml-2 text-4xl font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}</Text></View>
+        <View className="mt-2 flex-row">{[1, 2, 3, 4, 5].map((i) => (<Ionicons key={i} name={place.rating != null && i <= Math.round(place.rating) ? 'star' : 'star-outline'} size={18} color={place.rating != null && i <= Math.round(place.rating) ? '#FFB020' : '#D9D4F0'} />))}</View>
         <Text className="mt-1 text-base text-textMuted">{place.review_count || reviews.length} reviews</Text>
       </View>
       <View className="mx-5 mt-5">
@@ -81,7 +82,7 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
           <View key={review.id} className="mt-3 py-3" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
             <View className="flex-row justify-between items-center">
               <Text className="text-base font-bold text-textMain">{review.users?.name || 'Guest'}</Text>
-              <Text className="text-sm font-bold text-textMain">★ {review.rating}/5</Text>
+              <View className="flex-row items-center"><Ionicons name="star" size={13} color="#FFB020" /><Text className="ml-1 text-sm font-bold text-textMain">{review.rating}/5</Text></View>
             </View>
             {review.created_at ? <Text className="mt-1 text-xs text-textMuted">{review.created_at.slice(0, 10)}</Text> : null}
             <Text className="mt-2 text-base text-textMuted">{review.comment || '(No comment)'}</Text>

@@ -37,12 +37,12 @@ export default function PlaceCard({ place, isFavorite = false, onToggleFavorite 
         <View className="flex-row justify-between items-center">
           <Text className="flex-1 mr-2 text-[15px] font-bold text-textMain">{place.title}</Text>
           <View className="flex-row items-center">
-            <Text className="text-xs font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'New'}</Text>
+            <Ionicons name="star" size={13} color="#FFB020" /><Text className="ml-1 text-xs font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}</Text>
             {place.review_count ? <Text className="ml-1 text-[11px] text-textMuted">({place.review_count})</Text> : null}
           </View>
         </View>
         <View className="flex-row items-center mt-1">
-          <Ionicons name="location-outline" size={14} color="#5A6478" />
+          <Ionicons name="location-outline" size={14} color="#FFB020" />
           <Text className="ml-1 text-[13px] text-textMuted" numberOfLines={1}>
             {place.location}
           </Text>
