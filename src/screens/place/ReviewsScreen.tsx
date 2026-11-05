@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPlaceById } from '../../services/placesService';
 import { getReviewsByPlace, incrementHelpful } from '../../services/reviewService';
@@ -86,6 +86,13 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
             </View>
             {review.created_at ? <Text className="mt-1 text-xs text-textMuted">{review.created_at.slice(0, 10)}</Text> : null}
             <Text className="mt-2 text-base text-textMuted">{review.comment || '(No comment)'}</Text>
+            {Array.isArray(review.photos) && review.photos.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
+                {review.photos.map((photo, i) => (
+                  <Image key={`${review.id}-photo-${i}`} source={{ uri: photo }} style={{ width: 96, height: 96, borderRadius: 12, marginRight: 8 }} resizeMode="cover" />
+                ))}
+              </ScrollView>
+            ) : null}
             <View className="mt-3 flex-row">
               <Pressable className="flex-row items-center px-3 py-2 rounded-full border border-borderLight bg-white" onPress={() => onHelpful(review)}>
                 <Ionicons name="thumbs-up-outline" size={16} color="#4F46E5" />

@@ -69,6 +69,27 @@ export default function DescriptionScreen({ route, navigation }: { route: any; n
           </View>
         </View>
       ) : null}
+      <View className="mx-5 mt-5">
+        <Text className="text-base font-bold text-textMain">Location</Text>
+        <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
+        <Pressable
+          className="mt-3 rounded-3xl bg-white border border-borderLight p-4 flex-row items-center"
+          onPress={() => navigation.navigate('Map', { placeId: place.id })}
+        >
+          <View className="w-11 h-11 rounded-2xl bg-appBg items-center justify-center">
+            <Ionicons name="map-outline" size={22} color="#4F46E5" />
+          </View>
+          <View className="flex-1 ml-3">
+            <Text className="text-base font-bold text-textMain">Open map</Text>
+            <Text className="mt-1 text-sm text-textMuted">
+              {place.latitude != null && place.longitude != null
+                ? 'See this stay on an interactive map.'
+                : 'Map location is not available for this stay.'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#5A6478" />
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
