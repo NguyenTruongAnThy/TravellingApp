@@ -21,6 +21,7 @@ import InboxListScreen from '../screens/inbox/InboxListScreen';
 import TravelAssistantScreen from '../screens/inbox/TravelAssistantScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
 import AppButton from '../components/AppButton';
 
 const Stack = createNativeStackNavigator();
@@ -72,7 +73,7 @@ function ProfileTab({ navigation }: { navigation: any }) {
   if (!session) {
     return <GuardedScreen title="Profile" navigation={navigation} />;
   }
-  return <ProfileScreen />;
+  return <ProfileScreen navigation={navigation} />;
 }
 
 function MyListsTab({ navigation }: { navigation: any }) {
@@ -180,6 +181,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Directions" component={DirectionsScreen} />
         <Stack.Screen name="InboxList" component={InboxListScreen} />
         <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
+        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
