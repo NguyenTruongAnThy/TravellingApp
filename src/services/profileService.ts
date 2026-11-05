@@ -14,7 +14,7 @@ export async function getProfileCounts(userId: string): Promise<ProfileCounts> {
   ]);
 
   if (bookings.error || reviews.error || favorites.error) {
-    throw new Error('Không tải được số liệu hồ sơ.');
+    throw new Error('Could not load profile stats.');
   }
 
   return {

@@ -30,7 +30,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
   const loadPlace = useCallback(async () => {
     if (!placeId) {
-      setErrorMessage('Không tìm thấy địa điểm này.');
+      setErrorMessage('Could not find this stay.');
       setLoading(false);
       return;
     }
@@ -38,7 +38,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     setErrorMessage('');
     const { data, error } = await getPlaceById(placeId);
     if (error || !data) {
-      setErrorMessage('Không tải được chi tiết chỗ ở. Vui lòng thử lại.');
+      setErrorMessage('Could not load the stay details. Please try again.');
     } else {
       setPlace(data);
     }
@@ -63,7 +63,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     return (
       <View className="flex-1 bg-appBg items-center justify-center px-6">
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="mt-3 text-sm text-textMuted">Đang tải chi tiết chỗ ở...</Text>
+        <Text className="mt-3 text-sm text-textMuted">Loading stay details...</Text>
       </View>
     );
   }
@@ -71,10 +71,10 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   if (errorMessage || !place) {
     return (
       <View className="flex-1 bg-appBg items-center justify-center px-6">
-        <Text className="text-lg font-bold text-textMain text-center">Không tải được chi tiết</Text>
+        <Text className="text-lg font-bold text-textMain text-center">Could not load details</Text>
         <Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text>
         <View className="mt-6 w-full">
-          <AppButton title="Thử lại" onPress={loadPlace} />
+          <AppButton title="Try again" onPress={loadPlace} />
         </View>
       </View>
     );
@@ -111,7 +111,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           </Pressable>
           {photoCount > 0 ? (
             <View className="px-2.5 py-1 rounded-full bg-white" style={{ position: 'absolute', bottom: 16, right: 16 }}>
-              <Text className="text-xs font-bold text-textMain">{photoCount} ảnh</Text>
+              <Text className="text-xs font-bold text-textMain">{photoCount} photos</Text>
             </View>
           ) : null}
           {photoCount > 1 ? (
@@ -128,20 +128,20 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
           <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
           <View className="mt-2 flex-row items-center">
-            <Text className="text-base font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'Mới'}{place.rating != null ? ' / 5' : ''}</Text>
+            <Text className="text-base font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}</Text>
             {place.rating != null && place.rating >= 4.5 ? <Text className="ml-2 text-sm font-bold text-brand">Exceptional</Text> : null}
-            {place.review_count ? <Text className="ml-2 text-sm text-textMuted">({place.review_count} đánh giá)</Text> : null}
+            {place.review_count ? <Text className="ml-2 text-sm text-textMuted">({place.review_count} reviews)</Text> : null}
           </View>
           {/* Chi hien dung so lieu that tu DB. Khong co cot bathrooms trong DB nen khong hien so phong tam */}
           <View className="mt-3 flex-row flex-wrap">
-            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.guests_capacity} khách</Text></View> : null}
-            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.rooms} phòng</Text></View> : null}
-            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.beds} giường</Text></View> : null}
+            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.guests_capacity} guests</Text></View> : null}
+            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.rooms} rooms</Text></View> : null}
+            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.beds} beds</Text></View> : null}
             {place.place_type || place.category ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight"><Text className="text-sm text-textMain">{place.place_type || place.category}</Text></View> : null}
           </View>
           <View className="mt-2 flex-row items-baseline">
             <Text className="text-2xl font-bold text-textMain">${place.price_per_night}</Text>
-            <Text className="text-base text-textMuted"> / đêm</Text>
+            <Text className="text-base text-textMuted"> / night</Text>
           </View>
         </View>
 
@@ -149,7 +149,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         {place.description ? (
           <View className="mx-5 mt-5">
             <View className="flex-row items-center justify-between">
-              <Text className="text-base font-bold text-textMain">Mô tả</Text>
+              <Text className="text-base font-bold text-textMain">Description</Text>
               <Pressable onPress={() => navigation.navigate('Description', { placeId: place.id })}><Text className="text-sm font-bold text-brand">View more ›</Text></Pressable>
             </View>
             <Text className="mt-2 text-base text-textMuted leading-6" numberOfLines={3}>{place.description}</Text>
@@ -158,7 +158,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
         {Array.isArray(place.amenities) && place.amenities.length > 0 ? (
           <View className="mx-5 mt-5">
-            <Text className="text-base font-bold text-textMain">Tiện nghi</Text>
+            <Text className="text-base font-bold text-textMain">Facilities</Text>
             <View className="mt-2">
               {place.amenities.slice(0, 3).map((item, i) => (
                 <View key={item} className="flex-row items-center py-2.5" style={{ borderBottomWidth: i === place.amenities!.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
@@ -176,35 +176,35 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           <Pressable className="mx-5 mt-2" onPress={() => navigation.navigate('Facilities', { placeId: place.id })}><Text className="text-sm font-bold text-brand">Show all facilities ›</Text></Pressable>
         ) : null}
         <View className="mx-5 mt-5">
-          <Text className="text-base font-bold text-textMain">Chính sách</Text>
-          <Text className="mt-2 text-base text-textMuted">Nhận phòng: từ {place.check_in_time || '14:00'}</Text>
-          <Text className="mt-1 text-base text-textMuted">Trả phòng: đến {place.check_out_time || '12:00'}</Text>
-          <Text className="mt-1 text-base text-textMuted">Không hút thuốc trong nhà</Text>
-          <Text className="mt-1 text-base text-textMuted">Giờ yên tĩnh sau 22:00</Text>
-          <Text className="mt-1 text-base text-textMuted">Thú cưng: theo yêu cầu</Text>
+          <Text className="text-base font-bold text-textMain">Policies</Text>
+          <Text className="mt-2 text-base text-textMuted">Check-in: from {place.check_in_time || '14:00'}</Text>
+          <Text className="mt-1 text-base text-textMuted">Check-out: until {place.check_out_time || '12:00'}</Text>
+          <Text className="mt-1 text-base text-textMuted">No smoking inside</Text>
+          <Text className="mt-1 text-base text-textMuted">Quiet hours after 22:00</Text>
+          <Text className="mt-1 text-base text-textMuted">Pets: upon request</Text>
           {/* Quy tac chot 2026-11-05 theo Trong: 50%/48h, thay the 30%/24h cu */}
-          <Text className="mt-1 text-base text-textMuted">Hủy miễn phí trước check-in từ 48 giờ trở lên. Hủy trong 48 giờ phạt 1 đêm, tiền hoàn = tổng tiền − giá 1 đêm. Hủy sau check-in hoặc không đến không hoàn tiền.</Text>
+          <Text className="mt-1 text-base text-textMuted">Free cancellation from 48 hours before check-in. Cancelling within 48 hours costs 1 night, refund = total − 1 night price. No refund after check-in or for a no-show.</Text>
         </View>
 
         <View className="mx-5 mt-5">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-bold text-textMain">Đánh giá</Text>
+            <Text className="text-base font-bold text-textMain">Reviews</Text>
             <Pressable onPress={() => navigation.navigate('Reviews', { placeId: place.id })}><Text className="text-sm font-bold text-brand">Show all reviews ›</Text></Pressable>
           </View>
           {reviewsError ? (
-            <Text className="mt-2 text-base text-textMuted">Không tải được đánh giá. Vui lòng thử lại sau.</Text>
+            <Text className="mt-2 text-base text-textMuted">Could not load reviews. Please try again later.</Text>
           ) : reviews.length === 0 ? (
-            <Text className="mt-2 text-base text-textMuted">Chưa có đánh giá nào cho chỗ ở này.</Text>
+            <Text className="mt-2 text-base text-textMuted">No reviews for this stay yet.</Text>
           ) : (
             <View className="mt-2">
               {reviews.slice(0, 2).map((review, i) => (
                 <View key={review.id} className="py-3" style={{ borderBottomWidth: i === reviews.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
                   <View className="flex-row justify-between items-center">
-                    <Text className="text-base font-bold text-textMain">{review.users?.name || 'Khách đã ở'}</Text>
+                    <Text className="text-base font-bold text-textMain">{review.users?.name || 'Guest'}</Text>
                     <Text className="text-sm font-bold text-textMain">★ {review.rating}/5</Text>
                   </View>
                   {review.created_at ? <Text className="mt-1 text-xs text-textMuted">{review.created_at.slice(0, 10)}</Text> : null}
-                  <Text className="mt-2 text-base text-textMuted">{review.comment || '(Không có bình luận)'}</Text>
+                  <Text className="mt-2 text-base text-textMuted">{review.comment || '(No comment)'}</Text>
                 </View>
               ))}
             </View>
@@ -212,18 +212,18 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         </View>
 
         <View className="mx-5 mt-5">
-          <Text className="text-base font-bold text-textMain">Vị trí</Text>
+          <Text className="text-base font-bold text-textMain">Location</Text>
           <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
-          <Text className="mt-2 text-sm text-textMuted">{session ? 'Bạn đã đăng nhập, bấm Đặt phòng ở thanh dưới cùng để tiếp tục.' : 'Bạn đang xem với tư cách khách vãng lai. Đăng nhập để đặt phòng.'}</Text>
+          <Text className="mt-2 text-sm text-textMuted">{session ? 'You are signed in, tap Reserve below to continue.' : 'You are browsing as a guest. Sign in to book.'}</Text>
         </View>
       </ScrollView>
       <View className="bg-white border-t border-borderLight px-5 py-3 flex-row items-center">
         <View>
           <Text className="text-lg font-bold text-brand">${place.price_per_night}</Text>
-          <Text className="text-xs text-textMuted">/ đêm</Text>
+          <Text className="text-xs text-textMuted">/ night</Text>
         </View>
         <View className="flex-1 ml-4">
-          <AppButton title="Đặt phòng" onPress={handleBook} />
+          <AppButton title="Reserve Now" onPress={handleBook} />
         </View>
       </View>
     </View>

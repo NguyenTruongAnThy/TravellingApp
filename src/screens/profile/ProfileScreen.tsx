@@ -36,7 +36,7 @@ export default function ProfileScreen() {
       setSavedPhone(profilePhone);
       setCounts(profileCounts);
     } catch (err) {
-      setErrorMessage('Không tải được hồ sơ. Vui lòng thử lại.');
+      setErrorMessage('Could not load your profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -46,7 +46,7 @@ export default function ProfileScreen() {
     loadProfile();
   }, [loadProfile]);
 
-  const nameError = !name.trim() ? 'Vui lòng nhập họ tên.' : '';
+  const nameError = !name.trim() ? 'Please enter your full name.' : '';
   const isValid = !nameError;
   const hasChanged = name !== savedName || phone !== savedPhone;
 
@@ -60,9 +60,9 @@ export default function ProfileScreen() {
       setSavedName(name);
       setSavedPhone(phone);
       setIsEditing(false);
-      setSaveMessage('Đã lưu hồ sơ.');
+      setSaveMessage('Profile saved.');
     } catch (err) {
-      setSaveMessage('Không lưu được hồ sơ. Vui lòng thử lại.');
+      setSaveMessage('Could not save your profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -79,7 +79,7 @@ export default function ProfileScreen() {
     return (
       <View className="flex-1 bg-appBg items-center justify-center px-6">
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="mt-3 text-sm text-textMuted">Đang tải hồ sơ...</Text>
+        <Text className="mt-3 text-sm text-textMuted">Loading profile...</Text>
       </View>
     );
   }
@@ -87,10 +87,10 @@ export default function ProfileScreen() {
   if (errorMessage) {
     return (
       <View className="flex-1 bg-appBg items-center justify-center px-6">
-        <Text className="text-lg font-bold text-textMain text-center">Không tải được hồ sơ</Text>
+        <Text className="text-lg font-bold text-textMain text-center">Could not load profile</Text>
         <Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text>
         <View className="mt-6 w-full">
-          <AppButton title="Thử lại" onPress={loadProfile} />
+          <AppButton title="Try again" onPress={loadProfile} />
         </View>
       </View>
     );
@@ -100,30 +100,30 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView className="flex-1 bg-appBg" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 48, paddingBottom: 24 }}>
-      <Text className="text-2xl font-bold text-textMain">Hồ sơ</Text>
-      <Text className="mt-1 text-sm text-textMuted">Hồ sơ của bạn, dữ liệu thật từ Supabase</Text>
+      <Text className="text-2xl font-bold text-textMain">Profile</Text>
+      <Text className="mt-1 text-sm text-textMuted">Your profile, real data from Supabase</Text>
 
       {/* Figma Profile: 1 the trang duy nhat gom avatar/ten/email/Verified + hang so lieu co gach doc */}
       <View className="mt-6 rounded-3xl bg-white border border-borderLight p-5 items-center">
         <View className="w-20 h-20 rounded-full bg-brand items-center justify-center">
           <Text className="text-3xl font-bold text-white">{initial}</Text>
         </View>
-        <Text className="mt-3 text-xl font-bold text-textMain">{savedName || 'Chưa đặt tên'}</Text>
+        <Text className="mt-3 text-xl font-bold text-textMain">{savedName || 'No name set'}</Text>
         <Text className="mt-1 text-sm text-textMuted">{sessionEmail}</Text>
         <View className="mt-3 px-3 py-1 rounded-full bg-brand">
           <Text className="text-xs font-bold text-white">Verified Traveler</Text>
         </View>
         <View className="mt-4 flex-row w-full">
-          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.trips}</Text><Text className="mt-1 text-xs text-textMuted">Chuyến đi</Text></View>
+          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.trips}</Text><Text className="mt-1 text-xs text-textMuted">Trips</Text></View>
           <View style={{ width: 1, backgroundColor: '#E6E3F5' }} />
-          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.reviews}</Text><Text className="mt-1 text-xs text-textMuted">Đánh giá</Text></View>
+          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.reviews}</Text><Text className="mt-1 text-xs text-textMuted">Reviews</Text></View>
           <View style={{ width: 1, backgroundColor: '#E6E3F5' }} />
-          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.wishlists}</Text><Text className="mt-1 text-xs text-textMuted">Yêu thích</Text></View>
+          <View className="flex-1 items-center"><Text className="text-xl font-bold text-textMain">{counts.wishlists}</Text><Text className="mt-1 text-xs text-textMuted">Favorites</Text></View>
         </View>
       </View>
 
       <View className="mt-6 rounded-3xl bg-white p-5">
-        <Text className="text-xs font-bold tracking-wide text-textMain">EMAIL (KHÔNG ĐỔI ĐƯỢC)</Text>
+        <Text className="text-xs font-bold tracking-wide text-textMain">EMAIL (CANNOT BE CHANGED)</Text>
         <View className="mt-2 rounded-xl border border-borderLight bg-appBg px-4 py-3">
           <Text className="text-base text-textMuted">{sessionEmail}</Text>
         </View>
@@ -132,9 +132,9 @@ export default function ProfileScreen() {
           <>
             <View className="mt-5">
               <AppInput
-                label="HỌ TÊN"
+                label="FULL NAME"
                 icon="person-outline"
-                placeholder="Nguyễn Văn A"
+                placeholder="John Doe"
                 value={name}
                 onChangeText={setName}
                 error={nameError}
@@ -143,7 +143,7 @@ export default function ProfileScreen() {
             </View>
             <View className="mt-5">
               <AppInput
-                label="SỐ ĐIỆN THOẠI"
+                label="PHONE NUMBER"
                 icon="call-outline"
                 placeholder="0912 345 678"
                 keyboardType="phone-pad"
@@ -153,25 +153,25 @@ export default function ProfileScreen() {
             </View>
             {saveMessage ? <Text className="mt-3 text-sm text-textMuted">{saveMessage}</Text> : null}
             <View className="mt-6">
-              <AppButton title="Lưu hồ sơ" onPress={handleSave} disabled={!isValid || !hasChanged} loading={saving} />
+              <AppButton title="Save profile" onPress={handleSave} disabled={!isValid || !hasChanged} loading={saving} />
             </View>
             <Pressable className="mt-3 items-center" onPress={handleCancel}>
-              <Text className="text-base font-bold text-brand">Hủy</Text>
+              <Text className="text-base font-bold text-brand">Cancel</Text>
             </Pressable>
           </>
         ) : (
           <>
             <View className="mt-5">
-              <Text className="text-xs font-bold tracking-wide text-textMain">HỌ TÊN</Text>
-              <Text className="mt-2 text-base text-textMain">{savedName || 'Chưa đặt tên'}</Text>
+              <Text className="text-xs font-bold tracking-wide text-textMain">FULL NAME</Text>
+              <Text className="mt-2 text-base text-textMain">{savedName || 'No name set'}</Text>
             </View>
             <View className="mt-5">
-              <Text className="text-xs font-bold tracking-wide text-textMain">SỐ ĐIỆN THOẠI</Text>
-              <Text className="mt-2 text-base text-textMain">{savedPhone || 'Chưa có số điện thoại'}</Text>
+              <Text className="text-xs font-bold tracking-wide text-textMain">PHONE NUMBER</Text>
+              <Text className="mt-2 text-base text-textMain">{savedPhone || 'No phone number yet'}</Text>
             </View>
             {saveMessage ? <Text className="mt-3 text-sm text-textMuted">{saveMessage}</Text> : null}
             <View className="mt-6">
-              <AppButton title="Chỉnh sửa hồ sơ" onPress={() => setIsEditing(true)} />
+              <AppButton title="Edit profile" onPress={() => setIsEditing(true)} />
             </View>
           </>
         )}
@@ -185,11 +185,11 @@ export default function ProfileScreen() {
         </Pressable>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
           <Text className="text-base text-textMain">Login & Security</Text>
-          <Text className="text-sm text-textMuted">Email đã khóa</Text>
+          <Text className="text-sm text-textMuted">Email is locked</Text>
         </View>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
           <Text className="text-base text-textMain">Currency & Language</Text>
-          <Text className="text-sm text-textMuted">USD ($) • Tiếng Việt</Text>
+          <Text className="text-sm text-textMuted">USD ($) • English</Text>
         </View>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
           <Text className="text-base text-textMain">Notifications</Text>
@@ -210,7 +210,7 @@ export default function ProfileScreen() {
       </View>
 
       <Pressable className="mt-8 items-center" onPress={() => signOut()}>
-        <Text className="text-base font-bold text-red-500">Đăng xuất</Text>
+        <Text className="text-base font-bold text-red-500">Log out</Text>
       </Pressable>
     </ScrollView>
   );

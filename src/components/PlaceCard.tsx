@@ -11,10 +11,9 @@ export default function PlaceCard({ place, isFavorite = false, onToggleFavorite 
   return (
     <View className="bg-cardBg rounded-3xl overflow-hidden mb-4 border border-borderLight">
       <View>
-        {(place.rating ?? 0) >= 4.8 ? (
-          <View className="flex-row items-center px-2.5 py-1 rounded-full bg-white" style={{ position: 'absolute', top: 12, left: 12, zIndex: 1 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4F46E5' }} />
-            <Text className="ml-1.5 text-[11px] font-bold text-brand">Khách yêu thích</Text>
+        {(place.rating ?? 0) >= 4.8 && (place.review_count ?? 0) >= 5 ? (
+          <View className="flex-row items-center px-2.5 py-1 rounded-full" style={{ backgroundColor: "#FFB020", position: 'absolute', top: 12, left: 12, zIndex: 1 }}>
+            <Text className="text-[11px] font-bold" style={{ color: "#131B2E" }}>Guest favourite</Text>
           </View>
         ) : null}
         {Array.isArray(place.images) && place.images.length > 1 ? (
@@ -38,7 +37,7 @@ export default function PlaceCard({ place, isFavorite = false, onToggleFavorite 
         <View className="flex-row justify-between items-center">
           <Text className="flex-1 mr-2 text-[15px] font-bold text-textMain">{place.title}</Text>
           <View className="flex-row items-center">
-            <Text className="text-xs font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'Mới'}</Text>
+            <Text className="text-xs font-bold text-textMain">★ {place.rating != null ? place.rating.toFixed(1) : 'New'}</Text>
             {place.review_count ? <Text className="ml-1 text-[11px] text-textMuted">({place.review_count})</Text> : null}
           </View>
         </View>
@@ -49,14 +48,14 @@ export default function PlaceCard({ place, isFavorite = false, onToggleFavorite 
           </Text>
         </View>
         <Text className="text-xs text-inactive mt-1">
-          {place.place_type || place.category || 'Chỗ ở'}
-          {place.rooms != null ? ` • ${place.rooms} phòng` : ''}
-          {place.beds != null ? ` • ${place.beds} giường` : ''}
-          {place.guests_capacity ? ` • ${place.guests_capacity} khách` : ''}
+          {place.place_type || place.category || 'Stay'}
+          {place.rooms != null ? ` • ${place.rooms} rooms` : ''}
+          {place.beds != null ? ` • ${place.beds} beds` : ''}
+          {place.guests_capacity ? ` • ${place.guests_capacity} guests` : ''}
         </Text>
         <View className="flex-row items-baseline mt-2.5">
           <Text className="text-lg font-bold text-brand">${place.price_per_night}</Text>
-          <Text className="text-[13px] text-textMuted"> / đêm</Text>
+          <Text className="text-[13px] text-textMuted"> / night</Text>
         </View>
       </View>
     </View>

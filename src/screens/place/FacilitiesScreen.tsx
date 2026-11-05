@@ -22,18 +22,18 @@ export default function FacilitiesScreen({ route, navigation }: { route: any; na
   const [errorMessage, setErrorMessage] = useState('');
 
   const load = useCallback(async () => {
-    if (!placeId) { setErrorMessage('Không tìm thấy địa điểm này.'); setLoading(false); return; }
+    if (!placeId) { setErrorMessage('Could not find this stay.'); setLoading(false); return; }
     setLoading(true); setErrorMessage('');
     const { data, error } = await getPlaceById(placeId);
-    if (error || !data) setErrorMessage('Không tải được tiện ích. Vui lòng thử lại.');
+    if (error || !data) setErrorMessage('Could not load facilities. Please try again.');
     else setPlace(data);
     setLoading(false);
   }, [placeId]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return (<View className="flex-1 bg-appBg items-center justify-center px-6"><ActivityIndicator size="large" color="#4F46E5" /><Text className="mt-3 text-sm text-textMuted">Đang tải tiện ích...</Text></View>);
-  if (errorMessage || !place) return (<View className="flex-1 bg-appBg items-center justify-center px-6"><Text className="text-lg font-bold text-textMain text-center">Không tải được tiện ích</Text><Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text><View className="mt-6 w-full"><AppButton title="Thử lại" onPress={load} /></View></View>);
+  if (loading) return (<View className="flex-1 bg-appBg items-center justify-center px-6"><ActivityIndicator size="large" color="#4F46E5" /><Text className="mt-3 text-sm text-textMuted">Loading facilities...</Text></View>);
+  if (errorMessage || !place) return (<View className="flex-1 bg-appBg items-center justify-center px-6"><Text className="text-lg font-bold text-textMain text-center">Could not load facilities</Text><Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text><View className="mt-6 w-full"><AppButton title="Try again" onPress={load} /></View></View>);
 
   const mainImage = Array.isArray(place.images) && place.images.length > 0 ? place.images[0] : 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
   const amenities = place.amenities || [];
@@ -52,15 +52,15 @@ export default function FacilitiesScreen({ route, navigation }: { route: any; na
           <Text className="text-2xl font-bold text-textMain">{place.title}</Text>
           <Text className="mt-2 text-base text-textMuted">{place.location}</Text>
           <View className="mt-3 flex-row flex-wrap">
-            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.guests_capacity} khách</Text></View> : null}
-            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.rooms} phòng</Text></View> : null}
-            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.beds} giường</Text></View> : null}
+            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.guests_capacity} guests</Text></View> : null}
+            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.rooms} rooms</Text></View> : null}
+            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-white border border-borderLight"><Text className="text-sm text-textMain">{place.beds} beds</Text></View> : null}
           </View>
         </View>
         <View className="mx-5 mt-5">
           <Text className="text-base font-bold text-textMain">Facilities</Text>
-          <Text className="mt-1 text-sm text-textMuted">{amenities.length} tiện ích, tất cả lấy từ dữ liệu thật của chỗ ở này. Không bịa mô tả cho từng tiện ích.</Text>
-          {amenities.length === 0 ? <Text className="mt-2 text-base text-textMuted">Chưa có tiện ích nào cho chỗ ở này.</Text> : (
+          <Text className="mt-1 text-sm text-textMuted">{amenities.length} facilities, all from this stay's real data. No invented descriptions.</Text>
+          {amenities.length === 0 ? <Text className="mt-2 text-base text-textMuted">No facilities for this stay yet.</Text> : (
             <View className="mt-2">
               {amenities.map((item, i) => (
                 <View key={item} className="flex-row items-center py-2.5" style={{ borderBottomWidth: i === amenities.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
@@ -71,15 +71,10 @@ export default function FacilitiesScreen({ route, navigation }: { route: any; na
             </View>
           )}
         </View>
-        <View className="mx-5 mt-5">
-          <Text className="text-base font-bold text-textMain">Need special arrangements?</Text>
-          <Text className="mt-2 text-base text-textMuted">Cần thêm đồ dùng hoặc sắp xếp đặc biệt thì nhắn cho Admin qua Inbox.</Text>
-          <View className="mt-3"><AppButton title="Ask Admin" onPress={() => navigation.navigate('MainTabs', { screen: 'Inbox' })} /></View>
-        </View>
       </ScrollView>
       <View className="bg-white border-t border-borderLight px-5 py-3">
         <AppButton title="Check Availability & Dates" onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })} />
-        <Text className="mt-2 text-xs text-textMuted text-center">Mở tab Tìm kiếm để chọn ngày và số khách trên lịch và sheet Guests.</Text>
+        <Text className="mt-2 text-xs text-textMuted text-center">Open the Search tab to pick dates and guests in the calendar and Guests sheet.</Text>
       </View>
     </View>
   );

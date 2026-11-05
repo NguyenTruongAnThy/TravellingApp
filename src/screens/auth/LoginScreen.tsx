@@ -17,13 +17,13 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(false);
 
   const emailError = useMemo(() => {
-    if (!email) return 'Vui lòng nhập email.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email chưa đúng định dạng.';
+    if (!email) return 'Please enter your email.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'That email format is not valid.';
     return '';
   }, [email]);
 
   const passwordError = useMemo(() => {
-    if (!password) return 'Vui lòng nhập mật khẩu.';
+    if (!password) return 'Please enter your password.';
     return '';
   }, [password]);
 
@@ -37,14 +37,14 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      // Login-guard: nếu Login được mở từ một tab/màn khác (ví dụ từ Detail),
-      // quay lại màn đó sau khi đăng nhập thành công. Nếu Login là màn đầu
-      // tiên và không quay lại được thì ở lại, vì session đã đổi.
+      // Login-guard: if Login was opened from another tab/screen (e.g. Detail),
+      // go back to that screen after a successful sign-in. If Login is the first
+      // screen and cannot go back, stay, because the session has changed.
       if (navigation.canGoBack && navigation.canGoBack()) {
         navigation.goBack();
       }
     } catch (err) {
-      setSubmitError('Email hoặc mật khẩu chưa đúng. Vui lòng thử lại.');
+      setSubmitError('Email or password is incorrect. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -57,14 +57,14 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     >
       <AuthHeader onBack={() => navigation.goBack?.()} />
 
-      <Text className="mt-6 text-3xl font-bold text-textMain">Chào mừng trở lại</Text>
+      <Text className="mt-6 text-3xl font-bold text-textMain">Welcome back</Text>
       <Text className="mt-2 text-base text-textMuted">
-        Đăng nhập để xem booking và chỗ ở đã lưu của bạn
+        Sign in to view your bookings and saved stays
       </Text>
 
       <AuthCard>
         <AppInput
-          label="NHẬP EMAIL"
+          label="ENTER EMAIL"
           icon="mail-outline"
           placeholder="name@example.com"
           autoCapitalize="none"
@@ -78,7 +78,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
         <View className="mt-5">
           <AppInput
-            label="NHẬP MẬT KHẨU"
+            label="ENTER PASSWORD"
             icon="lock-closed-outline"
             placeholder="••••••••"
             secure
@@ -91,16 +91,16 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
         </View>
 
         <Pressable className="mt-3 items-end">
-          <Text className="text-sm font-bold text-brand">Quên mật khẩu?</Text>
+          <Text className="text-sm font-bold text-brand">Forgot password?</Text>
         </Pressable>
 
         {submitError ? <Text className="mt-3 text-sm text-red-500">{submitError}</Text> : null}
 
         <View className="mt-6">
-          <AppButton title="Tiếp tục →" onPress={handleLogin} disabled={!isValid} loading={loading} />
+          <AppButton title="Continue →" onPress={handleLogin} disabled={!isValid} loading={loading} />
         </View>
 
-        <Text className="mt-5 text-center text-sm text-textMuted">HOẶC TIẾP TỤC BẰNG</Text>
+        <Text className="mt-5 text-center text-sm text-textMuted">OR CONTINUE WITH</Text>
         <View className="mt-3 flex-row justify-between">
           <SocialButton source={require('../../../assets/Apple.png')} />
           <SocialButton source={require('../../../assets/GG.png')} />
@@ -108,13 +108,13 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
         </View>
 
         <Text className="mt-5 text-center text-xs text-textMuted">
-          Khi tiếp tục, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.
+          By continuing, you agree to the Terms of Service and Privacy Policy.
         </Text>
       </AuthCard>
 
       <Pressable className="mt-8 items-center" onPress={() => navigation.navigate('Register')}>
         <Text className="text-base text-textMuted">
-          Chưa có tài khoản? <Text className="font-bold text-brand">Đăng ký</Text>
+          Don't have an account? <Text className="font-bold text-brand">Sign up</Text>
         </Text>
       </Pressable>
     </ScrollView>
