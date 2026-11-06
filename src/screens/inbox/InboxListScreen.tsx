@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import {
   ConversationItem,
   DEFAULT_CONVERSATIONS,
@@ -21,7 +22,9 @@ import { useAuth } from '../../context/AuthContext';
 
 type FilterType = 'All' | 'Hosts' | 'Support' | 'Unread';
 
-export default function InboxListScreen({ navigation }: { navigation?: any }) {
+export default function InboxListScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const hookNavigation = useNavigation<any>();
+  const navigation = propNavigation || hookNavigation;
   const { session } = useAuth();
   const userId = session?.user?.id;
 

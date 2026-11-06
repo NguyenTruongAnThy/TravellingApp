@@ -27,9 +27,13 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
   const [sharingLocation, setSharingLocation] = useState(false);
 
   const booking = route?.params?.booking;
-  const placeTitle = booking?.places?.title || 'Balian Treehouse';
-  const placeLocation = booking?.places?.location || 'Tabanan Regency, West Bali';
-  const address = 'Jl. Pantai Balian No. 18, Banjar Pengembungan, Tabanan, Bali 82162, Indonesia';
+  const place = booking?.places;
+  const placeTitle = place?.title || 'Balian Treehouse Escape';
+  const placeLocation = place?.location || 'Tabanan Regency, West Bali';
+  const address = place?.address || place?.location || 'Jl. Pantai Balian No. 18, Banjar Pengembungan, Tabanan, Bali 82162, Indonesia';
+  const hostName = place?.host_name || 'Wayan Sutama';
+  const hostPhone = place?.host_phone || '+62 812 3456 7890';
+  const pinCode = booking?.pin_code || place?.smart_lock_pin || '4821#';
   const gpsCoords = '-8.5029° S, 114.9684° E';
   const latitude = -8.5029;
   const longitude = 114.9684;
@@ -43,7 +47,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
           `Address: ${address}\n` +
           `GPS: ${gpsCoords}\n` +
           `Google Maps: https://maps.google.com/?q=${latitude},${longitude}\n` +
-          `Landmark Gate Code: 4821#`,
+          `Landmark Gate Code: ${pinCode}`,
       });
     } catch {
       // Dismissed
@@ -61,7 +65,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
         onPress: () => Alert.alert('Copied', `${gpsCoords} copied to clipboard.`),
       },
       {
-        text: 'Message Host Wayan',
+        text: `Message Host ${hostName}`,
         onPress: handleBookTransfer,
       },
       { text: 'Cancel', style: 'cancel' },
@@ -93,7 +97,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
     if (navigation?.navigate) {
       navigation.navigate('HostChat', {
         booking,
-        initialMessage: 'Hi Wayan, I would like to request the $35 USD private airport SUV transfer from DPS airport.',
+        initialMessage: `Hi ${hostName}, I would like to request the $35 USD private airport SUV transfer from DPS airport.`,
       });
     } else {
       Alert.alert('Book Transfer', 'Transfer request dispatched to host Wayan via inbox message.');
@@ -105,15 +109,15 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
     setTimeout(() => {
       setSharingLocation(false);
       Alert.alert(
-        'Location Shared with Wayan',
-        'Your live GPS tracking coordinates and estimated arrival time have been shared with Wayan. He will be ready to greet you at the Bamboo Gate.',
+        `Location Shared with ${hostName}`,
+        `Your live GPS tracking coordinates and estimated arrival time have been shared with ${hostName}. They will be ready to greet you at the entrance.`,
         [{ text: 'OK' }]
       );
     }, 1000);
   };
 
   const handleCallHost = () => {
-    Alert.alert('Call Host', 'Calling Wayan Sudarma / Assigned Driver (+62 812 3456 7890)...', [
+    Alert.alert('Call Host', `Calling ${hostName} / Assigned Driver (${hostPhone})...`, [
       { text: 'Call Now', onPress: () => {} },
       { text: 'Cancel', style: 'cancel' },
     ]);
@@ -436,7 +440,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                       Locate the digital keybox mounted on the left bamboo post. Code:
                     </Text>
                     <View className="px-1.5 py-0.5 rounded bg-[#EAEDFF]">
-                      <Text className="text-sm font-bold font-mono text-[#131B2E]">4821#</Text>
+                      <Text className="text-sm font-bold font-mono text-[#131B2E]">{pinCode}</Text>
                     </View>
                     <Text className="text-sm text-[#3C494C]">.</Text>
                   </View>
@@ -463,7 +467,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
 
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
-                  <Text className="text-lg font-semibold text-[#131B2E]">Wayan Sudarma</Text>
+                  <Text className="text-lg font-semibold text-[#131B2E]">{hostName}</Text>
                   <Ionicons name="checkmark-circle" size={16} color="#006877" />
                 </View>
                 <Text className="text-xs text-[#3C494C]">Your On-Site Concierge & Host</Text>

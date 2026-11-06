@@ -18,6 +18,14 @@ export interface Place {
   is_visible?: boolean;
   latitude?: number | null;
   longitude?: number | null;
+  address?: string | null;
+  wifi_ssid?: string | null;
+  wifi_password?: string | null;
+  smart_lock_pin?: string | null;
+  host_name?: string | null;
+  host_phone?: string | null;
+  kayak_fee?: number | null;
+  parking_fee?: number | null;
 }
 
 export interface Collection {
@@ -60,6 +68,7 @@ export interface Booking {
   deposit_amount?: number | null;
   payment_status?: string;
   status: 'booked' | 'cancelled' | 'completed';
+  pin_code?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   created_at?: string;

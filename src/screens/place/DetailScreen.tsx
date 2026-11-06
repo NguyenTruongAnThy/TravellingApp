@@ -112,7 +112,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
   const handleBook = () => {
     if (!session) { navigation.navigate('Login'); return; }
-    navigation.navigate('MainTabs', { screen: 'Booking' });
+    navigation.navigate('ConfirmAndPay', { place });
   };
 
   const onLike = async (review: Review) => {

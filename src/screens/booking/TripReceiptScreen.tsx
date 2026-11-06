@@ -33,54 +33,68 @@ export default function TripReceiptScreen({
   const paramsBooking = route?.params?.booking;
   const paramsReceipt = route?.params?.receipt;
 
+  const place = paramsBooking?.places || paramsReceipt?.place;
   const receiptNumber =
     paramsReceipt?.receipt_number ||
     (paramsBooking?.ref_code ? `#REC-${paramsBooking.ref_code.replace('#', '')}` : '#REC-2024-84920');
 
-  const issuedDate = paramsReceipt?.issued_date || 'May 12, 2024';
-  const totalAmount =
-    paramsReceipt?.total ||
-    (paramsBooking?.total ? `$${Number(paramsBooking.total).toFixed(2)}` : '$450.00');
+  const issuedDate =
+    paramsReceipt?.issued_date ||
+    (paramsBooking?.created_at
+      ? new Date(paramsBooking.created_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : 'Today');
 
-  const placeTitle = paramsBooking?.places?.title || paramsReceipt?.place_title || 'Balian Treehouse';
+  const placeTitle = place?.title || paramsReceipt?.place_title || 'Balian Treehouse Escape';
   const placeLocation =
-    paramsBooking?.places?.location || paramsReceipt?.place_location || 'Selemadeg Barat, Bali, Indonesia';
-  const placeType = paramsBooking?.places?.category || 'HOMESTAY';
+    place?.location || paramsReceipt?.place_location || 'Selemadeg Barat, Bali, Indonesia';
+  const placeType = place?.category || place?.place_type || 'HOMESTAY';
   const placeImage =
-    paramsBooking?.places?.images?.[0] ||
+    place?.images?.[0] ||
     paramsReceipt?.place_image ||
-    'https://api.builder.io/api/v1/image/assets/TEMP/18d5fda6f3f2f9289747cd527ad35641b9d29526?width=160';
+    'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
 
-  const refCode = paramsBooking?.ref_code || 'Ref: #WS-84920';
-  const stayDates = paramsReceipt?.dates || 'May 24 – 29, 2024';
-  const stayNights = paramsBooking?.nights ? `${paramsBooking.nights} nights` : '5 nights';
+  const refCode = paramsBooking?.ref_code || paramsReceipt?.ref || 'Ref: #WS-84920';
+  const stayDates =
+    paramsReceipt?.dates ||
+    (paramsBooking ? `${paramsBooking.check_in} – ${paramsBooking.check_out}` : 'May 24 – 29, 2024');
+  const stayNights = paramsBooking?.nights
+    ? `${paramsBooking.nights} nights`
+    : paramsReceipt?.nights
+    ? `${paramsReceipt.nights} nights`
+    : '5 nights';
   const guestsText = paramsBooking
     ? `${(paramsBooking.guests_adults || 1) + (paramsBooking.guests_children || 0)} Guests`
     : '2 Guests';
   const roomConfig = paramsReceipt?.room_config || '1 bedroom • 1 king';
 
-  const hostName = paramsReceipt?.host_name || 'Wayan Sutama';
+  const hostName = place?.host_name || paramsReceipt?.host_name || 'Wayan Sutama';
   const hostAvatar =
     paramsReceipt?.host_avatar ||
     'https://api.builder.io/api/v1/image/assets/TEMP/4130993de59debc43fdc229627ab57b458f7cf38?width=64';
 
-  const paymentMethodLabel = paramsReceipt?.card_label || 'Visa ending in 4242';
-  const transactionId = paramsReceipt?.transaction_id || 'TXN_992837482';
-  const billingName = paramsReceipt?.billing_name || 'Alex Morgan';
-  const billingAddress = paramsReceipt?.billing_address || '742 Evergreen Terrace, Springfield, OR 97477';
+  const paymentMethodLabel =
+    paramsReceipt?.card_label ||
+    (paramsBooking?.payment_method === 'pay_a_part_now' ? 'Pay a part now (50% Deposit)' : 'Visa ending in 4829');
+  const transactionId =
+    paramsReceipt?.transaction_id || `TXN_${paramsBooking?.id ? paramsBooking.id.slice(0, 8) : '992837482'}`;
+  const billingName = paramsReceipt?.billing_name || 'WanderStay Member';
+  const billingAddress = paramsReceipt?.billing_address || 'WanderStay Verified Account';
 
-  // Itemized breakdown items (default matches exact Figma specs, or computed if booking passed)
-  const isCustomBooking = !!paramsBooking && !paramsReceipt?.breakdown;
-  const breakdownNightsText = isCustomBooking
-    ? `$${Number(paramsBooking.price_per_night).toFixed(2)} × ${paramsBooking.nights} nights`
-    : '$75.00 × 5 nights';
-  const breakdownNightsTotal = isCustomBooking
-    ? `$${(Number(paramsBooking.price_per_night) * Number(paramsBooking.nights)).toFixed(2)}`
-    : '$375.00';
+  // Transparent Itemized Pricing per BR01 & BR02
+  const pricePerNight = Number(paramsBooking?.price_per_night || paramsReceipt?.rate || 20);
+  const nightsCount = Number(paramsBooking?.nights || paramsReceipt?.nights || 5);
+  const accommodationTotal = pricePerNight * nightsCount;
+  const kayakFee = paramsBooking?.kayak_fee != null ? Number(paramsBooking.kayak_fee) : 5;
+  const parkingFee = paramsBooking?.parking_fee != null ? Number(paramsBooking.parking_fee) : 5;
+  const grandTotal = accommodationTotal + kayakFee + parkingFee;
 
-  const cleaningFee = isCustomBooking ? `$${Number(paramsBooking.kayak_fee || 0).toFixed(2)}` : '$35.00';
-  const serviceFee = isCustomBooking ? `$${Number(paramsBooking.parking_fee || 0).toFixed(2)}` : '$25.00';
-  const taxesFee = isCustomBooking ? '$0.00' : '$15.00';
+  const totalAmount = `${grandTotal.toFixed(2)}`;
+  const breakdownNightsText = `${pricePerNight.toFixed(2)} × ${nightsCount} nights`;
+  const breakdownNightsTotal = `${accommodationTotal.toFixed(2)}`;
 
   const handleShare = async () => {
     try {
@@ -329,25 +343,19 @@ export default function TripReceiptScreen({
               <Text className="text-sm font-medium text-[#131B2E]">{breakdownNightsTotal}</Text>
             </View>
 
-            {/* Cleaning fee */}
+            {/* Kayak Rental fee */}
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-[#131B2E]">Cleaning fee</Text>
-              <Text className="text-sm font-medium text-[#131B2E]">{cleaningFee}</Text>
+              <Text className="text-sm text-[#131B2E]">Kayak Rental fee</Text>
+              <Text className="text-sm font-medium text-[#131B2E]">${kayakFee.toFixed(2)}</Text>
             </View>
 
-            {/* Service fee */}
+            {/* Street Parking fee */}
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-1.5">
-                <Text className="text-sm text-[#131B2E]">WanderStay service fee</Text>
+                <Text className="text-sm text-[#131B2E]">Street Parking fee</Text>
                 <Ionicons name="information-circle-outline" size={14} color="#6C797D" />
               </View>
-              <Text className="text-sm font-medium text-[#131B2E]">{serviceFee}</Text>
-            </View>
-
-            {/* Taxes */}
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-[#131B2E]">Occupancy taxes & VAT (4%)</Text>
-              <Text className="text-sm font-medium text-[#131B2E]">{taxesFee}</Text>
+              <Text className="text-sm font-medium text-[#131B2E]">${parkingFee.toFixed(2)}</Text>
             </View>
           </View>
 

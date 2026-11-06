@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, getProfileCounts, saveProfile, type ProfileCounts } from '../../services/profileService';
 import AppButton from '../../components/AppButton';
 import AppInput from '../../components/AppInput';
 
-export default function ProfileScreen({ navigation }: { navigation?: any } = {}) {
+export default function ProfileScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const hookNavigation = useNavigation<any>();
+  const navigation = propNavigation || hookNavigation;
   const { session, signOut } = useAuth();
   const userId = session?.user?.id || '';
   const sessionEmail = session?.user?.email || '';

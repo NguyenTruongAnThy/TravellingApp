@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -12,33 +13,28 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { getUserBookings, cancelBooking } from '../../services/bookingsService';
 import type { Booking } from '../../types';
 
-// Default mockup images from Builder.io Figma design
-const BALIAN_HERO_IMG =
-  'https://api.builder.io/api/v1/image/assets/TEMP/1a229af71b08865e2cefbedb30f9d138bb7a1052?width=716';
-const OMAHA_IMG =
-  'https://api.builder.io/api/v1/image/assets/TEMP/e01c6549e299c37035bca8f87c3677f7a18f0d0f?width=192';
-const TUSCANY_IMG =
-  'https://api.builder.io/api/v1/image/assets/TEMP/1c7041309bb3d879492122b6bb5a37fd94797a86?width=192';
-const WAYAN_HOST_IMG =
-  'https://api.builder.io/api/v1/image/assets/TEMP/f5e6fa912c1e1d9984ecf4bed13e50ac0683887c?width=72';
-
 type TabType = 'Upcoming' | 'Completed' | 'Cancelled';
 
-export default function BookingsScreen({ navigation }: { navigation: any }) {
+export default function BookingsScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const hookNavigation = useNavigation<any>();
+  const navigation = propNavigation || hookNavigation;
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user?.id;
 
   const [activeTab, setActiveTab] = useState<TabType>('Upcoming');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
 
-  // Interactive Modals
+  // Interactive Modals for in-screen preview (or direct stack navigation)
   const [smartKeyModalVisible, setSmartKeyModalVisible] = useState(false);
+  const [activeBookingForModal, setActiveBookingForModal] = useState<Booking | null>(null);
   const [chatModalVisible, setChatModalVisible] = useState(false);
   const [directionsModalVisible, setDirectionsModalVisible] = useState(false);
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
@@ -46,55 +42,50 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
   const [helpModalVisible, setHelpModalVisible] = useState(false);
   const [bluetoothUnlocked, setBluetoothUnlocked] = useState(false);
 
-  // Chat state
+  // Chat state for modal
   const [messages, setMessages] = useState([
-    { id: '1', sender: 'Wayan Sutama', text: 'Om Swastyastu! Welcome to Balian Treehouse. What time do you land in Denpasar?', time: '10:15 AM', isHost: true },
-    { id: '2', sender: 'You', text: 'Hi Wayan! We land at 12:30 PM. Would love to book the airport pickup ($35).', time: '10:22 AM', isHost: false },
-    { id: '3', sender: 'Wayan Sutama', text: 'Perfect! Driver Ketut will wait for you at Arrival Gate with your name sign. See you soon!', time: '10:28 AM', isHost: true },
+    { id: '1', sender: 'Host', text: 'Om Swastyastu! Welcome to your stay. What time do you land?', time: '10:15 AM', isHost: true },
+    { id: '2', sender: 'You', text: 'Hi! We land at 12:30 PM. Would love to confirm directions.', time: '10:22 AM', isHost: false },
   ]);
   const [inputMsg, setInputMsg] = useState('');
 
   const loadBookings = useCallback(async () => {
     if (!userId) {
       setLoading(false);
+      setRefreshing(false);
       return;
     }
-    setLoading(true);
     const { data } = await getUserBookings(userId);
-    if (data && data.length > 0) {
+    if (data) {
       setBookings(data);
     }
     setLoading(false);
+    setRefreshing(false);
   }, [userId]);
 
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
 
-  // Tab counts
-  const upcomingCount =
-    bookings.filter((b) => b.status === 'booked').length > 0
-      ? bookings.filter((b) => b.status === 'booked').length
-      : 1; // Default 1 upcoming from Figma design
-  const completedCount =
-    bookings.filter((b) => b.status === 'completed').length > 0
-      ? bookings.filter((b) => b.status === 'completed').length
-      : 3; // Default 3 completed from Figma design
-  const cancelledCount = bookings.filter((b) => b.status === 'cancelled').length;
+  useFocusEffect(
+    useCallback(() => {
+      loadBookings();
+    }, [loadBookings])
+  );
 
-  const activeBooking = bookings.find((b) => b.status === 'booked') || bookings[0];
-  const activePlaceTitle = activeBooking?.places?.title || 'Balian Treehouse';
-  const activePlaceLocation = activeBooking?.places?.location || 'Bali, Indonesia';
-  const activeRefCode = activeBooking?.ref_code || '#WS-84920';
-  const activeDatesText =
-    activeBooking?.check_in && activeBooking?.check_out
-      ? `${activeBooking.check_in} – ${activeBooking.check_out}`
-      : 'May 24 – 29, 2024';
-  const activeNightsGuestsText = activeBooking
-    ? `${activeBooking.nights || 5} nights · ${(activeBooking.guests_adults || 1) + (activeBooking.guests_children || 0)} guests`
-    : '5 nights · 2 guests';
-  const activeTotalText = activeBooking ? `$${Number(activeBooking.total).toFixed(0)}` : '$450';
-  const activeHeroImage = activeBooking?.places?.images?.[0] || BALIAN_HERO_IMG;
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadBookings();
+  };
+
+  // Tab counts dynamically from database
+  const upcomingBookings = bookings.filter((b) => b.status === 'booked');
+  const completedBookings = bookings.filter((b) => b.status === 'completed');
+  const cancelledBookings = bookings.filter((b) => b.status === 'cancelled');
+
+  const upcomingCount = upcomingBookings.length;
+  const completedCount = completedBookings.length;
+  const cancelledCount = cancelledBookings.length;
 
   const handleSendMessage = () => {
     if (!inputMsg.trim()) return;
@@ -120,12 +111,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
     }
   };
 
-  const handleCancelBooking = (bookingId?: string) => {
-    const idToCancel = bookingId || activeBooking?.id;
-    if (!idToCancel) {
-      Alert.alert('Cancel Reservation', 'This is a demo preview reservation and cannot be cancelled.');
-      return;
-    }
+  const handleCancelBooking = (bookingId: string) => {
     Alert.alert(
       'Cancel Reservation',
       'Are you sure you want to cancel this booking? Free 100% refund is available if cancelled at least 48 hours prior to check-in (BR05).',
@@ -136,7 +122,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await cancelBooking(idToCancel, 'Cancelled by guest');
+              const res = await cancelBooking(bookingId, 'Cancelled by guest');
               if (res.success) {
                 Alert.alert('Cancelled', 'Your reservation has been successfully cancelled.');
                 loadBookings();
@@ -170,11 +156,14 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Filter bookings"
-          onPress={() => Alert.alert('Filter', 'Filter reservations by year or destination.')}
+          accessibilityLabel="Refresh bookings"
+          onPress={() => {
+            setRefreshing(true);
+            loadBookings();
+          }}
           className="w-10 h-10 rounded-full bg-appBg items-center justify-center border border-borderLight shadow-sm"
         >
-          <Ionicons name="options-outline" size={18} color="#4F46E5" />
+          <Ionicons name="refresh-outline" size={18} color="#4F46E5" />
         </Pressable>
       </View>
 
@@ -182,6 +171,9 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
         className="flex-1 bg-appBg"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+        }
       >
         {/* Segmented Tabs Bar */}
         <View className="px-5 pt-4">
@@ -275,343 +267,354 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
 
-        {/* TAB 1: UPCOMING (Hero Active Reservation) */}
-        {activeTab === 'Upcoming' ? (
-          <View className="px-5 pt-5 gap-4">
-            {/* Header above card */}
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
-                ACTIVE RESERVATION
-              </Text>
-              <View className="flex-row items-center gap-1.5">
-                <View className="bg-[#E2E7FF] px-2.5 py-1 rounded-full flex-row items-center gap-1">
-                  <View className="w-1.5 h-1.5 rounded-full bg-brand" />
-                  <Text className="text-[11px] font-bold text-brand">Confirmed</Text>
-                </View>
-                <View className="bg-[#E2E7FF] px-2.5 py-1 rounded-full">
-                  <Text className="text-[11px] font-bold text-brand">In 5 days</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Active Reservation Hero Card */}
-            <View className="bg-white rounded-3xl p-4 border border-borderLight shadow-sm">
-              {/* Place Hero Image */}
-              <View className="h-44 rounded-2xl overflow-hidden relative justify-between p-3 bg-black/10">
-                <Image
-                  source={{ uri: activeHeroImage }}
-                  className="absolute inset-0 w-full h-full"
-                  resizeMode="cover"
-                />
-                {/* Gradient Contrast */}
-                <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
-
-                {/* Top-Left Rating Capsule */}
-                <View className="self-start bg-white/95 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm">
-                  <Ionicons name="star" size={13} color="#F59E0B" />
-                  <Text className="text-xs font-bold text-textMain">4.96</Text>
-                  <Text className="text-[10px] text-[#6C797D]">(128)</Text>
-                </View>
-
-                {/* Bottom Title & Location */}
-                <View className="gap-1">
-                  <View className="self-start bg-[#283044]/70 px-2.5 py-0.5 rounded-full">
-                    <Text className="text-[10px] font-bold text-[#E2E7FF] uppercase tracking-wider">
-                      SECLUDED HAVEN
-                    </Text>
-                  </View>
-                  <Text className="text-xl font-bold text-white tracking-tight">
-                    {activePlaceTitle}
-                  </Text>
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="location-sharp" size={12} color="#E2E7FF" />
-                    <Text className="text-xs text-[#E2E7FF]">{activePlaceLocation}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Booking Info 2-Column Grid */}
-              <View className="bg-[#F8F7FF] rounded-2xl p-3.5 mt-3 flex-row justify-between border border-borderLight/60">
-                {/* Col 1: Dates */}
-                <View className="flex-1 pr-2">
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="calendar-outline" size={13} color="#6C797D" />
-                    <Text className="text-xs text-[#6C797D]">Dates</Text>
-                  </View>
-                  <Text className="text-sm font-bold text-textMain mt-1">
-                    {activeDatesText}
-                  </Text>
-                  <Text className="text-xs text-[#6C797D] mt-0.5">{activeNightsGuestsText}</Text>
-                </View>
-
-                {/* Col 2: Booking Reference */}
-                <View className="flex-1 pl-2 border-l border-borderLight">
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="receipt-outline" size={13} color="#6C797D" />
-                    <Text className="text-xs text-[#6C797D]">Booking Reference</Text>
-                  </View>
-                  <Text className="text-sm font-bold text-brand mt-1">{activeRefCode}</Text>
-                  <Text className="text-xs font-bold text-textMain mt-0.5">
-                    {activeTotalText} <Text className="text-brand font-bold">(Paid)</Text>
-                  </Text>
-                </View>
-              </View>
-
-              {/* Host Row */}
-              <View className="flex-row items-center gap-3 mt-3.5 pt-3.5 border-t border-borderLight">
-                <Image
-                  source={{ uri: WAYAN_HOST_IMG }}
-                  className="w-10 h-10 rounded-full border border-borderLight bg-brand/10"
-                />
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-textMain">Hosted by Wayan</Text>
-                  <Text className="text-[11px] text-[#6C797D]">
-                    Superhost · Typically replies in 5m
-                  </Text>
-                </View>
-                <View className="bg-brand/10 px-2 py-1 rounded-full">
-                  <Text className="text-[10px] font-bold text-brand">Verified Host</Text>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View className="mt-4 gap-2.5">
-                {/* Primary Button: View Details & Check-in */}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="View Details and Check-in"
-                  onPress={() => {
-                    if (navigation?.navigate) {
-                      navigation.navigate('SmartKey', { booking: activeBooking });
-                    } else {
-                      setSmartKeyModalVisible(true);
-                    }
-                  }}
-                  className="bg-brand rounded-full py-3.5 items-center justify-center shadow-md shadow-brand/30 flex-row gap-2"
-                >
-                  <Ionicons name="key-outline" size={16} color="#FFF" />
-                  <Text className="text-sm font-bold text-white">
-                    View Details & Check-in
-                  </Text>
-                </Pressable>
-
-                {/* Secondary 2-Button Row */}
-                <View className="flex-row gap-2.5">
-                  <Pressable
-                    onPress={() => {
-                      if (navigation?.navigate) {
-                        navigation.navigate('HostChat', {
-                          hostName: 'Wayan Sutama',
-                          bookingRef: activeRefCode,
-                          propertyTitle: activePlaceTitle,
-                          booking: activeBooking,
-                        });
-                      } else {
-                        setChatModalVisible(true);
-                      }
-                    }}
-                    className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    <Ionicons name="chatbubble-ellipses-outline" size={16} color="#131B2E" />
-                    <Text className="text-xs font-bold text-textMain">Message Host</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => {
-                      if (navigation?.navigate) {
-                        navigation.navigate('Directions', { booking: activeBooking });
-                      } else {
-                        setDirectionsModalVisible(true);
-                      }
-                    }}
-                    className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    <Ionicons name="navigate-outline" size={16} color="#131B2E" />
-                    <Text className="text-xs font-bold text-textMain">Directions</Text>
-                  </Pressable>
-                </View>
-
-                {/* Quick actions row: View Receipt & Cancel */}
-                <View className="flex-row justify-between items-center pt-2 px-1">
-                  <Pressable
-                    onPress={() => handleOpenReceipt(activeBooking)}
-                    className="flex-row items-center gap-1 py-1"
-                  >
-                    <Ionicons name="receipt-outline" size={14} color="#4F46E5" />
-                    <Text className="text-xs font-bold text-brand">View Receipt</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => handleCancelBooking()}
-                    className="flex-row items-center gap-1 py-1"
-                  >
-                    <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
-                    <Text className="text-xs font-bold text-red-500">Cancel Booking</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
+        {loading ? (
+          <View className="py-20 items-center justify-center">
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <Text className="text-xs text-textMuted mt-3 font-medium">Loading your bookings...</Text>
           </View>
         ) : null}
 
-        {/* TAB 2 or BELOW UPCOMING: PAST ADVENTURES */}
-        {activeTab === 'Upcoming' || activeTab === 'Completed' ? (
-          <View className="px-5 pt-6 gap-3.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
-                PAST ADVENTURES
+        {/* TAB 1: UPCOMING (Hero Active Reservation) */}
+        {!loading && activeTab === 'Upcoming' ? (
+          upcomingCount === 0 ? (
+            <View className="px-5 pt-8 items-center justify-center py-12">
+              <View className="w-16 h-16 rounded-full bg-brand/10 items-center justify-center mb-4">
+                <Ionicons name="calendar-outline" size={32} color="#4F46E5" />
+              </View>
+              <Text className="text-lg font-bold text-textMain text-center">
+                No upcoming reservations
               </Text>
-              <Pressable onPress={() => setActiveTab('Completed')}>
-                <Text className="text-xs font-bold text-brand">View All (3)</Text>
+              <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
+                When you book a stay, your active reservation, keyless smart key PIN, and arrival directions will appear right here.
+              </Text>
+              <Pressable
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })}
+                className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
+              >
+                <Text className="text-xs font-bold text-white">Explore Stays</Text>
               </Pressable>
             </View>
+          ) : (
+            <View className="px-5 pt-5 gap-5">
+              {upcomingBookings.map((b, idx) => {
+                const place = b.places;
+                const heroImg =
+                  place?.images?.[0] ||
+                  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
+                const placeTitle = place?.title || 'Stay';
+                const placeLocation = place?.location || 'Indonesia';
+                const hostName = place?.host_name || 'Host';
 
-            {/* Past Stay Item 1 */}
-            <View className="bg-white rounded-2xl p-3 border border-borderLight shadow-sm flex-row gap-3">
-              <View className="w-24 h-24 rounded-xl overflow-hidden relative bg-black/10">
-                <Image source={{ uri: OMAHA_IMG }} className="w-full h-full" resizeMode="cover" />
-                <View className="absolute top-1.5 left-1.5 bg-black/60 px-1.5 py-0.5 rounded-md">
-                  <Text className="text-[9px] font-bold text-white">Completed</Text>
-                </View>
-              </View>
+                return (
+                  <View key={b.id} className="gap-3">
+                    {/* Header above card */}
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
+                        {idx === 0 ? 'ACTIVE RESERVATION' : `UPCOMING STAY #${idx + 1}`}
+                      </Text>
+                      <View className="flex-row items-center gap-1.5">
+                        <View className="bg-[#E2E7FF] px-2.5 py-1 rounded-full flex-row items-center gap-1">
+                          <View className="w-1.5 h-1.5 rounded-full bg-brand" />
+                          <Text className="text-[11px] font-bold text-brand">Confirmed</Text>
+                        </View>
+                      </View>
+                    </View>
 
-              <View className="flex-1 justify-between py-0.5">
-                <View>
-                  <View className="flex-row justify-between items-start">
-                    <Text className="flex-1 text-sm font-bold text-textMain" numberOfLines={1}>
-                      Modern Scandinavian Loft
-                    </Text>
-                    <View className="flex-row items-center gap-0.5 ml-1">
-                      <Ionicons name="star" size={11} color="#F59E0B" />
-                      <Text className="text-xs font-bold text-textMain">5.0</Text>
+                    {/* Active Reservation Hero Card */}
+                    <View className="bg-white rounded-3xl p-4 border border-borderLight shadow-sm">
+                      {/* Place Hero Image */}
+                      <View className="h-44 rounded-2xl overflow-hidden relative justify-between p-3 bg-black/10">
+                        <Image
+                          source={{ uri: heroImg }}
+                          className="absolute inset-0 w-full h-full"
+                          resizeMode="cover"
+                        />
+                        <View className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
+
+                        {/* Top-Left Rating Capsule */}
+                        <View className="self-start bg-white/95 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm">
+                          <Ionicons name="star" size={13} color="#F59E0B" />
+                          <Text className="text-xs font-bold text-textMain">
+                            {place?.rating != null ? place.rating.toFixed(1) : '4.9'}
+                          </Text>
+                          <Text className="text-[10px] text-[#6C797D]">
+                            ({place?.review_count || 128})
+                          </Text>
+                        </View>
+
+                        {/* Bottom Title & Location */}
+                        <View className="gap-1">
+                          <View className="self-start bg-[#283044]/70 px-2.5 py-0.5 rounded-full">
+                            <Text className="text-[10px] font-bold text-[#E2E7FF] uppercase tracking-wider">
+                              {place?.place_type || place?.category || 'STAY'}
+                            </Text>
+                          </View>
+                          <Text className="text-xl font-bold text-white tracking-tight">
+                            {placeTitle}
+                          </Text>
+                          <View className="flex-row items-center gap-1">
+                            <Ionicons name="location-sharp" size={12} color="#E2E7FF" />
+                            <Text className="text-xs text-[#E2E7FF]">{placeLocation}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Booking Info 2-Column Grid */}
+                      <View className="bg-[#F8F7FF] rounded-2xl p-3.5 mt-3 flex-row justify-between border border-borderLight/60">
+                        {/* Col 1: Dates */}
+                        <View className="flex-1 pr-2">
+                          <View className="flex-row items-center gap-1">
+                            <Ionicons name="calendar-outline" size={13} color="#6C797D" />
+                            <Text className="text-xs text-[#6C797D]">Dates</Text>
+                          </View>
+                          <Text className="text-sm font-bold text-textMain mt-1">
+                            {b.check_in} – {b.check_out}
+                          </Text>
+                          <Text className="text-xs text-[#6C797D] mt-0.5">
+                            {b.nights} nights · {(b.guests_adults || 1) + (b.guests_children || 0)} guests
+                          </Text>
+                        </View>
+
+                        {/* Col 2: Booking Reference */}
+                        <View className="flex-1 pl-2 border-l border-borderLight">
+                          <View className="flex-row items-center gap-1">
+                            <Ionicons name="receipt-outline" size={13} color="#6C797D" />
+                            <Text className="text-xs text-[#6C797D]">Booking Reference</Text>
+                          </View>
+                          <Text className="text-sm font-bold text-brand mt-1">{b.ref_code}</Text>
+                          <Text className="text-xs font-bold text-textMain mt-0.5">
+                            ${Number(b.total).toFixed(0)} <Text className="text-brand font-bold">(Paid)</Text>
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Host Row */}
+                      <View className="flex-row items-center gap-3 mt-3.5 pt-3.5 border-t border-borderLight">
+                        <View className="w-10 h-10 rounded-full bg-brand/10 items-center justify-center border border-borderLight">
+                          <Ionicons name="person" size={20} color="#4F46E5" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-xs font-bold text-textMain">Hosted by {hostName}</Text>
+                          <Text className="text-[11px] text-[#6C797D]">
+                            Verified Host · Typically replies in 5m
+                          </Text>
+                        </View>
+                        <View className="bg-brand/10 px-2 py-1 rounded-full">
+                          <Text className="text-[10px] font-bold text-brand">Verified Stay</Text>
+                        </View>
+                      </View>
+
+                      {/* Action Buttons */}
+                      <View className="mt-4 gap-2.5">
+                        {/* Primary Button: View Details & Check-in */}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="View Details and Check-in"
+                          onPress={() => {
+                            if (navigation?.navigate) {
+                              navigation.navigate('SmartKey', { booking: b });
+                            } else {
+                              setActiveBookingForModal(b);
+                              setSmartKeyModalVisible(true);
+                            }
+                          }}
+                          className="bg-brand rounded-full py-3.5 items-center justify-center shadow-md shadow-brand/30 flex-row gap-2"
+                        >
+                          <Ionicons name="key-outline" size={16} color="#FFF" />
+                          <Text className="text-sm font-bold text-white">
+                            View Details & Check-in
+                          </Text>
+                        </Pressable>
+
+                        {/* Secondary 2-Button Row */}
+                        <View className="flex-row gap-2.5">
+                          <Pressable
+                            onPress={() => {
+                              if (navigation?.navigate) {
+                                navigation.navigate('HostChat', {
+                                  hostName: hostName,
+                                  bookingRef: b.ref_code,
+                                  propertyTitle: placeTitle,
+                                  booking: b,
+                                });
+                              } else {
+                                setChatModalVisible(true);
+                              }
+                            }}
+                            className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
+                          >
+                            <Ionicons name="chatbubble-ellipses-outline" size={16} color="#131B2E" />
+                            <Text className="text-xs font-bold text-textMain">Message Host</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => {
+                              if (navigation?.navigate) {
+                                navigation.navigate('Directions', { booking: b });
+                              } else {
+                                setDirectionsModalVisible(true);
+                              }
+                            }}
+                            className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
+                          >
+                            <Ionicons name="navigate-outline" size={16} color="#131B2E" />
+                            <Text className="text-xs font-bold text-textMain">Directions</Text>
+                          </Pressable>
+                        </View>
+
+                        {/* Quick actions row: View Receipt & Cancel */}
+                        <View className="flex-row justify-between items-center pt-2 px-1">
+                          <Pressable
+                            onPress={() => handleOpenReceipt(b)}
+                            className="flex-row items-center gap-1 py-1"
+                          >
+                            <Ionicons name="receipt-outline" size={14} color="#4F46E5" />
+                            <Text className="text-xs font-bold text-brand">View Receipt</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleCancelBooking(b.id)}
+                            className="flex-row items-center gap-1 py-1"
+                          >
+                            <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
+                            <Text className="text-xs font-bold text-red-500">Cancel Booking</Text>
+                          </Pressable>
+                        </View>
+                      </View>
                     </View>
                   </View>
-                  <Text className="text-xs text-[#6C797D] mt-0.5">Omaha, Nebraska</Text>
-                  <Text className="text-xs text-[#3C494C] font-medium mt-1">
-                    Mar 12 – 16, 2024 · 4 nights
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center justify-between pt-2 border-t border-borderLight/60">
-                  <Pressable
-                    onPress={() =>
-                      handleOpenReceipt({
-                        ref: '#WS-71932',
-                        place: 'Modern Scandinavian Loft',
-                        location: 'Omaha, Nebraska',
-                        dates: 'Mar 12 – 16, 2024',
-                        nights: 4,
-                        rate: 120,
-                        total: 480,
-                      })
-                    }
-                    className="flex-row items-center gap-1"
-                  >
-                    <Ionicons name="receipt-outline" size={12} color="#131B2E" />
-                    <Text className="text-xs font-bold text-textMain">View receipt</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => navigation.navigate('Search')}
-                    className="flex-row items-center gap-1"
-                  >
-                    <Ionicons name="refresh-outline" size={12} color="#4F46E5" />
-                    <Text className="text-xs font-bold text-brand">Rebook stay</Text>
-                  </Pressable>
-                </View>
-              </View>
+                );
+              })}
             </View>
+          )
+        ) : null}
 
-            {/* Past Stay Item 2 */}
-            <View className="bg-white rounded-2xl p-3 border border-borderLight shadow-sm flex-row gap-3">
-              <View className="w-24 h-24 rounded-xl overflow-hidden relative bg-black/10">
-                <Image source={{ uri: TUSCANY_IMG }} className="w-full h-full" resizeMode="cover" />
-                <View className="absolute top-1.5 left-1.5 bg-black/60 px-1.5 py-0.5 rounded-md">
-                  <Text className="text-[9px] font-bold text-white">Completed</Text>
-                </View>
+        {/* TAB 2: COMPLETED TAB CONTENT */}
+        {!loading && activeTab === 'Completed' ? (
+          completedCount === 0 ? (
+            <View className="px-5 pt-8 items-center justify-center py-12">
+              <View className="w-16 h-16 rounded-full bg-brand/10 items-center justify-center mb-4">
+                <Ionicons name="time-outline" size={32} color="#4F46E5" />
+              </View>
+              <Text className="text-lg font-bold text-textMain text-center">
+                No past adventures yet
+              </Text>
+              <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
+                Completed stays and verified trip receipts will appear here after your holiday.
+              </Text>
+              <Pressable
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })}
+                className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
+              >
+                <Text className="text-xs font-bold text-white">Find your next stay</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View className="px-5 pt-6 gap-3.5">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
+                  PAST ADVENTURES ({completedCount})
+                </Text>
               </View>
 
-              <View className="flex-1 justify-between py-0.5">
-                <View>
-                  <View className="flex-row justify-between items-start">
-                    <Text className="flex-1 text-sm font-bold text-textMain" numberOfLines={1}>
-                      Villa di Montepulciano
-                    </Text>
-                    <View className="flex-row items-center gap-0.5 ml-1">
-                      <Ionicons name="star" size={11} color="#F59E0B" />
-                      <Text className="text-xs font-bold text-textMain">4.9</Text>
+              {completedBookings.map((b) => {
+                const place = b.places;
+                const img =
+                  place?.images?.[0] ||
+                  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
+
+                return (
+                  <View
+                    key={b.id}
+                    className="bg-white rounded-2xl p-3 border border-borderLight shadow-sm flex-row gap-3"
+                  >
+                    <View className="w-24 h-24 rounded-xl overflow-hidden relative bg-black/10">
+                      <Image source={{ uri: img }} className="w-full h-full" resizeMode="cover" />
+                      <View className="absolute top-1.5 left-1.5 bg-black/60 px-1.5 py-0.5 rounded-md">
+                        <Text className="text-[9px] font-bold text-white">Completed</Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-1 justify-between py-0.5">
+                      <View>
+                        <View className="flex-row justify-between items-start">
+                          <Text className="flex-1 text-sm font-bold text-textMain" numberOfLines={1}>
+                            {place?.title || 'Stay'}
+                          </Text>
+                          <View className="flex-row items-center gap-0.5 ml-1">
+                            <Ionicons name="star" size={11} color="#F59E0B" />
+                            <Text className="text-xs font-bold text-textMain">
+                              {place?.rating != null ? place.rating.toFixed(1) : '5.0'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text className="text-xs text-[#6C797D] mt-0.5">{place?.location || 'Indonesia'}</Text>
+                        <Text className="text-xs text-[#3C494C] font-medium mt-1">
+                          {b.check_in} – {b.check_out} · {b.nights} nights
+                        </Text>
+                      </View>
+
+                      <View className="flex-row items-center justify-between pt-2 border-t border-borderLight/60">
+                        <Pressable
+                          onPress={() => handleOpenReceipt(b)}
+                          className="flex-row items-center gap-1"
+                        >
+                          <Ionicons name="receipt-outline" size={12} color="#131B2E" />
+                          <Text className="text-xs font-bold text-textMain">View receipt</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => {
+                            if (place) {
+                              navigation.navigate('Detail', { place });
+                            } else {
+                              navigation.navigate('Search');
+                            }
+                          }}
+                          className="flex-row items-center gap-1"
+                        >
+                          <Ionicons name="refresh-outline" size={12} color="#4F46E5" />
+                          <Text className="text-xs font-bold text-brand">Rebook stay</Text>
+                        </Pressable>
+                      </View>
                     </View>
                   </View>
-                  <Text className="text-xs text-[#6C797D] mt-0.5">Tuscany, Italy</Text>
-                  <Text className="text-xs text-[#3C494C] font-medium mt-1">
-                    Jan 04 – 11, 2024 · 7 nights
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center justify-between pt-2 border-t border-borderLight/60">
-                  <Pressable
-                    onPress={() =>
-                      handleOpenReceipt({
-                        ref: '#WS-62180',
-                        place: 'Villa di Montepulciano',
-                        location: 'Tuscany, Italy',
-                        dates: 'Jan 04 – 11, 2024',
-                        nights: 7,
-                        rate: 180,
-                        total: 1260,
-                      })
-                    }
-                    className="flex-row items-center gap-1"
-                  >
-                    <Ionicons name="receipt-outline" size={12} color="#131B2E" />
-                    <Text className="text-xs font-bold text-textMain">View receipt</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => navigation.navigate('Search')}
-                    className="flex-row items-center gap-1"
-                  >
-                    <Ionicons name="refresh-outline" size={12} color="#4F46E5" />
-                    <Text className="text-xs font-bold text-brand">Rebook stay</Text>
-                  </Pressable>
-                </View>
-              </View>
+                );
+              })}
             </View>
-          </View>
+          )
         ) : null}
 
         {/* TAB 3: CANCELLED TAB CONTENT */}
-        {activeTab === 'Cancelled' ? (
+        {!loading && activeTab === 'Cancelled' ? (
           cancelledCount > 0 ? (
             <View className="px-5 pt-6 gap-3.5">
               <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
                 CANCELLED RESERVATIONS ({cancelledCount})
               </Text>
-              {bookings
-                .filter((b) => b.status === 'cancelled')
-                .map((b) => (
-                  <View key={b.id} className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm">
-                    <View className="flex-row justify-between items-start">
-                      <View className="flex-1 pr-2">
-                        <Text className="text-sm font-bold text-textMain">{b.places?.title || 'Stay'}</Text>
-                        <Text className="text-xs text-[#6C797D] mt-0.5">{b.places?.location || 'Indonesia'}</Text>
-                      </View>
-                      <View className="bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-                        <Text className="text-[10px] font-bold text-red-600">Cancelled</Text>
-                      </View>
+              {cancelledBookings.map((b) => (
+                <View key={b.id} className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm">
+                  <View className="flex-row justify-between items-start">
+                    <View className="flex-1 pr-2">
+                      <Text className="text-sm font-bold text-textMain">{b.places?.title || 'Stay'}</Text>
+                      <Text className="text-xs text-[#6C797D] mt-0.5">{b.places?.location || 'Indonesia'}</Text>
                     </View>
-                    <View className="mt-3 pt-3 border-t border-borderLight flex-row justify-between items-center">
-                      <Text className="text-xs text-textMuted">
-                        {b.check_in} – {b.check_out} · ${Number(b.total).toFixed(0)}
-                      </Text>
-                      <Pressable onPress={() => handleOpenReceipt(b)}>
-                        <Text className="text-xs font-bold text-brand">View details</Text>
-                      </Pressable>
+                    <View className="bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                      <Text className="text-[10px] font-bold text-red-600">Cancelled</Text>
                     </View>
                   </View>
-                ))}
+                  <View className="mt-3 pt-3 border-t border-borderLight flex-row justify-between items-center">
+                    <Text className="text-xs text-textMuted">
+                      {b.check_in} – {b.check_out} · ${Number(b.total).toFixed(0)}
+                    </Text>
+                    <Pressable onPress={() => handleOpenReceipt(b)}>
+                      <Text className="text-xs font-bold text-brand">View details</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
             </View>
           ) : (
-            <View className="px-5 pt-6 items-center justify-center py-12">
+            <View className="px-5 pt-8 items-center justify-center py-12">
               <View className="w-16 h-16 rounded-full bg-brand/10 items-center justify-center mb-4">
                 <Ionicons name="checkmark-circle-outline" size={32} color="#4F46E5" />
               </View>
@@ -622,7 +625,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                 You have no cancelled bookings. Free cancellation is always available up to 48 hours prior to check-in per BR05.
               </Text>
               <Pressable
-                onPress={() => navigation.navigate('Search')}
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })}
                 className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
               >
                 <Text className="text-xs font-bold text-white">Explore more stays</Text>
@@ -667,7 +670,9 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
           <View className="px-5 pt-6 pb-4 border-b border-borderLight bg-white flex-row items-center justify-between">
             <View>
               <Text className="text-xl font-bold text-textMain">Check-in & Smart Key</Text>
-              <Text className="text-xs text-textMuted mt-0.5">Balian Treehouse (#WS-84920)</Text>
+              <Text className="text-xs text-textMuted mt-0.5">
+                {activeBookingForModal?.places?.title || 'Stay'} ({activeBookingForModal?.ref_code || ''})
+              </Text>
             </View>
             <Pressable
               onPress={() => setSmartKeyModalVisible(false)}
@@ -685,11 +690,11 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
               </Text>
               <View className="my-4 px-6 py-3 rounded-2xl bg-[#F2F3FF] border border-brand/20">
                 <Text className="text-3xl font-black text-brand tracking-widest">
-                  4 8 2 1 #
+                  {activeBookingForModal?.pin_code || activeBookingForModal?.places?.smart_lock_pin || '4821#'}
                 </Text>
               </View>
               <Text className="text-xs text-[#6C797D] text-center">
-                Valid from 14:00 on May 24 until 12:00 on May 29, 2024
+                Valid from 14:00 on {activeBookingForModal?.check_in || 'check-in day'} until 12:00 on {activeBookingForModal?.check_out || 'check-out day'}
               </Text>
 
               {/* Bluetooth One-Tap Unlock */}
@@ -713,47 +718,20 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
               </Pressable>
             </View>
 
-            {/* Wi-Fi & QR info */}
+            {/* Wi-Fi info */}
             <View className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm mb-4 gap-3">
               <Text className="text-sm font-bold text-textMain">Wi-Fi & Connectivity</Text>
               <View className="flex-row justify-between items-center py-1 border-b border-borderLight/60">
                 <Text className="text-xs text-textMuted">Network (SSID)</Text>
-                <Text className="text-xs font-bold text-textMain">BalianTreehouse_5G</Text>
+                <Text className="text-xs font-bold text-textMain">
+                  {activeBookingForModal?.places?.wifi_ssid || 'WanderStay_Guest_5G'}
+                </Text>
               </View>
               <View className="flex-row justify-between items-center py-1">
                 <Text className="text-xs text-textMuted">Password</Text>
-                <Text className="text-xs font-bold text-brand">jungleparadise</Text>
-              </View>
-            </View>
-
-            {/* 3 Step Check-in Instructions */}
-            <View className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm">
-              <Text className="text-sm font-bold text-textMain mb-3">Self Check-in Steps</Text>
-              <View className="gap-3">
-                <View className="flex-row items-start gap-2.5">
-                  <View className="w-6 h-6 rounded-full bg-brand/10 items-center justify-center mt-0.5">
-                    <Text className="text-xs font-bold text-brand">1</Text>
-                  </View>
-                  <Text className="flex-1 text-xs text-textMain leading-5">
-                    Arrive at Balian Beach and enter via the marked bamboo sanctuary gate.
-                  </Text>
-                </View>
-                <View className="flex-row items-start gap-2.5">
-                  <View className="w-6 h-6 rounded-full bg-brand/10 items-center justify-center mt-0.5">
-                    <Text className="text-xs font-bold text-brand">2</Text>
-                  </View>
-                  <Text className="flex-1 text-xs text-textMain leading-5">
-                    Press <Text className="font-bold">4821#</Text> on the digital keypad or tap the Bluetooth unlock button above.
-                  </Text>
-                </View>
-                <View className="flex-row items-start gap-2.5">
-                  <View className="w-6 h-6 rounded-full bg-brand/10 items-center justify-center mt-0.5">
-                    <Text className="text-xs font-bold text-brand">3</Text>
-                  </View>
-                  <Text className="flex-1 text-xs text-textMain leading-5">
-                    Enjoy your stay! Host Wayan is available anytime via in-app chat.
-                  </Text>
-                </View>
+                <Text className="text-xs font-bold text-brand">
+                  {activeBookingForModal?.places?.wifi_password || 'jungleparadise'}
+                </Text>
               </View>
             </View>
           </ScrollView>
@@ -769,12 +747,9 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
       >
         <View className="flex-1 bg-appBg">
           <View className="px-5 pt-6 pb-4 border-b border-borderLight bg-white flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3">
-              <Image source={{ uri: WAYAN_HOST_IMG }} className="w-10 h-10 rounded-full border border-borderLight" />
-              <View>
-                <Text className="text-base font-bold text-textMain">Wayan Sutama</Text>
-                <Text className="text-xs text-brand font-medium">Balian Treehouse · #WS-84920</Text>
-              </View>
+            <View>
+              <Text className="text-base font-bold text-textMain">Host Message</Text>
+              <Text className="text-xs text-brand font-medium">Direct Chat</Text>
             </View>
             <Pressable
               onPress={() => setChatModalVisible(false)}
@@ -817,7 +792,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
           {/* Chat Input Bar */}
           <View className="px-4 py-3 bg-white border-t border-borderLight flex-row items-center gap-2">
             <TextInput
-              placeholder="Message Wayan..."
+              placeholder="Message host..."
               value={inputMsg}
               onChangeText={setInputMsg}
               className="flex-1 bg-appBg border border-borderLight rounded-full px-4 py-2.5 text-xs text-textMain"
@@ -829,169 +804,6 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
               <Ionicons name="send" size={16} color="#FFF" />
             </Pressable>
           </View>
-        </View>
-      </Modal>
-
-      {/* MODAL 3: Directions & Arrival (UC014) */}
-      <Modal
-        visible={directionsModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setDirectionsModalVisible(false)}
-      >
-        <View className="flex-1 bg-appBg">
-          <View className="px-5 pt-6 pb-4 border-b border-borderLight bg-white flex-row items-center justify-between">
-            <View>
-              <Text className="text-xl font-bold text-textMain">Directions & Arrival</Text>
-              <Text className="text-xs text-textMuted mt-0.5">Balian Beach, Selemadeg Barat, Bali</Text>
-            </View>
-            <Pressable
-              onPress={() => setDirectionsModalVisible(false)}
-              className="w-9 h-9 rounded-full bg-appBg items-center justify-center border border-borderLight"
-            >
-              <Ionicons name="close" size={20} color="#131B2E" />
-            </Pressable>
-          </View>
-
-          <ScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* 3 Arrival Milestones */}
-            <Text className="text-sm font-bold text-textMain mb-3">3 Arrival Milestones</Text>
-            <View className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm mb-4 gap-4">
-              <View className="flex-row items-start gap-3">
-                <View className="w-8 h-8 rounded-full bg-brand/10 items-center justify-center mt-0.5">
-                  <Ionicons name="trail-sign-outline" size={16} color="#4F46E5" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-textMain">Milestone 1: Balian River Suspension Bridge</Text>
-                  <Text className="text-xs text-[#6C797D] mt-0.5 leading-5">
-                    Turn west off Denpasar-Gilimanuk road after Balian market. Cross the bridge.
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-start gap-3">
-                <View className="w-8 h-8 rounded-full bg-brand/10 items-center justify-center mt-0.5">
-                  <Ionicons name="leaf-outline" size={16} color="#4F46E5" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-textMain">Milestone 2: Coconut Grove Stone Pathway</Text>
-                  <Text className="text-xs text-[#6C797D] mt-0.5 leading-5">
-                    Follow the lantern-lit cobblestone path 200m towards the ocean vista.
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-start gap-3">
-                <View className="w-8 h-8 rounded-full bg-brand/10 items-center justify-center mt-0.5">
-                  <Ionicons name="key-outline" size={16} color="#4F46E5" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-textMain">Milestone 3: Bamboo Sanctuary Entrance</Text>
-                  <Text className="text-xs text-[#6C797D] mt-0.5 leading-5">
-                    Look for the WanderStay wooden sign and digital keypad (PIN 4821#).
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Transport Options */}
-            <Text className="text-sm font-bold text-textMain mb-3">Transport Options</Text>
-            <View className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm gap-3">
-              <View className="flex-row justify-between items-center py-1 border-b border-borderLight/60">
-                <Text className="text-xs font-semibold text-textMain">Airport Private Shuttle</Text>
-                <Text className="text-xs font-bold text-brand">$35 (Coordinated with Wayan)</Text>
-              </View>
-              <View className="flex-row justify-between items-center py-1 border-b border-borderLight/60">
-                <Text className="text-xs font-semibold text-textMain">Grab / Gojek Car</Text>
-                <Text className="text-xs text-[#6C797D]">Set pin to "Balian Surf Break"</Text>
-              </View>
-              <View className="flex-row justify-between items-center py-1">
-                <Text className="text-xs font-semibold text-textMain">Free On-Premises Parking</Text>
-                <Text className="text-xs font-bold text-emerald-600">Included free for guests</Text>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* MODAL 4: Trip Receipt (UC011) */}
-      <Modal
-        visible={receiptModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setReceiptModalVisible(false)}
-      >
-        <View className="flex-1 bg-appBg">
-          <View className="px-5 pt-6 pb-4 border-b border-borderLight bg-white flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-textMain">Trip Receipt</Text>
-            <Pressable
-              onPress={() => setReceiptModalVisible(false)}
-              className="w-9 h-9 rounded-full bg-appBg items-center justify-center border border-borderLight"
-            >
-              <Ionicons name="close" size={20} color="#131B2E" />
-            </Pressable>
-          </View>
-
-          <ScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 40 }}>
-            {selectedReceipt ? (
-              <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm">
-                <View className="flex-row justify-between items-center pb-4 border-b border-borderLight">
-                  <View>
-                    <Text className="text-xs text-[#6C797D]">Booking Reference</Text>
-                    <Text className="text-base font-bold text-brand">{selectedReceipt.ref}</Text>
-                  </View>
-                  <View className="bg-emerald-100 px-3 py-1 rounded-full">
-                    <Text className="text-xs font-bold text-emerald-700">PAID IN FULL</Text>
-                  </View>
-                </View>
-
-                <View className="py-4 border-b border-borderLight gap-1">
-                  <Text className="text-base font-bold text-textMain">{selectedReceipt.place}</Text>
-                  <Text className="text-xs text-[#6C797D]">{selectedReceipt.location}</Text>
-                  <Text className="text-xs text-[#3C494C] font-semibold mt-1">
-                    {selectedReceipt.dates} · {selectedReceipt.nights} nights
-                  </Text>
-                </View>
-
-                {/* Itemized Price Breakdown */}
-                <View className="py-4 border-b border-borderLight gap-2.5">
-                  <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
-                    PRICE BREAKDOWN
-                  </Text>
-                  <View className="flex-row justify-between items-center">
-                    <Text className="text-xs text-textMain">
-                      Accommodation (${selectedReceipt.rate} x {selectedReceipt.nights} nights)
-                    </Text>
-                    <Text className="text-xs font-bold text-textMain">
-                      ${selectedReceipt.rate * selectedReceipt.nights}
-                    </Text>
-                  </View>
-                  <View className="flex-row justify-between items-center">
-                    <Text className="text-xs text-textMain">Kayak Rental fee</Text>
-                    <Text className="text-xs font-bold text-textMain">$5.00</Text>
-                  </View>
-                  <View className="flex-row justify-between items-center">
-                    <Text className="text-xs text-textMain">Street Parking fee</Text>
-                    <Text className="text-xs font-bold text-textMain">$5.00</Text>
-                  </View>
-                  <View className="flex-row justify-between items-center pt-2 border-t border-borderLight">
-                    <Text className="text-sm font-bold text-textMain">Total Paid</Text>
-                    <Text className="text-base font-black text-brand">
-                      ${selectedReceipt.total}
-                    </Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  onPress={() => Alert.alert('Receipt Download', 'Official PDF receipt saved to your device.')}
-                  className="mt-5 bg-brand py-3.5 rounded-full items-center justify-center flex-row gap-2 shadow-sm"
-                >
-                  <Ionicons name="download-outline" size={16} color="#FFF" />
-                  <Text className="text-xs font-bold text-white">Download PDF Receipt</Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </ScrollView>
         </View>
       </Modal>
 

@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,8 @@ import MapScreen from '../screens/place/MapScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import BookingsScreen from '../screens/booking/BookingsScreen';
+import ConfirmAndPayScreen from '../screens/booking/ConfirmAndPayScreen';
+import PaymentSuccessScreen from '../screens/booking/PaymentSuccessScreen';
 import TripReceiptScreen from '../screens/booking/TripReceiptScreen';
 import SmartKeyScreen from '../screens/booking/SmartKeyScreen';
 import DirectionsScreen from '../screens/booking/DirectionsScreen';
@@ -29,7 +31,8 @@ import AppButton from '../components/AppButton';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function GuardedScreen({ title, navigation }: { title: string; navigation: any }) {
+function GuardedScreen({ title }: { title: string }) {
+  const navigation = useNavigation<any>();
   return (
     <View className="flex-1 bg-appBg items-center justify-center px-6">
       <Text className="text-2xl font-bold text-textMain text-center">You need to sign in</Text>
@@ -46,36 +49,36 @@ function GuardedScreen({ title, navigation }: { title: string; navigation: any }
   );
 }
 
-function ProfileTab({ navigation }: { navigation: any }) {
+function ProfileTab() {
   const { session } = useAuth();
   if (!session) {
-    return <GuardedScreen title="Profile" navigation={navigation} />;
+    return <GuardedScreen title="Profile" />;
   }
-  return <ProfileScreen navigation={navigation} />;
+  return <ProfileScreen />;
 }
 
-function MyListsTab({ navigation }: { navigation: any }) {
+function MyListsTab() {
   const { session } = useAuth();
   if (!session) {
-    return <GuardedScreen title="Favorites" navigation={navigation} />;
+    return <GuardedScreen title="Favorites" />;
   }
-  return <MyListsScreen navigation={navigation} />;
+  return <MyListsScreen />;
 }
 
-function BookingTab({ navigation }: { navigation: any }) {
+function BookingTab() {
   const { session } = useAuth();
   if (!session) {
-    return <GuardedScreen title="Bookings" navigation={navigation} />;
+    return <GuardedScreen title="Bookings" />;
   }
-  return <BookingsScreen navigation={navigation} />;
+  return <BookingsScreen />;
 }
 
-function InboxTab({ navigation }: { navigation: any }) {
+function InboxTab() {
   const { session } = useAuth();
   if (!session) {
-    return <GuardedScreen title="Inbox" navigation={navigation} />;
+    return <GuardedScreen title="Inbox" />;
   }
-  return <InboxListScreen navigation={navigation} />;
+  return <InboxListScreen />;
 }
 
 function MainTabs() {
@@ -134,38 +137,38 @@ function MainTabs() {
 export default function AppNavigator() {
   const { loading } = useAuth();
 
-  if (loading) {
-    return (
-      <View className="flex-1 bg-appBg items-center justify-center">
-        <ActivityIndicator size="large" color="#4F46E5" />
-      </View>
-    );
-  }
-
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Detail" component={DetailScreen} />
-        <Stack.Screen name="Description" component={DescriptionScreen} />
-        <Stack.Screen name="Facilities" component={FacilitiesScreen} />
-        <Stack.Screen name="Reviews" component={ReviewsScreen} />
-        <Stack.Screen name="Map" component={MapScreen} />
+      {loading ? (
+        <View className="flex-1 bg-appBg items-center justify-center">
+          <ActivityIndicator size="large" color="#4F46E5" />
+        </View>
+      ) : (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="Detail" component={DetailScreen} />
+          <Stack.Screen name="Description" component={DescriptionScreen} />
+          <Stack.Screen name="Facilities" component={FacilitiesScreen} />
+          <Stack.Screen name="Reviews" component={ReviewsScreen} />
+          <Stack.Screen name="Map" component={MapScreen} />
 
-        {/* Extended Stack Screens from Feature Branches */}
-        <Stack.Screen name="Bookings" component={BookingsScreen} />
-        <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
-        <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
-        <Stack.Screen name="Directions" component={DirectionsScreen} />
-        <Stack.Screen name="InboxList" component={InboxListScreen} />
-        <Stack.Screen name="HostChat" component={HostChatScreen} />
-        <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
-        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
-        <Stack.Screen name="Security" component={SecurityScreen} />
-        <Stack.Screen name="PaymentsWallet" component={PaymentsWalletScreen} />
-      </Stack.Navigator>
+          {/* Extended Stack Screens from Feature Branches */}
+          <Stack.Screen name="ConfirmAndPay" component={ConfirmAndPayScreen} />
+          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+          <Stack.Screen name="Bookings" component={BookingsScreen} />
+          <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
+          <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
+          <Stack.Screen name="Directions" component={DirectionsScreen} />
+          <Stack.Screen name="InboxList" component={InboxListScreen} />
+          <Stack.Screen name="HostChat" component={HostChatScreen} />
+          <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
+          <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
+          <Stack.Screen name="Security" component={SecurityScreen} />
+          <Stack.Screen name="PaymentsWallet" component={PaymentsWalletScreen} />
+        </Stack.Navigator>
+      )}
     </NavigationContainer>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { getFavoritePlaces, toggleFavorite } from '../../services/favoritesService';
 import {
@@ -15,7 +16,9 @@ import type { Collection, Place } from '../../types';
 import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
 
-export default function MyListsScreen({ navigation }: { navigation: any }) {
+export default function MyListsScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const hookNavigation = useNavigation<any>();
+  const navigation = propNavigation || hookNavigation;
   const { session } = useAuth();
   const userId = session?.user?.id || '';
   const [favoritePlaces, setFavoritePlaces] = useState<Place[]>([]);

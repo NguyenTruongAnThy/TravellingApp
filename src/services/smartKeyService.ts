@@ -57,40 +57,48 @@ export function isSmartKeyActive(checkInDateStr: string, checkOutDateStr: string
 }
 
 /**
- * Returns Smart Key details for booking (defaults to Balian Treehouse #WS-84920 per Figma specs)
+ * Returns Smart Key details for booking dynamically from database records (BR03, UC013)
  */
 export function getSmartKeyDetails(booking?: any): SmartKeyInfo {
   const checkInDate = booking?.check_in || '2024-05-24';
   const checkOutDate = booking?.check_out || '2024-05-29';
   const active = isSmartKeyActive(checkInDate, checkOutDate);
+  const place = booking?.places;
+
+  const pinCode = booking?.pin_code || place?.smart_lock_pin || '4821#';
+  const wifiSSID = place?.wifi_ssid || 'WanderStay_Guest_5G';
+  const wifiPassword = place?.wifi_password || 'jungleparadise';
+  const hostName = place?.host_name || 'Wayan Sutama';
+  const hostPhone = place?.host_phone || '+62 812 3456 7890';
+  const address = place?.address || place?.location || 'Jl. Pantai Balian, Lalanglinggah, Tabanan, Bali 82162';
 
   return {
-    bookingId: booking?.id || 'booking-balian-01',
+    bookingId: booking?.id || '',
     refCode: booking?.ref_code || '#WS-84920',
-    placeTitle: booking?.places?.title || 'Balian Treehouse',
-    placeLocation: booking?.places?.location || 'Secluded Haven • Bali, Indonesia',
-    category: 'ECO SANCTUARY',
+    placeTitle: place?.title || 'Balian Treehouse Escape',
+    placeLocation: place?.location || 'Bali, Indonesia',
+    category: place?.category || place?.place_type || 'ECO SANCTUARY',
     image:
-      booking?.places?.images?.[0] ||
-      'https://api.builder.io/api/v1/image/assets/TEMP/18942cce73a03811683b39e20f9be405cf5a4bca?width=192',
-    checkInDate: 'Fri, May 24, 2024',
+      place?.images?.[0] ||
+      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80',
+    checkInDate,
     checkInTime: '2:00 PM onwards',
-    checkOutDate: 'Wed, May 29, 2024',
-    checkOutTime: 'Until 11:00 AM',
-    pinCode: '4821#',
+    checkOutDate,
+    checkOutTime: 'Until 12:00 PM',
+    pinCode,
     isPinActive: active,
     activeStatusMessage: active
       ? 'Smart Key is active. Welcome to your stay!'
-      : 'PIN activates automatically at 2:00 PM on May 24.',
+      : `PIN activates automatically at 2:00 PM on ${checkInDate}.`,
     bluetoothSyncReady: true,
-    wifiSSID: 'BalianTreehouse_Guest_5G',
-    wifiPassword: 'paradise_jungle24',
-    hostName: 'Wayan',
+    wifiSSID,
+    wifiPassword,
+    hostName,
     hostAvatar:
       'https://api.builder.io/api/v1/image/assets/TEMP/66ed4209be3963958431159f49510a846430e5bd?width=96',
     hostReplyTime: 'Typically replies in 5m',
-    hostPhone: '+62 812 3456 7890',
-    address: 'Jl. Pantai Balian, Lalanglinggah, Tabanan, Bali 82162',
+    hostPhone,
+    address,
     mapCoordinates: {
       latitude: -8.5028,
       longitude: 115.0275,
@@ -98,33 +106,31 @@ export function getSmartKeyDetails(booking?: any): SmartKeyInfo {
     checkInSteps: [
       {
         step: 1,
-        title: 'Arrive at Balian Beach Driveway',
-        description:
-          'Follow the carved stone markers along Balian Beach Road. Private covered parking is marked Bay #2.',
+        title: 'Arrive at destination driveway',
+        description: `Follow local stone markers towards ${address}. Covered guest parking is available.`,
       },
       {
         step: 2,
-        title: 'Main Bamboo Gate Entry',
-        description:
-          'Enter PIN on the keypad handle or use the Bluetooth unlock trigger above.',
-        pinHighlight: '4821#',
+        title: 'Main Door & Keypad Entry',
+        description: `Enter PIN ${pinCode} on the keypad handle or use the Bluetooth unlock trigger above.`,
+        pinHighlight: pinCode,
       },
       {
         step: 3,
-        title: 'Welcome Hospitality Refreshments',
+        title: 'Welcome Hospitality & Refreshments',
         description:
-          'Leave footwear on the teak deck entry. Chilled coconut water and fresh tropical fruit are waiting in the mini-bar.',
+          'Leave footwear on the entrance deck. Chilled coconut water and fresh tropical fruit are waiting in the mini-bar.',
       },
     ],
     etiquetteRules: [
       {
         id: '1',
-        text: 'Quiet hours begin after 10:00 PM (Jungle acoustics)',
+        text: 'Quiet hours begin after 10:00 PM (Acoustic respect)',
         icon: 'volume-mute-outline',
       },
       {
         id: '2',
-        text: 'Strictly smoke-free interiors & bamboo living decks',
+        text: 'Strictly smoke-free interiors & wooden living decks',
         icon: 'ban-outline',
       },
       {

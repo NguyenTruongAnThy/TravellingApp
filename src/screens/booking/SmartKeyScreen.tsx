@@ -291,7 +291,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
 
             {/* 5 Distinct PIN Blocks */}
             <View className="flex-row items-center gap-2 pb-2">
-              {['4', '8', '2', '1'].map((digit, idx) => (
+              {data.pinCode.replace('#', '').split('').map((digit, idx) => (
                 <View
                   key={idx}
                   className="w-12 h-14 rounded-lg bg-white shadow-xs items-center justify-center border border-borderLight/30"
@@ -466,7 +466,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
                     {s.step === 2 ? (
                       <>
                         Enter PIN{' '}
-                        <Text className="font-bold font-mono text-[#131B2E]">4821#</Text>
+                        <Text className="font-bold font-mono text-[#131B2E]">{data.pinCode}</Text>
                         {' '}on the keypad handle or use the Bluetooth unlock trigger above.
                       </>
                     ) : (
@@ -581,7 +581,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
                 <Ionicons name="qr-code" size={150} color="#131B2E" />
               </View>
               <Text className="text-xs font-mono font-bold text-[#131B2E] mt-3">
-                {data.refCode} • PIN 4821#
+                {data.refCode} • PIN {data.pinCode}
               </Text>
             </View>
 

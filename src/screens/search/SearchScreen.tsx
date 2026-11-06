@@ -17,6 +17,7 @@ import { getFavoritePlaceIds, toggleFavorite } from '../../services/favoritesSer
 import { useAuth } from '../../context/AuthContext';
 import type { Place } from '../../types';
 import { normalizeText } from '../../utils/normalize';
+import { useNavigation } from '@react-navigation/native';
 import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
 
@@ -43,7 +44,9 @@ function FilterSectionTitle({ icon, title }: { icon: any; title: string }) {
 
 const FilterDivider = () => (<View className="mt-6" style={{ height: 1, backgroundColor: '#E6E3F5' }} />);
 
-export default function SearchScreen({ navigation }: { navigation: any }) {
+export default function SearchScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const hookNavigation = useNavigation<any>();
+  const navigation = propNavigation || hookNavigation;
   const { session } = useAuth();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
