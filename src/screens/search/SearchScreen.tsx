@@ -423,8 +423,12 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
                       isFavorite={isFavorite}
                       onToggleFavorite={async () => {
                         if (!session) { navigation.navigate('Login'); return; }
-                        await toggleFavorite(session.user.id, item.id, isFavorite);
-                        setFavoriteIds((prev) => isFavorite ? prev.filter((x) => x !== item.id) : [...prev, item.id]);
+                        try {
+                          await toggleFavorite(session.user.id, item.id, isFavorite);
+                          setFavoriteIds((prev) => isFavorite ? prev.filter((x) => x !== item.id) : [...prev, item.id]);
+                        } catch (err) {
+                          console.warn('Could not toggle favorite:', err);
+                        }
                       }}
                     />
                   </Pressable>

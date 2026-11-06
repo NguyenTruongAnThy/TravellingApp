@@ -27,6 +27,29 @@ export async function signIn(email: string, password: string) {
     password,
   });
   if (error) throw error;
+
+  // Auto-heal: Ensure public.users row exists for this account so foreign keys never fail
+  if (data?.user) {
+    try {
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('users').upsert({
+          id: data.user.id,
+          email: data.user.email || email,
+          name: data.user.user_metadata?.name || email.split('@')[0],
+          role: 'user',
+        });
+      }
+    } catch {
+      // Ignore if cannot insert
+    }
+  }
+
   return data;
 }
 

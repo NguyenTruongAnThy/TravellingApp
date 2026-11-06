@@ -129,8 +129,12 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
   const toggleFav = async () => {
     if (!session) { navigation.navigate('Login'); return; }
-    await toggleFavorite(session.user.id, place.id, isFavorite);
-    setIsFavorite(!isFavorite);
+    try {
+      await toggleFavorite(session.user.id, place.id, isFavorite);
+      setIsFavorite(!isFavorite);
+    } catch (err) {
+      console.warn('Could not toggle favorite:', err);
+    }
   };
 
   const openSaveModal = async () => {
