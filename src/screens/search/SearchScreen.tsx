@@ -181,27 +181,6 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
   useEffect(() => { setPage(1); }, [debouncedQuery, placeType, minPrice, maxPrice, guests, minRooms, minBeds, selectedAmenities, checkIn, checkOut]);
   const goToPage = (n: number) => { setPage(Math.min(Math.max(1, n), totalPages)); listRef.current?.scrollToOffset({ offset: 0, animated: false }); };
 
-  if (loading) {
-    return (
-      <View className="flex-1 bg-appBg items-center justify-center px-6">
-        <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="mt-3 text-sm text-textMuted">Loading stays...</Text>
-      </View>
-    );
-  }
-
-  if (errorMessage) {
-    return (
-      <View className="flex-1 bg-appBg items-center justify-center px-6">
-        <Text className="text-lg font-bold text-textMain text-center">Could not load data</Text>
-        <Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text>
-        <View className="mt-6 w-full">
-          <AppButton title="Try again" onPress={() => loadPlaces()} />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View className="flex-1 bg-appBg">
       {/* Figma index: header tim DAI, gradient #4F46E5 -> #7C5CFC, gom Top Brand Row + vien thuoc tim kiem. Can chay: npx expo install expo-linear-gradient */}
@@ -396,72 +375,89 @@ export default function SearchScreen({ navigation }: { navigation: any }) {
           </Pressable>
         </Pressable>
       </Modal>
-      <Text className="px-5 pb-2 text-sm text-textMuted">{filteredPlaces.length} matching stays</Text>
-      {filteredPlaces.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-lg font-bold text-textMain text-center">No places found</Text>
-          <Text className="mt-2 text-sm text-textMuted text-center">
-            Try another keyword, pick another category, or loosen the filters.
-          </Text>
-          <View className="mt-6 w-full">
-            <AppButton
-              title="Clear search and filters"
-              onPress={() => {
-                setQuery('');
-                setPlaceType('All');
-                clearFilters();
-              }}
-            />
+      {loading ? (
+        <View className="flex-1 items-center justify-center px-6 py-16">
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text className="mt-3 text-sm text-textMuted">Loading stays...</Text>
+        </View>
+      ) : errorMessage ? (
+        <View className="flex-1 items-center justify-center px-6 py-16">
+          <Text className="text-lg font-bold text-textMain text-center">Could not load data</Text>
+          <Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text>
+          <View className="mt-6 w-full max-w-xs">
+            <AppButton title="Try again" onPress={() => loadPlaces()} />
           </View>
         </View>
       ) : (
-        <FlatList
-          ref={listRef}
-          style={{ flex: 1 }}
-          data={pagePlaces}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => {
-            const isFavorite = favoriteIds.includes(item.id);
-            return (
-              <Pressable onPress={() => navigation.navigate('Detail', { placeId: item.id })}>
-                <PlaceCard
-                  place={item}
-                  isFavorite={isFavorite}
-                  onToggleFavorite={async () => {
-                    if (!session) { navigation.navigate('Login'); return; }
-                    await toggleFavorite(session.user.id, item.id, isFavorite);
-                    setFavoriteIds((prev) => isFavorite ? prev.filter((x) => x !== item.id) : [...prev, item.id]);
+        <>
+          <Text className="px-5 pb-2 text-sm text-textMuted">{filteredPlaces.length} matching stays</Text>
+          {filteredPlaces.length === 0 ? (
+            <View className="flex-1 items-center justify-center px-6">
+              <Text className="text-lg font-bold text-textMain text-center">No places found</Text>
+              <Text className="mt-2 text-sm text-textMuted text-center">
+                Try another keyword, pick another category, or loosen the filters.
+              </Text>
+              <View className="mt-6 w-full">
+                <AppButton
+                  title="Clear search and filters"
+                  onPress={() => {
+                    setQuery('');
+                    setPlaceType('All');
+                    clearFilters();
                   }}
                 />
-              </Pressable>
-            );
-          }}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => loadPlaces(true)} colors={['#4F46E5']} />
-          }
-          ListFooterComponent={
-            <View>
-              <View className="pt-3 pb-2 flex-row items-center justify-between">
-                <Pressable className={`px-3 py-2 rounded-full border ${safePage <= 1 ? 'border-borderLight' : 'border-brand'}`} disabled={safePage <= 1} onPress={() => goToPage(safePage - 1)}>
-                  <Text className={`text-sm font-bold ${safePage <= 1 ? 'text-textMuted' : 'text-brand'}`}>‹ Prev</Text>
-                </Pressable>
-                <View className="flex-row items-center">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                    <Pressable key={n} className={`w-9 h-9 mx-1 rounded-full items-center justify-center ${n === safePage ? 'bg-brand' : 'bg-white border border-borderLight'}`} onPress={() => goToPage(n)}>
-                      <Text className={`text-sm font-bold ${n === safePage ? 'text-white' : 'text-textMain'}`}>{n}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Pressable className={`px-3 py-2 rounded-full border ${safePage >= totalPages ? 'border-borderLight' : 'border-brand'}`} disabled={safePage >= totalPages} onPress={() => goToPage(safePage + 1)}>
-                  <Text className={`text-sm font-bold ${safePage >= totalPages ? 'text-textMuted' : 'text-brand'}`}>Next ›</Text>
-                </Pressable>
               </View>
-              <Text className="pb-2 text-center text-xs text-textMuted">Page {safePage} of {totalPages} • {filteredPlaces.length} matching stays</Text>
             </View>
-          }
-        />
+          ) : (
+            <FlatList
+              ref={listRef}
+              style={{ flex: 1 }}
+              data={pagePlaces}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const isFavorite = favoriteIds.includes(item.id);
+                return (
+                  <Pressable onPress={() => navigation.navigate('Detail', { placeId: item.id })}>
+                    <PlaceCard
+                      place={item}
+                      isFavorite={isFavorite}
+                      onToggleFavorite={async () => {
+                        if (!session) { navigation.navigate('Login'); return; }
+                        await toggleFavorite(session.user.id, item.id, isFavorite);
+                        setFavoriteIds((prev) => isFavorite ? prev.filter((x) => x !== item.id) : [...prev, item.id]);
+                      }}
+                    />
+                  </Pressable>
+                );
+              }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={() => loadPlaces(true)} colors={['#4F46E5']} />
+              }
+              ListFooterComponent={
+                <View>
+                  <View className="pt-3 pb-2 flex-row items-center justify-between">
+                    <Pressable className={`px-3 py-2 rounded-full border ${safePage <= 1 ? 'border-borderLight' : 'border-brand'}`} disabled={safePage <= 1} onPress={() => goToPage(safePage - 1)}>
+                      <Text className={`text-sm font-bold ${safePage <= 1 ? 'text-textMuted' : 'text-brand'}`}>‹ Prev</Text>
+                    </Pressable>
+                    <View className="flex-row items-center">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                        <Pressable key={n} className={`w-9 h-9 mx-1 rounded-full items-center justify-center ${n === safePage ? 'bg-brand' : 'bg-white border border-borderLight'}`} onPress={() => goToPage(n)}>
+                          <Text className={`text-sm font-bold ${n === safePage ? 'text-white' : 'text-textMain'}`}>{n}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <Pressable className={`px-3 py-2 rounded-full border ${safePage >= totalPages ? 'border-borderLight' : 'border-brand'}`} disabled={safePage >= totalPages} onPress={() => goToPage(safePage + 1)}>
+                      <Text className={`text-sm font-bold ${safePage >= totalPages ? 'text-textMuted' : 'text-brand'}`}>Next ›</Text>
+                    </Pressable>
+                  </View>
+                  <Text className="pb-2 text-center text-xs text-textMuted">Page {safePage} of {totalPages} • {filteredPlaces.length} matching stays</Text>
+                </View>
+              }
+            />
+          )}
+        </>
       )}
     </View>
   );
