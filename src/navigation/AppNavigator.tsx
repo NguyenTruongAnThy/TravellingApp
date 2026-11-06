@@ -19,6 +19,7 @@ import TripReceiptScreen from '../screens/booking/TripReceiptScreen';
 import SmartKeyScreen from '../screens/booking/SmartKeyScreen';
 import DirectionsScreen from '../screens/booking/DirectionsScreen';
 import InboxListScreen from '../screens/inbox/InboxListScreen';
+import HostChatScreen from '../screens/inbox/HostChatScreen';
 import TravelAssistantScreen from '../screens/inbox/TravelAssistantScreen';
 import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
 import SecurityScreen from '../screens/profile/SecurityScreen';
@@ -96,40 +97,36 @@ function MainTabs() {
       />
       <Tab.Screen
         name="My lists"
+        component={MyListsTab}
         options={{
           tabBarLabel: 'Favorites',
           tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
         }}
-      >
-        {(props) => <MyListsTab {...props} />}
-      </Tab.Screen>
+      />
       <Tab.Screen
         name="Booking"
+        component={BookingTab}
         options={{
           tabBarLabel: 'Bookings',
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
-      >
-        {(props) => <BookingTab {...props} />}
-      </Tab.Screen>
+      />
       <Tab.Screen
         name="Inbox"
+        component={InboxTab}
         options={{
           tabBarLabel: 'Inbox',
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline" size={size} color={color} />,
         }}
-      >
-        {(props) => <InboxTab {...props} />}
-      </Tab.Screen>
+      />
       <Tab.Screen
         name="Profile"
+        component={ProfileTab}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
-      >
-        {(props) => <ProfileTab {...props} />}
-      </Tab.Screen>
+      />
     </Tab.Navigator>
   );
 }
@@ -163,6 +160,7 @@ export default function AppNavigator() {
         <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
         <Stack.Screen name="Directions" component={DirectionsScreen} />
         <Stack.Screen name="InboxList" component={InboxListScreen} />
+        <Stack.Screen name="HostChat" component={HostChatScreen} />
         <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="Security" component={SecurityScreen} />

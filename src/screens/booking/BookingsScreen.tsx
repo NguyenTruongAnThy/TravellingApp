@@ -82,6 +82,20 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
       : 3; // Default 3 completed from Figma design
   const cancelledCount = bookings.filter((b) => b.status === 'cancelled').length;
 
+  const activeBooking = bookings.find((b) => b.status === 'booked') || bookings[0];
+  const activePlaceTitle = activeBooking?.places?.title || 'Balian Treehouse';
+  const activePlaceLocation = activeBooking?.places?.location || 'Bali, Indonesia';
+  const activeRefCode = activeBooking?.ref_code || '#WS-84920';
+  const activeDatesText =
+    activeBooking?.check_in && activeBooking?.check_out
+      ? `${activeBooking.check_in} – ${activeBooking.check_out}`
+      : 'May 24 – 29, 2024';
+  const activeNightsGuestsText = activeBooking
+    ? `${activeBooking.nights || 5} nights · ${(activeBooking.guests_adults || 1) + (activeBooking.guests_children || 0)} guests`
+    : '5 nights · 2 guests';
+  const activeTotalText = activeBooking ? `$${Number(activeBooking.total).toFixed(0)}` : '$450';
+  const activeHeroImage = activeBooking?.places?.images?.[0] || BALIAN_HERO_IMG;
+
   const handleSendMessage = () => {
     if (!inputMsg.trim()) return;
     setMessages((prev) => [
@@ -104,6 +118,38 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
       setSelectedReceipt(item);
       setReceiptModalVisible(true);
     }
+  };
+
+  const handleCancelBooking = (bookingId?: string) => {
+    const idToCancel = bookingId || activeBooking?.id;
+    if (!idToCancel) {
+      Alert.alert('Cancel Reservation', 'This is a demo preview reservation and cannot be cancelled.');
+      return;
+    }
+    Alert.alert(
+      'Cancel Reservation',
+      'Are you sure you want to cancel this booking? Free 100% refund is available if cancelled at least 48 hours prior to check-in (BR05).',
+      [
+        { text: 'Keep Booking', style: 'cancel' },
+        {
+          text: 'Confirm Cancellation',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await cancelBooking(idToCancel, 'Cancelled by guest');
+              if (res.success) {
+                Alert.alert('Cancelled', 'Your reservation has been successfully cancelled.');
+                loadBookings();
+              } else {
+                Alert.alert('Error', 'Could not cancel reservation. Please try again.');
+              }
+            } catch {
+              Alert.alert('Error', 'Could not cancel reservation. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -253,7 +299,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
               {/* Place Hero Image */}
               <View className="h-44 rounded-2xl overflow-hidden relative justify-between p-3 bg-black/10">
                 <Image
-                  source={{ uri: BALIAN_HERO_IMG }}
+                  source={{ uri: activeHeroImage }}
                   className="absolute inset-0 w-full h-full"
                   resizeMode="cover"
                 />
@@ -275,11 +321,11 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                     </Text>
                   </View>
                   <Text className="text-xl font-bold text-white tracking-tight">
-                    Balian Treehouse
+                    {activePlaceTitle}
                   </Text>
                   <View className="flex-row items-center gap-1">
                     <Ionicons name="location-sharp" size={12} color="#E2E7FF" />
-                    <Text className="text-xs text-[#E2E7FF]">Bali, Indonesia</Text>
+                    <Text className="text-xs text-[#E2E7FF]">{activePlaceLocation}</Text>
                   </View>
                 </View>
               </View>
@@ -293,9 +339,9 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                     <Text className="text-xs text-[#6C797D]">Dates</Text>
                   </View>
                   <Text className="text-sm font-bold text-textMain mt-1">
-                    May 24 – 29, 2024
+                    {activeDatesText}
                   </Text>
-                  <Text className="text-xs text-[#6C797D] mt-0.5">5 nights · 2 guests</Text>
+                  <Text className="text-xs text-[#6C797D] mt-0.5">{activeNightsGuestsText}</Text>
                 </View>
 
                 {/* Col 2: Booking Reference */}
@@ -304,9 +350,9 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                     <Ionicons name="receipt-outline" size={13} color="#6C797D" />
                     <Text className="text-xs text-[#6C797D]">Booking Reference</Text>
                   </View>
-                  <Text className="text-sm font-bold text-brand mt-1">#WS-84920</Text>
+                  <Text className="text-sm font-bold text-brand mt-1">{activeRefCode}</Text>
                   <Text className="text-xs font-bold text-textMain mt-0.5">
-                    $450 <Text className="text-brand font-bold">(Paid)</Text>
+                    {activeTotalText} <Text className="text-brand font-bold">(Paid)</Text>
                   </Text>
                 </View>
               </View>
@@ -336,7 +382,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                   accessibilityLabel="View Details and Check-in"
                   onPress={() => {
                     if (navigation?.navigate) {
-                      navigation.navigate('SmartKey', { booking: bookings[0] });
+                      navigation.navigate('SmartKey', { booking: activeBooking });
                     } else {
                       setSmartKeyModalVisible(true);
                     }
@@ -352,7 +398,18 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                 {/* Secondary 2-Button Row */}
                 <View className="flex-row gap-2.5">
                   <Pressable
-                    onPress={() => setChatModalVisible(true)}
+                    onPress={() => {
+                      if (navigation?.navigate) {
+                        navigation.navigate('HostChat', {
+                          hostName: 'Wayan Sutama',
+                          bookingRef: activeRefCode,
+                          propertyTitle: activePlaceTitle,
+                          booking: activeBooking,
+                        });
+                      } else {
+                        setChatModalVisible(true);
+                      }
+                    }}
                     className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
                   >
                     <Ionicons name="chatbubble-ellipses-outline" size={16} color="#131B2E" />
@@ -362,7 +419,7 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                   <Pressable
                     onPress={() => {
                       if (navigation?.navigate) {
-                        navigation.navigate('Directions', { booking: bookings[0] });
+                        navigation.navigate('Directions', { booking: activeBooking });
                       } else {
                         setDirectionsModalVisible(true);
                       }
@@ -371,6 +428,24 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
                   >
                     <Ionicons name="navigate-outline" size={16} color="#131B2E" />
                     <Text className="text-xs font-bold text-textMain">Directions</Text>
+                  </Pressable>
+                </View>
+
+                {/* Quick actions row: View Receipt & Cancel */}
+                <View className="flex-row justify-between items-center pt-2 px-1">
+                  <Pressable
+                    onPress={() => handleOpenReceipt(activeBooking)}
+                    className="flex-row items-center gap-1 py-1"
+                  >
+                    <Ionicons name="receipt-outline" size={14} color="#4F46E5" />
+                    <Text className="text-xs font-bold text-brand">View Receipt</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleCancelBooking()}
+                    className="flex-row items-center gap-1 py-1"
+                  >
+                    <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
+                    <Text className="text-xs font-bold text-red-500">Cancel Booking</Text>
                   </Pressable>
                 </View>
               </View>
@@ -506,23 +581,54 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
 
         {/* TAB 3: CANCELLED TAB CONTENT */}
         {activeTab === 'Cancelled' ? (
-          <View className="px-5 pt-6 items-center justify-center py-12">
-            <View className="w-16 h-16 rounded-full bg-brand/10 items-center justify-center mb-4">
-              <Ionicons name="checkmark-circle-outline" size={32} color="#4F46E5" />
+          cancelledCount > 0 ? (
+            <View className="px-5 pt-6 gap-3.5">
+              <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
+                CANCELLED RESERVATIONS ({cancelledCount})
+              </Text>
+              {bookings
+                .filter((b) => b.status === 'cancelled')
+                .map((b) => (
+                  <View key={b.id} className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm">
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 pr-2">
+                        <Text className="text-sm font-bold text-textMain">{b.places?.title || 'Stay'}</Text>
+                        <Text className="text-xs text-[#6C797D] mt-0.5">{b.places?.location || 'Indonesia'}</Text>
+                      </View>
+                      <View className="bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                        <Text className="text-[10px] font-bold text-red-600">Cancelled</Text>
+                      </View>
+                    </View>
+                    <View className="mt-3 pt-3 border-t border-borderLight flex-row justify-between items-center">
+                      <Text className="text-xs text-textMuted">
+                        {b.check_in} – {b.check_out} · ${Number(b.total).toFixed(0)}
+                      </Text>
+                      <Pressable onPress={() => handleOpenReceipt(b)}>
+                        <Text className="text-xs font-bold text-brand">View details</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
             </View>
-            <Text className="text-lg font-bold text-textMain text-center">
-              No cancelled reservations
-            </Text>
-            <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
-              You have no cancelled bookings. Free cancellation is always available up to 48 hours prior to check-in per BR05.
-            </Text>
-            <Pressable
-              onPress={() => navigation.navigate('Search')}
-              className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
-            >
-              <Text className="text-xs font-bold text-white">Explore more stays</Text>
-            </Pressable>
-          </View>
+          ) : (
+            <View className="px-5 pt-6 items-center justify-center py-12">
+              <View className="w-16 h-16 rounded-full bg-brand/10 items-center justify-center mb-4">
+                <Ionicons name="checkmark-circle-outline" size={32} color="#4F46E5" />
+              </View>
+              <Text className="text-lg font-bold text-textMain text-center">
+                No cancelled reservations
+              </Text>
+              <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
+                You have no cancelled bookings. Free cancellation is always available up to 48 hours prior to check-in per BR05.
+              </Text>
+              <Pressable
+                onPress={() => navigation.navigate('Search')}
+                className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
+              >
+                <Text className="text-xs font-bold text-white">Explore more stays</Text>
+              </Pressable>
+            </View>
+          )
         ) : null}
 
         {/* Need Assistance? Support Card */}
@@ -934,7 +1040,14 @@ export default function BookingsScreen({ navigation }: { navigation: any }) {
             </View>
 
             <Pressable
-              onPress={() => Alert.alert('AI Assistant', 'WanderStay 24/7 Travel Assistant connected.')}
+              onPress={() => {
+                setHelpModalVisible(false);
+                if (navigation?.navigate) {
+                  navigation.navigate('TravelAssistant');
+                } else {
+                  Alert.alert('AI Assistant', 'WanderStay 24/7 Travel Assistant connected.');
+                }
+              }}
               className="bg-brand py-3.5 rounded-full items-center justify-center flex-row gap-2"
             >
               <Ionicons name="chatbubbles-outline" size={16} color="#FFF" />
