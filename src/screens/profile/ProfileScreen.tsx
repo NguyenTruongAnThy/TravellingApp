@@ -5,7 +5,7 @@ import { getProfile, getProfileCounts, saveProfile, type ProfileCounts } from '.
 import AppButton from '../../components/AppButton';
 import AppInput from '../../components/AppInput';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: { navigation?: any } = {}) {
   const { session, signOut } = useAuth();
   const userId = session?.user?.id || '';
   const sessionEmail = session?.user?.email || '';
@@ -177,16 +177,32 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* Chi Personal Information la that (mo form sua o tren). Cac dong con lai chi hien thi, khong phai tinh nang that o MVP, khong bam duoc */}
+      {/* Menu Settings */}
       <View className="mt-6 rounded-3xl bg-white border border-borderLight px-5">
-        <Pressable className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => setIsEditing(true)}>
+        <Pressable
+          className="flex-row items-center justify-between py-4"
+          style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}
+          onPress={() => (navigation?.navigate ? navigation.navigate('PersonalInfo') : setIsEditing(true))}
+        >
           <Text className="text-base text-textMain">Personal Information</Text>
           <Text className="text-base text-textMuted">›</Text>
         </Pressable>
-        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+        <Pressable
+          className="flex-row items-center justify-between py-4"
+          style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}
+          onPress={() => navigation?.navigate && navigation.navigate('Security')}
+        >
           <Text className="text-base text-textMain">Login & Security</Text>
-          <Text className="text-sm text-textMuted">Email is locked</Text>
-        </View>
+          <Text className="text-base text-textMuted">›</Text>
+        </Pressable>
+        <Pressable
+          className="flex-row items-center justify-between py-4"
+          style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}
+          onPress={() => navigation?.navigate && navigation.navigate('PaymentsWallet')}
+        >
+          <Text className="text-base text-textMain">Payments & Payouts</Text>
+          <Text className="text-base text-textMuted">›</Text>
+        </Pressable>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
           <Text className="text-base text-textMain">Currency & Language</Text>
           <Text className="text-sm text-textMuted">USD ($) • English</Text>
@@ -199,10 +215,14 @@ export default function ProfileScreen() {
           <Text className="text-base text-textMain">Dark Appearance</Text>
           <Text className="text-sm text-textMuted">OFF</Text>
         </View>
-        <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
+        <Pressable
+          className="flex-row items-center justify-between py-4"
+          style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}
+          onPress={() => navigation?.navigate && navigation.navigate('TravelAssistant')}
+        >
           <Text className="text-base text-textMain">Help Center & Safety</Text>
           <Text className="text-base text-textMuted">›</Text>
-        </View>
+        </Pressable>
         <View className="flex-row items-center justify-between py-4">
           <Text className="text-base text-textMain">Terms & Privacy</Text>
           <Text className="text-base text-textMuted">›</Text>

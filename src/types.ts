@@ -40,3 +40,28 @@ export interface Review {
   created_at?: string;
   users?: { name?: string | null } | null;
 }
+
+
+export interface Booking {
+  id: string;
+  ref_code: string;
+  user_id?: string;
+  place_id: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  guests_adults?: number;
+  guests_children?: number;
+  price_per_night: number;
+  kayak_fee?: number;
+  parking_fee?: number;
+  total: number;
+  payment_method?: 'pay_in_full' | 'pay_a_part_now';
+  deposit_amount?: number | null;
+  payment_status?: string;
+  status: 'booked' | 'cancelled' | 'completed';
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  created_at?: string;
+  places?: Place | null;
+}

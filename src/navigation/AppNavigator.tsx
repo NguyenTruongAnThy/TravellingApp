@@ -14,36 +14,21 @@ import ReviewsScreen from '../screens/place/ReviewsScreen';
 import MapScreen from '../screens/place/MapScreen';
 import MyListsScreen from '../screens/favorites/MyListsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import BookingsScreen from '../screens/booking/BookingsScreen';
+import TripReceiptScreen from '../screens/booking/TripReceiptScreen';
+import SmartKeyScreen from '../screens/booking/SmartKeyScreen';
+import DirectionsScreen from '../screens/booking/DirectionsScreen';
+import InboxListScreen from '../screens/inbox/InboxListScreen';
+import TravelAssistantScreen from '../screens/inbox/TravelAssistantScreen';
+import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
+import SecurityScreen from '../screens/profile/SecurityScreen';
+import PaymentsWalletScreen from '../screens/profile/PaymentsWalletScreen';
 import AppButton from '../components/AppButton';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function PlaceholderScreen({ title }: { title: string }) {
-  const { signOut } = useAuth();
-  return (
-    <View className="flex-1 bg-appBg items-center justify-center px-6">
-      <Text className="text-2xl font-bold text-textMain">{title}</Text>
-      <Text className="mt-2 text-base text-textMuted text-center">
-        This screen will be replaced with the real screen in a later step.
-      </Text>
-      {title === 'Profile' ? (
-        <Pressable
-          className="mt-8 rounded-full bg-brand py-3 px-8"
-          onPress={() => signOut()}
-        >
-          <Text className="text-base font-bold text-white">Log out</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
 function GuardedScreen({ title, navigation }: { title: string; navigation: any }) {
-  const { session } = useAuth();
-  if (session) {
-    return <PlaceholderScreen title={title} />;
-  }
   return (
     <View className="flex-1 bg-appBg items-center justify-center px-6">
       <Text className="text-2xl font-bold text-textMain text-center">You need to sign in</Text>
@@ -65,7 +50,7 @@ function ProfileTab({ navigation }: { navigation: any }) {
   if (!session) {
     return <GuardedScreen title="Profile" navigation={navigation} />;
   }
-  return <ProfileScreen />;
+  return <ProfileScreen navigation={navigation} />;
 }
 
 function MyListsTab({ navigation }: { navigation: any }) {
@@ -74,6 +59,22 @@ function MyListsTab({ navigation }: { navigation: any }) {
     return <GuardedScreen title="Favorites" navigation={navigation} />;
   }
   return <MyListsScreen navigation={navigation} />;
+}
+
+function BookingTab({ navigation }: { navigation: any }) {
+  const { session } = useAuth();
+  if (!session) {
+    return <GuardedScreen title="Bookings" navigation={navigation} />;
+  }
+  return <BookingsScreen navigation={navigation} />;
+}
+
+function InboxTab({ navigation }: { navigation: any }) {
+  const { session } = useAuth();
+  if (!session) {
+    return <GuardedScreen title="Inbox" navigation={navigation} />;
+  }
+  return <InboxListScreen navigation={navigation} />;
 }
 
 function MainTabs() {
@@ -109,7 +110,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       >
-        {(props) => <GuardedScreen title="Bookings" {...props} />}
+        {(props) => <BookingTab {...props} />}
       </Tab.Screen>
       <Tab.Screen
         name="Inbox"
@@ -118,7 +119,7 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline" size={size} color={color} />,
         }}
       >
-        {(props) => <GuardedScreen title="Inbox" {...props} />}
+        {(props) => <InboxTab {...props} />}
       </Tab.Screen>
       <Tab.Screen
         name="Profile"
@@ -155,6 +156,17 @@ export default function AppNavigator() {
         <Stack.Screen name="Facilities" component={FacilitiesScreen} />
         <Stack.Screen name="Reviews" component={ReviewsScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
+
+        {/* Extended Stack Screens from Feature Branches */}
+        <Stack.Screen name="Bookings" component={BookingsScreen} />
+        <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
+        <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
+        <Stack.Screen name="Directions" component={DirectionsScreen} />
+        <Stack.Screen name="InboxList" component={InboxListScreen} />
+        <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
+        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
+        <Stack.Screen name="Security" component={SecurityScreen} />
+        <Stack.Screen name="PaymentsWallet" component={PaymentsWalletScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
