@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -7,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getBookedDateRanges } from '../services/bookingsService';
 
 interface StayDatePickerModalProps {
   visible: boolean;
@@ -15,6 +17,7 @@ interface StayDatePickerModalProps {
   initialCheckOut: string; // 'YYYY-MM-DD'
   onApply: (checkIn: string, checkOut: string, nights: number) => void;
   minNights?: number;
+  placeId?: string;
 }
 
 const MONTH_NAMES = [
@@ -75,6 +78,7 @@ export default function StayDatePickerModal({
   initialCheckOut,
   onApply,
   minNights = 1,
+  placeId,
 }: StayDatePickerModalProps) {
   const today = useMemo(() => {
     const d = new Date();
@@ -85,6 +89,16 @@ export default function StayDatePickerModal({
 
   const [tempCheckIn, setTempCheckIn] = useState<string>(initialCheckIn);
   const [tempCheckOut, setTempCheckOut] = useState<string>(initialCheckOut);
+  const [bookedRanges, setBookedRanges] = useState<{ check_in: string; check_out: string }[]>([]);
+
+  // Fetch booked ranges for this place when modal opens
+  useEffect(() => {
+    if (visible && placeId) {
+      getBookedDateRanges(placeId).then((ranges) => {
+        setBookedRanges(ranges || []);
+      });
+    }
+  }, [visible, placeId]);
 
   // Calendar month view
   const [calYear, setCalYear] = useState<number>(() => {
@@ -135,6 +149,15 @@ export default function StayDatePickerModal({
     }
   }, [tempCheckIn, tempCheckOut]);
 
+  // Check if chosen range overlaps existing confirmed bookings
+  const rangeConflict = useMemo(() => {
+    if (!tempCheckIn || !tempCheckOut) return null;
+    const conflicting = bookedRanges.find(
+      (r) => r.check_in < tempCheckOut && r.check_out > tempCheckIn
+    );
+    return conflicting || null;
+  }, [tempCheckIn, tempCheckOut, bookedRanges]);
+
   // Month navigation boundary
   const isPastMonth = useMemo(() => {
     const curYear = today.getFullYear();
@@ -172,6 +195,16 @@ export default function StayDatePickerModal({
 
     // Cannot pick past dates
     if (dateStr < todayStr) return;
+
+    // Check if tapped day is already booked by another guest
+    const isBooked = bookedRanges.some((r) => dateStr >= r.check_in && dateStr < r.check_out);
+    if (isBooked) {
+      Alert.alert(
+        'Ngày đã có người đặt! ⚠️',
+        `Ngày ${formatDisplayDate(dateStr)} đã có khách đặt chỗ này. Vui lòng chọn ngày còn trống khác.`
+      );
+      return;
+    }
 
     if (!tempCheckIn || (tempCheckIn && tempCheckOut)) {
       // Starting a new selection
@@ -232,7 +265,12 @@ export default function StayDatePickerModal({
     }
   };
 
-  const canApply = Boolean(tempCheckIn && tempCheckOut && nights >= minNights);
+  const canApply = Boolean(
+    tempCheckIn &&
+    tempCheckOut &&
+    nights >= minNights &&
+    !rangeConflict
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -457,6 +495,9 @@ export default function StayDatePickerModal({
                   const isInRange = Boolean(
                     tempCheckIn && tempCheckOut && dateStr > tempCheckIn && dateStr < tempCheckOut
                   );
+                  const isBooked = bookedRanges.some(
+                    (r) => dateStr >= r.check_in && dateStr < r.check_out
+                  );
 
                   let cellBg = 'transparent';
                   let textColor = '#131B2E';
@@ -470,6 +511,10 @@ export default function StayDatePickerModal({
                     cellBg = '#EEF2FF';
                     textColor = '#4F46E5';
                     fontWeight = '500';
+                  } else if (isBooked) {
+                    cellBg = '#FEE2E2';
+                    textColor = '#EF4444';
+                    fontWeight = 'bold';
                   } else if (isPast) {
                     textColor = '#CBD5E1';
                   }
@@ -515,6 +560,11 @@ export default function StayDatePickerModal({
                             Trả
                           </Text>
                         )}
+                        {isBooked && !isStart && !isEnd && (
+                          <Text style={{ color: '#EF4444', fontSize: 7, fontWeight: '700' }}>
+                            Kín
+                          </Text>
+                        )}
                       </Pressable>
                     </View>
                   );
@@ -523,14 +573,34 @@ export default function StayDatePickerModal({
             </View>
 
             {/* Helper Guideline / Validation Feedback */}
-            <View className="bg-white rounded-xl p-3 border border-borderLight flex-row items-center gap-2 mb-4">
+            <View
+              className={`rounded-xl p-3 border flex-row items-center gap-2 mb-4 ${
+                rangeConflict
+                  ? 'bg-red-50 border-red-200'
+                  : canApply
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : 'bg-white border-borderLight'
+              }`}
+            >
               <Ionicons
-                name={canApply ? 'checkmark-circle' : 'information-circle'}
+                name={
+                  rangeConflict
+                    ? 'alert-circle'
+                    : canApply
+                    ? 'checkmark-circle'
+                    : 'information-circle'
+                }
                 size={18}
-                color={canApply ? '#059669' : '#F59E0B'}
+                color={rangeConflict ? '#DC2626' : canApply ? '#059669' : '#F59E0B'}
               />
-              <Text className="flex-1 text-xs text-textMuted leading-4">
-                {!tempCheckIn
+              <Text
+                className={`flex-1 text-xs leading-4 ${
+                  rangeConflict ? 'text-red-700 font-semibold' : 'text-textMuted'
+                }`}
+              >
+                {rangeConflict
+                  ? `Trùng lịch! Khoảng ngày này đã có khách đặt trước (${rangeConflict.check_in} đến ${rangeConflict.check_out}). Vui lòng chọn ngày khác.`
+                  : !tempCheckIn
                   ? 'Vui lòng chạm chọn ngày nhận phòng trên lịch.'
                   : !tempCheckOut
                   ? 'Tuyệt vời! Bây giờ hãy chạm chọn ngày trả phòng.'

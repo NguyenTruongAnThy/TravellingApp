@@ -26,19 +26,45 @@ export async function checkBookingConflict(
   placeId: string,
   checkIn: string,
   checkOut: string
-): Promise<{ hasConflict: boolean; error: unknown }> {
+): Promise<{ hasConflict: boolean; conflictingBooking?: any; error: unknown }> {
   try {
     const { data, error } = await supabase
       .from('bookings')
-      .select('id, check_in, check_out, status')
+      .select('id, ref_code, check_in, check_out, status')
       .eq('place_id', placeId)
       .neq('status', 'cancelled')
-      .or(`and(check_in.lte.${checkIn},check_out.gt.${checkIn}),and(check_in.lt.${checkOut},check_out.gte.${checkOut}),and(check_in.gte.${checkIn},check_out.lte.${checkOut})`);
+      .lt('check_in', checkOut)
+      .gt('check_out', checkIn);
 
     if (error) return { hasConflict: false, error };
-    return { hasConflict: Array.isArray(data) && data.length > 0, error: null };
+    const hasConflict = Array.isArray(data) && data.length > 0;
+    return {
+      hasConflict,
+      conflictingBooking: hasConflict ? data[0] : null,
+      error: null,
+    };
   } catch (err) {
     return { hasConflict: false, error: err };
+  }
+}
+
+/**
+ * Get all confirmed booked date ranges for a place to show/disable on calendar
+ */
+export async function getBookedDateRanges(
+  placeId: string
+): Promise<{ check_in: string; check_out: string }[]> {
+  try {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('check_in, check_out')
+      .eq('place_id', placeId)
+      .neq('status', 'cancelled');
+
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch {
+    return [];
   }
 }
 

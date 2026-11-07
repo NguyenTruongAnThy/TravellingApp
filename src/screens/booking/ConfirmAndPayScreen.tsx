@@ -16,7 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
 import { useAuth } from '../../context/AuthContext';
 import { calculatePricing } from '../../services/pricing';
-import { createBooking } from '../../services/bookingsService';
+import { createBooking, checkBookingConflict } from '../../services/bookingsService';
 import {
   buildVnpayPaymentUrl,
   verifyVnpayReturnUrl,
@@ -58,6 +58,31 @@ export default function ConfirmAndPayScreen() {
   const [showVnpayModal, setShowVnpayModal] = useState<boolean>(false);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const isProcessingVnpayRef = useRef<boolean>(false);
+
+  // Proactive date conflict state
+  const [hasDateConflict, setHasDateConflict] = useState<boolean>(false);
+  const [conflictRefCode, setConflictRefCode] = useState<string>('');
+
+  // Automatically check conflict whenever place or dates change
+  useEffect(() => {
+    let isMounted = true;
+    async function checkConflict() {
+      if (!place?.id || !checkIn || !checkOut) return;
+      const { hasConflict, conflictingBooking } = await checkBookingConflict(
+        place.id,
+        checkIn,
+        checkOut
+      );
+      if (isMounted) {
+        setHasDateConflict(hasConflict);
+        setConflictRefCode(conflictingBooking?.ref_code || '');
+      }
+    }
+    checkConflict();
+    return () => {
+      isMounted = false;
+    };
+  }, [place?.id, checkIn, checkOut]);
 
   // Friendly date formatting helper
   const formatFriendlyDate = (dateStr: string) => {
@@ -210,8 +235,41 @@ export default function ConfirmAndPayScreen() {
       return;
     }
 
-    // 1. VNPAY Flow (Method: Deep Link / In-app WebView)
+    // 1. KIỂM TRA TRÙNG NGÀY NGAY LẬP TỨC KHI BẤM NÚT THANH TOÁN (BR04 / UC010)
+    setSubmitting(true);
+    try {
+      const { hasConflict, conflictingBooking } = await checkBookingConflict(
+        place.id,
+        checkIn,
+        checkOut
+      );
+
+      if (hasConflict) {
+        setSubmitting(false);
+        setHasDateConflict(true);
+        setConflictRefCode(conflictingBooking?.ref_code || '');
+        Alert.alert(
+          'Ngày đã có người đặt! ⚠️',
+          `Khoảng thời gian từ ${checkIn} đến ${checkOut} đã được khách khác đặt trước${
+            conflictingBooking?.ref_code ? ` (Mã đơn: ${conflictingBooking.ref_code})` : ''
+          }. Vui lòng bấm "Đổi ngày trên lịch" để chọn ngày còn trống.`,
+          [
+            {
+              text: 'Đổi ngày trên lịch',
+              onPress: () => setShowDatePicker(true),
+            },
+            { text: 'Đóng', style: 'cancel' },
+          ]
+        );
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Lỗi kiểm tra trùng lịch:', err);
+    }
+
+    // 2. VNPAY Flow (Method: Deep Link / In-app WebView)
     if (selectedCard === 'vnpay') {
+      setSubmitting(false);
       const orderId = `WS${Date.now().toString().slice(-8)}`;
       const url = buildVnpayPaymentUrl({
         orderId,
@@ -225,7 +283,7 @@ export default function ConfirmAndPayScreen() {
       return;
     }
 
-    // 2. Simulated Payment Flow (Visa/Wallet) -> Navigate to Orders
+    // 3. Simulated Payment Flow (Visa/Wallet) -> Navigate to Orders
     await finalizeBookingAndGoToOrders(dueAmountUsd);
   };
 
@@ -369,6 +427,27 @@ export default function ConfirmAndPayScreen() {
                 </View>
               </View>
             </Pressable>
+
+            {/* Real-time date conflict warning banner */}
+            {hasDateConflict && (
+              <View className="mt-2.5 bg-red-50 border border-red-200 rounded-2xl p-3 flex-row items-center gap-2">
+                <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                <View className="flex-1">
+                  <Text className="text-xs font-bold text-red-700">
+                    Khoảng ngày này đã có khách đặt! {conflictRefCode ? `(${conflictRefCode})` : ''}
+                  </Text>
+                  <Text className="text-[11px] text-red-600 mt-0.5">
+                    Vui lòng bấm "Đổi ngày trên lịch" để chọn ngày còn trống.
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setShowDatePicker(true)}
+                  className="bg-red-600 px-3 py-1.5 rounded-full shadow-sm active:opacity-80"
+                >
+                  <Text className="text-[11px] font-bold text-white">Đổi ngày</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
 
           {/* Guests Row */}
@@ -639,7 +718,7 @@ export default function ConfirmAndPayScreen() {
             <>
               <Ionicons name="lock-closed" size={15} color="#FFF" />
               <Text className="text-sm font-bold text-white">
-                {selectedCard === 'vnpay' ? 'Thanh toán qua VNPAY' : 'Confirm and Pay'}
+                Thanh toán ngay
               </Text>
             </>
           )}
@@ -753,6 +832,7 @@ export default function ConfirmAndPayScreen() {
         onClose={() => setShowDatePicker(false)}
         initialCheckIn={checkIn}
         initialCheckOut={checkOut}
+        placeId={place?.id}
         onApply={(newCheckIn, newCheckOut) => {
           setCheckIn(newCheckIn);
           setCheckOut(newCheckOut);
