@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -11,9 +13,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { WebView } from 'react-native-webview';
 import { useAuth } from '../../context/AuthContext';
 import { calculatePricing } from '../../services/pricing';
 import { createBooking } from '../../services/bookingsService';
+import {
+  buildVnpayPaymentUrl,
+  verifyVnpayReturnUrl,
+  USD_TO_VND_RATE,
+} from '../../services/vnpayService';
+import StayDatePickerModal from '../../components/StayDatePickerModal';
 import type { Place } from '../../types';
 
 export default function ConfirmAndPayScreen() {
@@ -24,23 +33,46 @@ export default function ConfirmAndPayScreen() {
 
   const place: Place = route.params?.place;
 
-  // Defaults: 5 nights from next Friday, or dynamic
+  // Defaults: 1 night starting tomorrow per BR02 (unless provided in route params)
   const [checkIn, setCheckIn] = useState<string>(() => {
+    if (route.params?.checkIn) return route.params.checkIn;
     const d = new Date();
-    d.setDate(d.getDate() + 5);
+    d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   });
   const [checkOut, setCheckOut] = useState<string>(() => {
+    if (route.params?.checkOut) return route.params.checkOut;
     const d = new Date();
-    d.setDate(d.getDate() + 10);
+    d.setDate(d.getDate() + 2);
     return d.toISOString().split('T')[0];
   });
 
   const [adults, setAdults] = useState<number>(1);
   const [children, setChildren] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'pay_in_full' | 'pay_a_part_now'>('pay_in_full');
-  const [selectedCard, setSelectedCard] = useState<'visa' | 'wallet' | 'apple_pay'>('visa');
+  const [selectedCard, setSelectedCard] = useState<'vnpay' | 'visa' | 'wallet' | 'apple_pay'>('vnpay');
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  // VNPAY Modal & URL states
+  const [vnpayUrl, setVnpayUrl] = useState<string | null>(null);
+  const [showVnpayModal, setShowVnpayModal] = useState<boolean>(false);
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const isProcessingVnpayRef = useRef<boolean>(false);
+
+  // Friendly date formatting helper
+  const formatFriendlyDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      const dw = weekdays[dt.getDay()];
+      return `${dw}, ${parts[2]}/${parts[1]}`;
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Nights calculation
   const nights = useMemo(() => {
@@ -51,7 +83,7 @@ export default function ConfirmAndPayScreen() {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return Math.max(1, diffDays);
     } catch {
-      return 5;
+      return 1;
     }
   }, [checkIn, checkOut]);
 
@@ -67,6 +99,9 @@ export default function ConfirmAndPayScreen() {
   const maxCapacity = place?.guests_capacity || 2;
   const totalGuests = adults + children;
 
+  const dueAmountUsd = paymentMethod === 'pay_a_part_now' ? pricing.depositAmount : pricing.total;
+  const dueAmountVnd = Math.round(dueAmountUsd * USD_TO_VND_RATE);
+
   const handleAdjustNights = (delta: number) => {
     const newNights = Math.max(1, nights + delta);
     const inD = new Date(checkIn);
@@ -74,24 +109,19 @@ export default function ConfirmAndPayScreen() {
     setCheckOut(inD.toISOString().split('T')[0]);
   };
 
-  const handleConfirmPay = async () => {
-    if (!session || !userId) {
-      navigation.navigate('Login');
-      return;
-    }
+  /**
+   * Finalizes booking in Supabase and navigates straight to My Bookings ("màn hình đơn hàng")
+   */
+  const finalizeBookingAndGoToOrders = async (paidAmount: number) => {
+    if (isProcessingVnpayRef.current) return;
+    isProcessingVnpayRef.current = true;
 
-    if (totalGuests > maxCapacity) {
-      Alert.alert(
-        'Vượt quá sức chứa',
-        `Chỗ ở này chỉ chứa tối đa ${maxCapacity} khách. Vui lòng giảm số lượng khách.`
-      );
-      return;
-    }
-
+    setShowVnpayModal(false);
     setSubmitting(true);
+
     try {
       const res = await createBooking({
-        userId,
+        userId: userId!,
         placeId: place.id,
         checkIn,
         checkOut,
@@ -110,19 +140,93 @@ export default function ConfirmAndPayScreen() {
       if (!res.success || !res.booking) {
         Alert.alert('Không thể đặt phòng', res.error || 'Vui lòng thử lại sau.');
         setSubmitting(false);
+        isProcessingVnpayRef.current = false;
         return;
       }
 
-      // Success -> navigate to PaymentSuccessScreen
-      navigation.replace('PaymentSuccess', {
-        booking: res.booking,
-        place,
-        paidAmount: paymentMethod === 'pay_a_part_now' ? pricing.depositAmount : pricing.total,
-      });
+      // Success -> Navigate directly to "màn hình đơn hàng" (Tab Bookings)
+      navigation.navigate('MainTabs', { screen: 'Booking' });
+      Alert.alert(
+        'Đặt phòng thành công! 🎉',
+        `Đơn đặt phòng #${res.booking.ref_code} của bạn đã được xác nhận và hiển thị trong danh sách chuyến đi.`
+      );
     } catch (err: any) {
       Alert.alert('Lỗi đặt phòng', err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+    } finally {
       setSubmitting(false);
+      isProcessingVnpayRef.current = false;
     }
+  };
+
+  // Callback to finalize booking after VNPAY completes (deep link or webview)
+  const handleVnpayCallback = (returnUrl: string) => {
+    const result = verifyVnpayReturnUrl(returnUrl);
+    if (!result.isSuccess) {
+      Alert.alert('Thanh toán VNPAY không thành công', result.message);
+      setShowVnpayModal(false);
+      setSubmitting(false);
+      isProcessingVnpayRef.current = false;
+      return;
+    }
+
+    finalizeBookingAndGoToOrders(dueAmountUsd);
+  };
+
+  // Deep Link Listener for wanderstay://vnpay-return
+  useEffect(() => {
+    const handleUrlEvent = (event: { url: string }) => {
+      if (
+        event.url &&
+        (event.url.startsWith('wanderstay://') || event.url.includes('vnpay-return'))
+      ) {
+        handleVnpayCallback(event.url);
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleUrlEvent);
+
+    Linking.getInitialURL().then((url) => {
+      if (url && (url.startsWith('wanderstay://') || url.includes('vnpay-return'))) {
+        handleVnpayCallback(url);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [userId, place, checkIn, checkOut, nights, adults, children, paymentMethod, pricing, dueAmountUsd]);
+
+  const handleConfirmPay = async () => {
+    if (!session || !userId) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    if (totalGuests > maxCapacity) {
+      Alert.alert(
+        'Vượt quá sức chứa',
+        `Chỗ ở này chỉ chứa tối đa ${maxCapacity} khách. Vui lòng giảm số lượng khách.`
+      );
+      return;
+    }
+
+    // 1. VNPAY Flow (Method: Deep Link / In-app WebView)
+    if (selectedCard === 'vnpay') {
+      const orderId = `WS${Date.now().toString().slice(-8)}`;
+      const url = buildVnpayPaymentUrl({
+        orderId,
+        amountUsd: dueAmountUsd,
+        orderInfo: `WanderStay ${place.title?.slice(0, 20) || 'Booking'}`,
+      });
+
+      isProcessingVnpayRef.current = false;
+      setVnpayUrl(url);
+      setShowVnpayModal(true);
+      return;
+    }
+
+    // 2. Simulated Payment Flow (Visa/Wallet) -> Navigate to Orders
+    await finalizeBookingAndGoToOrders(dueAmountUsd);
   };
 
   if (!place) {
@@ -161,7 +265,7 @@ export default function ConfirmAndPayScreen() {
 
       <ScrollView
         className="flex-1 px-5 pt-4"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Place Summary Card */}
@@ -183,12 +287,17 @@ export default function ConfirmAndPayScreen() {
             <Text className="text-xs text-textMuted mt-0.5" numberOfLines={1}>
               {place.location}
             </Text>
-            <View className="flex-row items-center gap-1 mt-1.5">
-              <Ionicons name="star" size={13} color="#F59E0B" />
-              <Text className="text-xs font-bold text-textMain">
-                {place.rating != null ? place.rating.toFixed(1) : '4.9'}
+            <View className="flex-row items-center justify-between mt-1.5">
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="star" size={13} color="#F59E0B" />
+                <Text className="text-xs font-bold text-textMain">
+                  {place.rating != null ? place.rating.toFixed(1) : '4.9'}
+                </Text>
+                <Text className="text-xs text-textMuted">({place.review_count || 128})</Text>
+              </View>
+              <Text className="text-xs font-bold text-brand">
+                ${pricePerNight}/đêm
               </Text>
-              <Text className="text-xs text-textMuted">({place.review_count || 128})</Text>
             </View>
           </View>
         </View>
@@ -197,31 +306,69 @@ export default function ConfirmAndPayScreen() {
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-4">
           <Text className="text-base font-bold text-textMain">Your trip</Text>
 
-          {/* Dates Row */}
-          <View className="flex-row items-center justify-between pb-3 border-b border-borderLight/60">
-            <View>
-              <Text className="text-xs font-semibold text-textMuted">Dates</Text>
-              <Text className="text-sm font-bold text-textMain mt-0.5">
-                {checkIn} – {checkOut} ({nights} nights)
+          {/* Dates Row - Modern Interactive Stay Dates Card */}
+          <View className="pb-3 border-b border-borderLight/60">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-xs font-bold text-textMuted uppercase tracking-wider">
+                Lịch lưu trú
               </Text>
-            </View>
-            <View className="flex-row items-center gap-2">
               <Pressable
-                onPress={() => handleAdjustNights(-1)}
-                disabled={nights <= 1}
-                className={`w-8 h-8 rounded-full border items-center justify-center ${
-                  nights <= 1 ? 'border-borderLight bg-gray-100' : 'border-brand bg-white'
-                }`}
+                onPress={() => setShowDatePicker(true)}
+                className="flex-row items-center gap-1 bg-brand/10 px-2.5 py-1 rounded-full active:opacity-70"
               >
-                <Text className="font-bold text-brand">-</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handleAdjustNights(1)}
-                className="w-8 h-8 rounded-full border border-brand bg-white items-center justify-center"
-              >
-                <Text className="font-bold text-brand">+</Text>
+                <Ionicons name="calendar-outline" size={13} color="#4F46E5" />
+                <Text className="text-xs font-bold text-brand">Đổi ngày trên lịch</Text>
               </Pressable>
             </View>
+
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              className="p-3 bg-appBg rounded-2xl border border-borderLight flex-row items-center justify-between active:opacity-85"
+            >
+              <View className="flex-1 flex-row items-center gap-2.5">
+                <View className="w-10 h-10 rounded-xl bg-brand/10 items-center justify-center">
+                  <Ionicons name="calendar" size={20} color="#4F46E5" />
+                </View>
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-1.5 flex-wrap">
+                    <Text className="text-sm font-bold text-textMain">
+                      {formatFriendlyDate(checkIn)}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={13} color="#8A90A6" />
+                    <Text className="text-sm font-bold text-textMain">
+                      {formatFriendlyDate(checkOut)}
+                    </Text>
+                  </View>
+                  <Text className="text-[11px] text-textMuted mt-0.5">
+                    {checkIn} đến {checkOut}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center gap-2 pl-2">
+                <View className="bg-brand px-2.5 py-1 rounded-full shadow-sm">
+                  <Text className="text-xs font-bold text-white">{nights} đêm</Text>
+                </View>
+                {/* Stepper for quick fine-tuning */}
+                <View className="flex-row items-center gap-1 bg-white rounded-full border border-borderLight p-0.5">
+                  <Pressable
+                    onPress={() => handleAdjustNights(-1)}
+                    disabled={nights <= 1}
+                    className={`w-6 h-6 rounded-full items-center justify-center ${
+                      nights <= 1 ? 'bg-gray-100 opacity-40' : 'bg-brand/10'
+                    }`}
+                  >
+                    <Text className="font-bold text-brand text-xs">-</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleAdjustNights(1)}
+                    className="w-6 h-6 rounded-full bg-brand/10 items-center justify-center"
+                  >
+                    <Text className="font-bold text-brand text-xs">+</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </Pressable>
           </View>
 
           {/* Guests Row */}
@@ -229,7 +376,7 @@ export default function ConfirmAndPayScreen() {
             <View>
               <Text className="text-xs font-semibold text-textMuted">Guests</Text>
               <Text className="text-sm font-bold text-textMain mt-0.5">
-                {totalGuests} guest{totalGuests > 1 ? 's' : ''} (max {maxCapacity})
+                {totalGuests} khách (tối đa {maxCapacity})
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
@@ -242,6 +389,7 @@ export default function ConfirmAndPayScreen() {
               >
                 <Text className="font-bold text-brand">-</Text>
               </Pressable>
+              <Text className="text-xs font-bold text-textMain px-1">{adults}</Text>
               <Pressable
                 onPress={() => {
                   if (totalGuests < maxCapacity) {
@@ -274,7 +422,7 @@ export default function ConfirmAndPayScreen() {
             <View className="flex-1 pr-3">
               <Text className="text-sm font-bold text-textMain">Pay in full</Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Pay the total (${pricing.total.toFixed(2)}) now.
+                Trả 100%: ${pricing.total.toFixed(2)} (~ {(Math.round(pricing.total * USD_TO_VND_RATE)).toLocaleString('vi-VN')} VND).
               </Text>
             </View>
             <View
@@ -302,7 +450,7 @@ export default function ConfirmAndPayScreen() {
                 Pay a part now (${pricing.depositAmount.toFixed(2)})
               </Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Pay 50% deposit now, and the remaining ${pricing.remainingAmount.toFixed(2)} at check-in.
+                Đặt cọc trước 50%: ${pricing.depositAmount.toFixed(2)} (~ {(Math.round(pricing.depositAmount * USD_TO_VND_RATE)).toLocaleString('vi-VN')} VND), còn lại ${pricing.remainingAmount.toFixed(2)} thanh toán khi nhận phòng.
               </Text>
             </View>
             <View
@@ -321,6 +469,37 @@ export default function ConfirmAndPayScreen() {
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-3">
           <Text className="text-base font-bold text-textMain">Payment method</Text>
 
+          {/* VNPAY Payment Gateway Option */}
+          <Pressable
+            onPress={() => setSelectedCard('vnpay')}
+            className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
+              selectedCard === 'vnpay' ? 'border-brand bg-[#F2F3FF]' : 'border-borderLight'
+            }`}
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 items-center justify-center">
+                <Ionicons name="qr-code-outline" size={18} color="#DC2626" />
+              </View>
+              <View>
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="text-xs font-bold text-textMain">Cổng VNPAY (Sandbox)</Text>
+                  <View className="bg-emerald-100 px-1.5 py-0.2 rounded">
+                    <Text className="text-[9px] font-bold text-emerald-700">Online</Text>
+                  </View>
+                </View>
+                <Text className="text-[11px] text-textMuted">
+                  VNPAY-QR, Thẻ ATM NCB, Visa/Master
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name={selectedCard === 'vnpay' ? 'checkmark-circle' : 'ellipse-outline'}
+              size={20}
+              color={selectedCard === 'vnpay' ? '#4F46E5' : '#D1D5DB'}
+            />
+          </Pressable>
+
+          {/* Visa Option */}
           <Pressable
             onPress={() => setSelectedCard('visa')}
             className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
@@ -332,7 +511,7 @@ export default function ConfirmAndPayScreen() {
                 <Ionicons name="card-outline" size={18} color="#2563EB" />
               </View>
               <View>
-                <Text className="text-xs font-bold text-textMain">Visa / Mastercard</Text>
+                <Text className="text-xs font-bold text-textMain">Visa / Mastercard (Mô phỏng)</Text>
                 <Text className="text-[11px] text-textMuted">•••• 4829</Text>
               </View>
             </View>
@@ -343,6 +522,7 @@ export default function ConfirmAndPayScreen() {
             />
           </Pressable>
 
+          {/* Wallet Option */}
           <Pressable
             onPress={() => setSelectedCard('wallet')}
             className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
@@ -372,7 +552,7 @@ export default function ConfirmAndPayScreen() {
 
           <View className="flex-row justify-between items-center py-1">
             <Text className="text-xs text-textMuted">
-              ${pricePerNight} x {nights} nights
+              ${pricePerNight} x {nights} đêm
             </Text>
             <Text className="text-xs font-bold text-textMain">
               ${pricing.accommodationTotal.toFixed(2)}
@@ -390,15 +570,34 @@ export default function ConfirmAndPayScreen() {
           </View>
 
           <View className="flex-row justify-between items-center pt-3 border-t border-borderLight">
-            <Text className="text-sm font-bold text-textMain">Total (USD)</Text>
+            <View>
+              <Text className="text-sm font-bold text-textMain">Tổng chi phí (USD)</Text>
+              <Text className="text-[11px] text-textMuted">
+                ~ {(Math.round(pricing.total * USD_TO_VND_RATE)).toLocaleString('vi-VN')} VND
+              </Text>
+            </View>
             <Text className="text-base font-black text-brand">${pricing.total.toFixed(2)}</Text>
           </View>
 
           {paymentMethod === 'pay_a_part_now' && (
             <View className="flex-row justify-between items-center pt-2 border-t border-dashed border-borderLight">
-              <Text className="text-xs font-bold text-brand">Due now (50%)</Text>
+              <View>
+                <Text className="text-xs font-bold text-brand">Cần thanh toán hôm nay (50%)</Text>
+                <Text className="text-[11px] text-brand/80">
+                  ~ {dueAmountVnd.toLocaleString('vi-VN')} VND
+                </Text>
+              </View>
               <Text className="text-sm font-black text-brand">
                 ${pricing.depositAmount.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          {selectedCard === 'vnpay' && (
+            <View className="mt-2 bg-[#F8F7FF] p-2.5 rounded-xl border border-brand/20 flex-row justify-between items-center">
+              <Text className="text-[11px] font-medium text-textMuted">Số tiền VNPAY thu:</Text>
+              <Text className="text-xs font-bold text-brand">
+                {dueAmountVnd.toLocaleString('vi-VN')} VND (${dueAmountUsd.toFixed(2)})
               </Text>
             </View>
           )}
@@ -408,7 +607,7 @@ export default function ConfirmAndPayScreen() {
         <View className="bg-[#F8F7FF] rounded-2xl p-4 border border-borderLight/80 mb-5 gap-1.5">
           <Text className="text-xs font-bold text-textMain">Cancellation policy (BR05)</Text>
           <Text className="text-xs text-textMuted leading-5">
-            Free cancellation up to 48 hours before check-in. If cancelled within 48 hours, a 1-night penalty (${pricePerNight}) applies.
+            Miễn phí hủy phòng trước 48 giờ. Hủy trong vòng 48 giờ sẽ phạt 1 đêm (${pricePerNight}).
           </Text>
         </View>
       </ScrollView>
@@ -417,17 +616,20 @@ export default function ConfirmAndPayScreen() {
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-borderLight px-5 py-4 flex-row items-center justify-between shadow-lg">
         <View>
           <Text className="text-[11px] text-textMuted font-medium uppercase">
-            {paymentMethod === 'pay_a_part_now' ? 'Due today' : 'Total'}
+            {paymentMethod === 'pay_a_part_now' ? 'Due today (50%)' : 'Total'}
           </Text>
           <Text className="text-xl font-black text-brand">
-            ${(paymentMethod === 'pay_a_part_now' ? pricing.depositAmount : pricing.total).toFixed(2)}
+            ${dueAmountUsd.toFixed(2)}
+          </Text>
+          <Text className="text-[10px] text-textMuted">
+            ~ {dueAmountVnd.toLocaleString('vi-VN')} VND
           </Text>
         </View>
 
         <Pressable
           onPress={handleConfirmPay}
           disabled={submitting}
-          className={`px-8 py-3.5 rounded-full flex-row items-center gap-2 ${
+          className={`px-6 py-3.5 rounded-full flex-row items-center gap-2 ${
             submitting ? 'bg-brand/60' : 'bg-brand shadow-md shadow-brand/30'
           }`}
         >
@@ -436,11 +638,127 @@ export default function ConfirmAndPayScreen() {
           ) : (
             <>
               <Ionicons name="lock-closed" size={15} color="#FFF" />
-              <Text className="text-sm font-bold text-white">Confirm and Pay</Text>
+              <Text className="text-sm font-bold text-white">
+                {selectedCard === 'vnpay' ? 'Thanh toán qua VNPAY' : 'Confirm and Pay'}
+              </Text>
             </>
           )}
         </Pressable>
       </View>
+
+      {/* VNPAY In-App WebView Modal & External Browser fallback */}
+      <Modal
+        visible={showVnpayModal}
+        animationType="slide"
+        onRequestClose={() => setShowVnpayModal(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top', 'left', 'right', 'bottom']}>
+          {/* Modal Header */}
+          <View className="h-14 px-4 flex-row items-center justify-between border-b border-borderLight bg-white">
+            <View className="flex-row items-center gap-2">
+              <View className="w-8 h-8 rounded-xl bg-red-50 border border-red-200 items-center justify-center">
+                <Ionicons name="qr-code-outline" size={16} color="#DC2626" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-textMain">Cổng thanh toán VNPAY</Text>
+                <Text className="text-[10px] text-brand font-semibold">
+                  Số tiền: {dueAmountVnd.toLocaleString('vi-VN')} VND
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={() => {
+                  if (vnpayUrl) {
+                    Linking.openURL(vnpayUrl);
+                  }
+                }}
+                className="px-2.5 py-1.5 bg-brand/10 rounded-lg flex-row items-center gap-1"
+              >
+                <Ionicons name="open-outline" size={13} color="#4F46E5" />
+                <Text className="text-[11px] font-bold text-brand">Mở trình duyệt</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowVnpayModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+              >
+                <Ionicons name="close" size={20} color="#131B2E" />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* WebView Container */}
+          {vnpayUrl && (
+            <WebView
+              source={{ uri: vnpayUrl }}
+              style={{ flex: 1 }}
+              javaScriptEnabled
+              domStorageEnabled
+              originWhitelist={['*']}
+              startInLoadingState
+              renderLoading={() => (
+                <View className="absolute inset-0 bg-white items-center justify-center">
+                  <ActivityIndicator size="large" color="#4F46E5" />
+                  <Text className="mt-3 text-xs text-textMuted">
+                    Đang kết nối tới cổng thanh toán VNPAY Sandbox...
+                  </Text>
+                </View>
+              )}
+              onShouldStartLoadWithRequest={(request) => {
+                if (
+                  request.url.startsWith('wanderstay://') ||
+                  request.url.includes('vnpay-return') ||
+                  request.url.includes('vnp_ResponseCode=')
+                ) {
+                  handleVnpayCallback(request.url);
+                  return false;
+                }
+                return true;
+              }}
+              onNavigationStateChange={(navState) => {
+                if (
+                  navState.url.startsWith('wanderstay://') ||
+                  navState.url.includes('vnpay-return') ||
+                  navState.url.includes('vnp_ResponseCode=')
+                ) {
+                  handleVnpayCallback(navState.url);
+                }
+              }}
+            />
+          )}
+
+          {/* Bottom Confirmation Bar */}
+          <View className="p-3.5 bg-white border-t border-borderLight flex-row items-center justify-between gap-3 shadow-lg">
+            <View className="flex-1">
+              <Text className="text-xs font-bold text-textMain">Đã thanh toán OTP thành công?</Text>
+              <Text className="text-[10px] text-textMuted">
+                Nhấn nút bên phải để lưu đơn đặt phòng vào hệ thống
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => finalizeBookingAndGoToOrders(dueAmountUsd)}
+              className="bg-emerald-600 px-4 py-2.5 rounded-full flex-row items-center gap-1.5 shadow-sm active:opacity-80"
+            >
+              <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+              <Text className="text-xs font-bold text-white">Xác nhận xong</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Modern Visual Stay Date Picker Modal (Standard Airbnb / Booking.com) */}
+      <StayDatePickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        initialCheckIn={checkIn}
+        initialCheckOut={checkOut}
+        onApply={(newCheckIn, newCheckOut) => {
+          setCheckIn(newCheckIn);
+          setCheckOut(newCheckOut);
+        }}
+        minNights={1}
+      />
     </SafeAreaView>
   );
 }

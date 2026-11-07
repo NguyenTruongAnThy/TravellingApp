@@ -420,7 +420,15 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
               renderItem={({ item }) => {
                 const isFavorite = favoriteIds.includes(item.id);
                 return (
-                  <Pressable onPress={() => navigation.navigate('Detail', { placeId: item.id })}>
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate('Detail', {
+                        placeId: item.id,
+                        checkIn: checkIn || undefined,
+                        checkOut: checkOut || undefined,
+                      })
+                    }
+                  >
                     <PlaceCard
                       place={item}
                       isFavorite={isFavorite}
