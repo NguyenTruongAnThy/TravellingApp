@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { cancelBooking } from '../../services/bookingsService';
+import { exportVatInvoicePDF } from '../../services/pdfService';
 
 export interface ActionCardData {
   type: 'cancellation_confirm' | 'booking_card' | 'place_card';
@@ -145,16 +146,25 @@ export default function TravelAssistantScreen({
     ]);
   };
 
-  const handleDownloadInvoice = () => {
-    setDownloadingInvoice(true);
-    setTimeout(() => {
-      setDownloadingInvoice(false);
-      Alert.alert(
-        'Đã tải hóa đơn thành công! 📄',
-        'File "Hóa đơn điện tử VAT" (142 KB • VAT Compliant) đã được lưu vào thiết bị của bạn.',
-        [{ text: 'Xong' }]
+  const handleDownloadInvoice = async () => {
+    try {
+      setDownloadingInvoice(true);
+      const res = await exportVatInvoicePDF(
+        route?.params?.booking || {
+          ref_code: '#WS-84920',
+          total: 110,
+          nights: 5,
+          places: { title: 'Balian Treehouse Retreat' },
+        },
+        i18n.language === 'vi'
       );
-    }, 600);
+      setDownloadingInvoice(false);
+      if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
+        Alert.alert('Thông báo', res.error);
+      }
+    } catch {
+      setDownloadingInvoice(false);
+    }
   };
 
   const handleHandoverAgent = () => {

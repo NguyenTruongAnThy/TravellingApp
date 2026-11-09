@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { exportTripReceiptPDF } from '../../services/pdfService';
 
 interface TripReceiptScreenProps {
   navigation?: any;
@@ -135,21 +136,35 @@ export default function TripReceiptScreen({
     ]);
   };
 
-  const handleDownloadPDF = () => {
-    setDownloading(true);
-    setTimeout(() => {
-      setDownloading(false);
-      Alert.alert(
-        i18n.language === 'vi' ? 'Đã tải biên nhận PDF' : 'Receipt Downloaded',
+  const handleDownloadPDF = async () => {
+    try {
+      setDownloading(true);
+      const res = await exportTripReceiptPDF(
+        paramsBooking || paramsReceipt || {
+          ref_code: refCode,
+          place_title: placeTitle,
+          place_location: placeLocation,
+          total: grandTotal,
+          check_in: paramsBooking?.check_in,
+          check_out: paramsBooking?.check_out,
+          nights: nightsNum,
+          price_per_night: pricePerNight,
+          kayak_fee: kayakFee,
+          parking_fee: parkingFee,
+          status,
+        },
         i18n.language === 'vi'
-          ? `Biên nhận điện tử ${receiptNumber} đã được lưu thành công vào thiết bị của bạn.`
-          : `PDF Receipt ${receiptNumber} has been successfully exported and saved to your device.`,
-        [
-          { text: i18n.language === 'vi' ? 'Xem ngay' : 'View Now', onPress: () => {} },
-          { text: t('receipt.close', 'Đóng'), style: 'cancel' },
-        ]
       );
-    }, 900);
+      setDownloading(false);
+      if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
+        Alert.alert(
+          i18n.language === 'vi' ? 'Thông báo' : 'Notice',
+          res.error
+        );
+      }
+    } catch {
+      setDownloading(false);
+    }
   };
 
   const handleEmailReceipt = () => {

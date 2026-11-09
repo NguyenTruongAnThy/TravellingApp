@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getSmartKeyDetails, SmartKeyInfo } from '../../services/smartKeyService';
+import { exportSmartKeyGuidePDF } from '../../services/pdfService';
 
 interface SmartKeyScreenProps {
   navigation?: any;
@@ -129,16 +130,17 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
     );
   };
 
-  const handleDownloadOfflineGuide = () => {
-    setDownloadingGuide(true);
-    setTimeout(() => {
+  const handleDownloadOfflineGuide = async () => {
+    try {
+      setDownloadingGuide(true);
+      const res = await exportSmartKeyGuidePDF(data, true);
       setDownloadingGuide(false);
-      Alert.alert(
-        'Offline Guide Saved',
-        `Offline arrival guide for ${data.placeTitle} (PDF 2.4 MB) has been stored on your device for offline access without signal.`,
-        [{ text: 'OK' }]
-      );
-    }, 1000);
+      if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
+        Alert.alert('Thông báo', res.error);
+      }
+    } catch {
+      setDownloadingGuide(false);
+    }
   };
 
   return (
