@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -142,14 +142,20 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  const { loading } = useAuth();
   const [splashFinished, setSplashFinished] = useState(false);
 
+  useEffect(() => {
+    // Safety net: tuyệt đối không đứng màn hình splash quá 2.5s
+    const safetyTimer = setTimeout(() => {
+      setSplashFinished(true);
+    }, 2500);
+    return () => clearTimeout(safetyTimer);
+  }, []);
+
   // Hiển thị màn hình khởi động Logo Loading theo chuẩn thiết kế STT 1
-  if (loading || !splashFinished) {
+  if (!splashFinished) {
     return (
       <SplashScreen
-        isReady={!loading}
         onFinish={() => setSplashFinished(true)}
       />
     );
