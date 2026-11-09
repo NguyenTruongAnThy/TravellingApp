@@ -1,6 +1,54 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SmartKeyInfo } from './smartKeyService';
+
+/**
+ * Safely shares or prints a PDF file across Android / iOS / Expo Go environments.
+ * If Sharing.shareAsync fails due to Android Scoped Storage / Expo Go sandbox permissions,
+ * it seamlessly falls back to Print.printAsync (Android Print Spooler with "Save as PDF" option).
+ */
+async function shareOrPrintPdf(
+  html: string,
+  tempUri: string,
+  fileName: string,
+  dialogTitle: string
+): Promise<string> {
+  let targetUri = tempUri;
+
+  // 1. Attempt to copy to standard documentDirectory for better sandbox permissions
+  if (FileSystem.documentDirectory) {
+    try {
+      const dest = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.copyAsync({
+        from: tempUri,
+        to: dest,
+      });
+      targetUri = dest;
+    } catch {
+      targetUri = tempUri;
+    }
+  }
+
+  // 2. Try Sharing.shareAsync; fallback to Print.printAsync if system blocks file access
+  if (await Sharing.isAvailableAsync()) {
+    try {
+      await Sharing.shareAsync(targetUri, {
+        UTI: '.pdf',
+        mimeType: 'application/pdf',
+        dialogTitle,
+      });
+      return targetUri;
+    } catch (shareErr) {
+      console.warn('ExpoSharing rejected, falling back to Print.printAsync:', shareErr);
+      await Print.printAsync({ html });
+      return targetUri;
+    }
+  } else {
+    await Print.printAsync({ html });
+    return targetUri;
+  }
+}
 
 /**
  * Generates and shares a professional PDF Trip Receipt (UC011)
@@ -380,16 +428,16 @@ export async function exportTripReceiptPDF(
       base64: false,
     });
 
-    // 2. Open native sharing/saving dialog
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        UTI: '.pdf',
-        mimeType: 'application/pdf',
-        dialogTitle: isVi ? 'Lưu hoặc chia sẻ biên nhận WanderStay' : 'Save or Share WanderStay Receipt',
-      });
-    }
+    // 2. Safely share with fallback to native Android Print/Save-as-PDF
+    const safeFileName = `WanderStay_${refCode.replace(/[^a-zA-Z0-9]/g, '_')}_Receipt.pdf`;
+    const finalUri = await shareOrPrintPdf(
+      html,
+      uri,
+      safeFileName,
+      isVi ? 'Lưu hoặc chia sẻ biên nhận WanderStay' : 'Save or Share WanderStay Receipt'
+    );
 
-    return { success: true, uri };
+    return { success: true, uri: finalUri };
   } catch (error: any) {
     return { success: false, error: error?.message || 'Failed to export PDF' };
   }
@@ -593,15 +641,15 @@ export async function exportSmartKeyGuidePDF(
       base64: false,
     });
 
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        UTI: '.pdf',
-        mimeType: 'application/pdf',
-        dialogTitle: isVi ? 'Lưu cẩm nang nhận phòng ngoại tuyến' : 'Save Offline Smart Key Guide',
-      });
-    }
+    const safeFileName = `WanderStay_SmartKey_${data.refCode.replace(/[^a-zA-Z0-9]/g, '_')}_Guide.pdf`;
+    const finalUri = await shareOrPrintPdf(
+      html,
+      uri,
+      safeFileName,
+      isVi ? 'Lưu cẩm nang nhận phòng ngoại tuyến' : 'Save Offline Smart Key Guide'
+    );
 
-    return { success: true, uri };
+    return { success: true, uri: finalUri };
   } catch (error: any) {
     return { success: false, error: error?.message || 'Failed to export Smart Key Guide' };
   }
@@ -752,15 +800,15 @@ export async function exportVatInvoicePDF(
       base64: false,
     });
 
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        UTI: '.pdf',
-        mimeType: 'application/pdf',
-        dialogTitle: 'Lưu Hóa đơn điện tử VAT WanderStay',
-      });
-    }
+    const safeFileName = `WanderStay_VAT_${invoiceNumber}.pdf`;
+    const finalUri = await shareOrPrintPdf(
+      html,
+      uri,
+      safeFileName,
+      'Lưu Hóa đơn điện tử VAT WanderStay'
+    );
 
-    return { success: true, uri };
+    return { success: true, uri: finalUri };
   } catch (error: any) {
     return { success: false, error: error?.message || 'Failed to export VAT Invoice' };
   }
