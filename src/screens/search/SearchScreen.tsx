@@ -345,14 +345,44 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
             <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
             <ScrollView>
               <View className="p-5">
-                <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">When's your trip?</Text><Pressable onPress={() => setShowSchedule(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
-                <View className="mt-3 flex-row"><View className="flex-1 border border-borderLight rounded-xl px-3 py-2 mr-2"><Text className="text-xs text-textMuted">Check-in</Text><Text className="text-base text-textMain">{checkIn || 'Add date'}</Text></View><View className="flex-1 border border-borderLight rounded-xl px-3 py-2"><Text className="text-xs text-textMuted">Check-out</Text><Text className="text-base text-textMain">{checkOut || 'Add date'}</Text></View></View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-lg font-bold text-textMain">
+                    {i18n.language === 'vi' ? 'Thời gian chuyến đi?' : "When's your trip?"}
+                  </Text>
+                  <Pressable onPress={() => setShowSchedule(false)}>
+                    <Ionicons name="close" size={22} color="#131B2E" />
+                  </Pressable>
+                </View>
+                <View className="mt-3 flex-row">
+                  <View className="flex-1 border border-borderLight rounded-xl px-3 py-2 mr-2">
+                    <Text className="text-xs text-textMuted">
+                      {i18n.language === 'vi' ? 'Nhận phòng' : 'Check-in'}
+                    </Text>
+                    <Text className="text-base text-textMain">
+                      {checkIn || (i18n.language === 'vi' ? 'Thêm ngày' : 'Add date')}
+                    </Text>
+                  </View>
+                  <View className="flex-1 border border-borderLight rounded-xl px-3 py-2">
+                    <Text className="text-xs text-textMuted">
+                      {i18n.language === 'vi' ? 'Trả phòng' : 'Check-out'}
+                    </Text>
+                    <Text className="text-base text-textMain">
+                      {checkOut || (i18n.language === 'vi' ? 'Thêm ngày' : 'Add date')}
+                    </Text>
+                  </View>
+                </View>
                 <View className="mt-4 flex-row items-center justify-between">
                   <Pressable onPress={() => { const d = new Date(calYear, calMonth - 1, 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}><Text className="text-xl text-textMain">‹</Text></Pressable>
-                  <Text className="text-base font-bold text-textMain">{['January','February','March','April','May','June','July','August','September','October','November','December'][calMonth]} {calYear}</Text>
+                  <Text className="text-base font-bold text-textMain">
+                    {(i18n.language === 'vi' ? ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'] : ['January','February','March','April','May','June','July','August','September','October','November','December'])[calMonth]} {calYear}
+                  </Text>
                   <Pressable onPress={() => { const d = new Date(calYear, calMonth + 1, 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()); }}><Text className="text-xl text-textMain">›</Text></Pressable>
                 </View>
-                <View className="mt-2 flex-row">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (<Text key={d} className="flex-1 text-center text-xs text-textMuted">{d}</Text>))}</View>
+                <View className="mt-2 flex-row">
+                  {(i18n.language === 'vi' ? ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map((d) => (
+                    <Text key={d} className="flex-1 text-center text-xs text-textMuted">{d}</Text>
+                  ))}
+                </View>
                 <View className="flex-row flex-wrap">
                   {calDays.map((day, i) => {
                     if (day === null) return (<View key={i} style={{ width: '14.28%', aspectRatio: 1 }} />);
@@ -363,7 +393,20 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                   })}
                 </View>
                 {dateError ? <Text className="mt-2 text-sm text-red-500">{dateError}</Text> : null}
-                <View className="mt-4 flex-row items-center"><Pressable className="mr-4" onPress={() => { setCheckIn(''); setCheckOut(''); }}><Text className="text-base font-bold text-brand">Clear all</Text></Pressable><View className="flex-1"><AppButton title="Save" onPress={() => { setShowSchedule(false); setShowGuests(true); }} disabled={!!dateError} /></View></View>
+                <View className="mt-4 flex-row items-center">
+                  <Pressable className="mr-4" onPress={() => { setCheckIn(''); setCheckOut(''); }}>
+                    <Text className="text-base font-bold text-brand">
+                      {i18n.language === 'vi' ? 'Xóa chọn' : 'Clear all'}
+                    </Text>
+                  </Pressable>
+                  <View className="flex-1">
+                    <AppButton
+                      title={i18n.language === 'vi' ? 'Lưu ngày' : 'Save'}
+                      onPress={() => { setShowSchedule(false); setShowGuests(true); }}
+                      disabled={!!dateError}
+                    />
+                  </View>
+                </View>
               </View>
             </ScrollView>
           </Pressable>
@@ -375,11 +418,42 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
           <Pressable className="bg-white rounded-t-3xl" style={{ maxHeight: '85%' }} onPress={() => {}}>
             <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
             <View className="p-5">
-              <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">Who's coming?</Text><Pressable onPress={() => setShowGuests(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
-              <Stepper label="Adults — Ages 13 or above" value={adults} onChange={setAdults} />
-              <Stepper label="Children — Ages 2 - 12" value={children} onChange={setChildren} />
-              <Text className="mt-2 text-sm text-textMuted">Guests cannot exceed a stay's capacity, the filter removes stays that do not fit.</Text>
-              <View className="mt-4 flex-row items-center"><Pressable className="mr-4" onPress={() => { setAdults(0); setChildren(0); }}><Text className="text-base font-bold text-brand">Clear all</Text></Pressable><View className="flex-1"><AppButton title="Search" onPress={() => setShowGuests(false)} /></View></View>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-lg font-bold text-textMain">
+                  {i18n.language === 'vi' ? 'Ai sẽ đi cùng bạn?' : "Who's coming?"}
+                </Text>
+                <Pressable onPress={() => setShowGuests(false)}>
+                  <Ionicons name="close" size={22} color="#131B2E" />
+                </Pressable>
+              </View>
+              <Stepper
+                label={i18n.language === 'vi' ? 'Người lớn — Từ 13 tuổi trở lên' : 'Adults — Ages 13 or above'}
+                value={adults}
+                onChange={setAdults}
+              />
+              <Stepper
+                label={i18n.language === 'vi' ? 'Trẻ em — Độ tuổi 2 - 12' : 'Children — Ages 2 - 12'}
+                value={children}
+                onChange={setChildren}
+              />
+              <Text className="mt-2 text-sm text-textMuted">
+                {i18n.language === 'vi'
+                  ? 'Số lượng khách không vượt quá sức chứa tối đa của chỗ nghỉ.'
+                  : "Guests cannot exceed a stay's capacity, the filter removes stays that do not fit."}
+              </Text>
+              <View className="mt-4 flex-row items-center">
+                <Pressable className="mr-4" onPress={() => { setAdults(0); setChildren(0); }}>
+                  <Text className="text-base font-bold text-brand">
+                    {i18n.language === 'vi' ? 'Xóa chọn' : 'Clear all'}
+                  </Text>
+                </Pressable>
+                <View className="flex-1">
+                  <AppButton
+                    title={i18n.language === 'vi' ? 'Áp dụng' : 'Search'}
+                    onPress={() => setShowGuests(false)}
+                  />
+                </View>
+              </View>
             </View>
           </Pressable>
         </Pressable>
@@ -390,7 +464,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
             <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
             <View className="px-5 pt-2 pb-3 flex-row items-center">
               <View className="flex-1" />
-              <Text className="text-lg font-bold text-textMain">Filters</Text>
+              <Text className="text-lg font-bold text-textMain">{t('search.filters')}</Text>
               <View className="flex-1 items-end">
                 <Pressable className="w-8 h-8 rounded-full bg-appBg items-center justify-center" onPress={() => setShowFilter(false)}>
                   <Ionicons name="close" size={20} color="#5A6478" />
@@ -400,37 +474,36 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
             <View style={{ height: 1, backgroundColor: '#E6E3F5' }} />
             <ScrollView>
           <View className="p-5">
-            <FilterSectionTitle icon="pricetag-outline" title="Price range — Price per night ($)" />
-            <Text className="mt-2 text-xs text-textMuted">Price range is one section inside this Filters sheet, not a separate screen. Price from $10 to $250.</Text>
+            <FilterSectionTitle icon="pricetag-outline" title={t('search.priceRange')} />
+            <Text className="mt-2 text-xs text-textMuted">{t('search.priceRangeHint')}</Text>
             <View className="mt-3 flex-row items-center">
               <TextInput className="flex-1 rounded-xl px-3 py-3 text-base font-bold text-textMain" style={{ backgroundColor: '#F8F7FF', borderWidth: 1, borderColor: priceError ? '#EF4444' : '#4F46E5' }} keyboardType="number-pad" placeholder="10" placeholderTextColor="#8A90A6" value={minPrice} onChangeText={setMinPrice} />
-              <Text className="mx-2 text-textMuted">to</Text>
+              <Text className="mx-2 text-textMuted">{i18n.language === 'vi' ? 'đến' : 'to'}</Text>
               <TextInput className="flex-1 rounded-xl px-3 py-3 text-base font-bold text-textMain" style={{ backgroundColor: '#F8F7FF', borderWidth: 1, borderColor: priceError ? '#EF4444' : '#4F46E5' }} keyboardType="number-pad" placeholder="250" placeholderTextColor="#8A90A6" value={maxPrice} onChangeText={setMaxPrice} />
             </View>
             {priceError ? <Text className="mt-2 text-sm text-red-500">{priceError}</Text> : null}
             <FilterDivider />
-            <View className="mt-6"><FilterSectionTitle icon="home-outline" title="Type of place" /></View>
+            <View className="mt-6"><FilterSectionTitle icon="home-outline" title={t('search.propertyType')} /></View>
             <View className="mt-3 flex-row flex-wrap">{PLACE_TYPES.filter((x) => x !== 'All').map((item) => { const act = placeType === item; return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setPlaceType(item)}><View className="flex-row items-center"><Ionicons name={placeTypeIcon(item)} size={14} color={act ? '#FFFFFF' : '#4F46E5'} /><Text className={`ml-1.5 text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{t(`place_types.${item}`, { defaultValue: item })}</Text></View></Pressable>); })}</View>
             <FilterDivider />
-            <View className="mt-6"><FilterSectionTitle icon="people-outline" title="Guests and rooms" /></View>
-            <Stepper label="Adults (13 or above)" value={adults} onChange={setAdults} />
-            <Stepper label="Children (2-12)" value={children} onChange={setChildren} />
-            <Stepper label="Minimum rooms" value={minRooms} onChange={setMinRooms} />
-            <Stepper label="Minimum beds" value={minBeds} onChange={setMinBeds} />
-            {availableAmenities.length > 0 ? (<><FilterDivider /><View className="mt-6"><FilterSectionTitle icon="checkmark-circle-outline" title="Facilities" /></View><View className="mt-3 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><View className="flex-row items-center">{act ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}<Text className={`text-sm font-bold ${act ? 'text-white ml-1' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></View></Pressable>); })}</View></>) : null}
+            <View className="mt-6"><FilterSectionTitle icon="people-outline" title={t('search.guestsAndRooms')} /></View>
+            <Stepper label={t('search.adults')} value={adults} onChange={setAdults} />
+            <Stepper label={t('search.children')} value={children} onChange={setChildren} />
+            <Stepper label={t('search.minRooms')} value={minRooms} onChange={setMinRooms} />
+            <Stepper label={t('search.minBeds')} value={minBeds} onChange={setMinBeds} />
+            {availableAmenities.length > 0 ? (<><FilterDivider /><View className="mt-6"><FilterSectionTitle icon="checkmark-circle-outline" title={t('search.facilities')} /></View><View className="mt-3 flex-row flex-wrap">{availableAmenities.map((item) => { const act = selectedAmenities.includes(item); return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setSelectedAmenities((prev) => act ? prev.filter((x) => x !== item) : [...prev, item])}><View className="flex-row items-center">{act ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}<Text className={`text-sm font-bold ${act ? 'text-white ml-1' : 'text-textMain'}`}>{t(`amenities.${item}`, { defaultValue: item })}</Text></View></Pressable>); })}</View></>) : null}
             <FilterDivider />
-            <View className="mt-6"><FilterSectionTitle icon="calendar-outline" title="When (pick ahead for booking)" /></View>
+            <View className="mt-6"><FilterSectionTitle icon="calendar-outline" title={t('search.when')} /></View>
             <Pressable className="mt-3 rounded-xl px-3 py-3 flex-row items-center" style={{ backgroundColor: '#F8F7FF', borderWidth: 1, borderColor: '#E6E3F5' }} onPress={() => { setShowFilter(false); setShowSchedule(true); }}>
               <Ionicons name="calendar-outline" size={18} color="#4F46E5" />
-              <Text className="ml-2 text-base text-textMain">{checkIn ? `${checkIn} → ${checkOut || 'No check-out date yet'}` : 'Pick dates on the calendar'}</Text>
+              <Text className="ml-2 text-base text-textMain">{checkIn ? `${checkIn} → ${checkOut || (i18n.language === 'vi' ? 'Chưa chọn ngày trả' : 'No check-out date yet')}` : t('search.pickDates')}</Text>
             </Pressable>
             {dateError ? <Text className="mt-2 text-sm text-red-500">{dateError}</Text> : null}
-            <Text className="mt-2 text-xs text-textMuted">Dates do not filter stays out, because places have no separate availability calendar.</Text>
           </View>
             </ScrollView>
             <View className="px-5 py-4 flex-row items-center" style={{ borderTopWidth: 1, borderTopColor: '#E6E3F5' }}>
-              <Pressable onPress={() => { clearFilters(); setShowFilter(false); }}><Text className="text-sm font-bold text-textMuted" style={{ textDecorationLine: 'underline' }}>Clear all filters</Text></Pressable>
-              <View className="flex-1 ml-4"><AppButton title="Apply filters" onPress={() => setShowFilter(false)} disabled={!!priceError || !!dateError} /></View>
+              <Pressable onPress={() => { clearFilters(); setShowFilter(false); }}><Text className="text-sm font-bold text-textMuted" style={{ textDecorationLine: 'underline' }}>{t('search.clearFilters')}</Text></Pressable>
+              <View className="flex-1 ml-4"><AppButton title={t('search.applyFilters')} onPress={() => setShowFilter(false)} disabled={!!priceError || !!dateError} /></View>
             </View>
           </Pressable>
         </Pressable>

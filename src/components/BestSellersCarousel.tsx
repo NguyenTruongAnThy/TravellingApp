@@ -17,7 +17,7 @@ export default function BestSellersCarousel({
   onToggleFavorite,
   onSelectPlace,
 }: BestSellersCarouselProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Lọc và xếp hạng Best Sellers: sao >= 4.5, có review, ưu tiên lượt review nhiều nhất
   const bestSellers = React.useMemo(() => {
     return places
@@ -200,7 +200,7 @@ export default function BestSellersCarousel({
                       }}
                     >
                       <Text className="text-[11px] font-extrabold text-white tracking-tight">
-                        Tiết kiệm {discountPercent}%
+                        {t('common.saveDiscount')} {discountPercent}%
                       </Text>
                     </View>
                     <View
@@ -268,9 +268,9 @@ export default function BestSellersCarousel({
 
                 {/* Thông tin phòng & sức chứa */}
                 <Text className="text-[11px] text-inactive mt-0.5" numberOfLines={1}>
-                  {item.place_type || 'Stay'}
-                  {item.rooms != null ? ` • ${item.rooms} phòng` : ''}
-                  {item.guests_capacity ? ` • ${item.guests_capacity} khách` : ''}
+                  {item.place_type ? t(`place_types.${item.place_type}`, { defaultValue: item.place_type }) : 'Stay'}
+                  {item.rooms != null ? ` • ${item.rooms} ${t('common.rooms')}` : ''}
+                  {item.guests_capacity ? ` • ${item.guests_capacity} ${t('common.guests')}` : ''}
                 </Text>
 
                 {/* Giá tiền */}
@@ -285,7 +285,7 @@ export default function BestSellersCarousel({
                           ${currentPrice}
                         </Text>
                         <Text className="text-[11px] text-textMuted font-medium ml-1">
-                          / đêm
+                          {t('common.perNight')}
                         </Text>
                       </View>
                     </View>
@@ -293,7 +293,9 @@ export default function BestSellersCarousel({
                       className="px-2 py-1 rounded-lg"
                       style={{ backgroundColor: '#EFF6FF' }}
                     >
-                      <Text className="text-[10px] font-bold text-brand">Đặt ngay ›</Text>
+                      <Text className="text-[10px] font-bold text-brand">
+                        {i18n.language === 'vi' ? 'Đặt ngay ›' : 'Book now ›'}
+                      </Text>
                     </View>
                   </View>
                 ) : (
@@ -303,14 +305,16 @@ export default function BestSellersCarousel({
                         ${currentPrice}
                       </Text>
                       <Text className="text-[11px] text-textMuted font-medium ml-1">
-                        / đêm
+                        {t('common.perNight')}
                       </Text>
                     </View>
                     <View
                       className="px-2 py-1 rounded-lg"
                       style={{ backgroundColor: '#EFF6FF' }}
                     >
-                      <Text className="text-[10px] font-bold text-brand">Đặt ngay ›</Text>
+                      <Text className="text-[10px] font-bold text-brand">
+                        {i18n.language === 'vi' ? 'Đặt ngay ›' : 'Book now ›'}
+                      </Text>
                     </View>
                   </View>
                 )}

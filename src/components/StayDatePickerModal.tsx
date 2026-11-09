@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { getBookedDateRanges } from '../services/bookingsService';
 
 interface StayDatePickerModalProps {
@@ -36,6 +37,11 @@ const MONTH_NAMES = [
 ];
 
 const WEEKDAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const EN_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const EN_WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const toDateString = (d: Date): string => {
   const year = d.getFullYear();
@@ -80,6 +86,7 @@ export default function StayDatePickerModal({
   minNights = 1,
   placeId,
 }: StayDatePickerModalProps) {
+  const { t, i18n } = useTranslation();
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -378,7 +385,7 @@ export default function StayDatePickerModal({
                       nights === 1 ? 'text-white' : 'text-textMain'
                     }`}
                   >
-                    1 đêm
+                    1 {i18n.language === 'vi' ? 'đêm' : 'night'}
                   </Text>
                 </Pressable>
 
@@ -393,7 +400,7 @@ export default function StayDatePickerModal({
                       nights === 2 ? 'text-white' : 'text-textMain'
                     }`}
                   >
-                    2 đêm
+                    2 {i18n.language === 'vi' ? 'đêm' : 'nights'}
                   </Text>
                 </Pressable>
 
@@ -402,7 +409,9 @@ export default function StayDatePickerModal({
                   className="px-3 py-1.5 rounded-full border border-borderLight bg-white flex-row items-center gap-1"
                 >
                   <Ionicons name="sunny-outline" size={13} color="#F59E0B" />
-                  <Text className="text-xs font-semibold text-textMain">Cuối tuần (2đ)</Text>
+                  <Text className="text-xs font-semibold text-textMain">
+                    {i18n.language === 'vi' ? 'Cuối tuần (2đ)' : 'Weekend (2n)'}
+                  </Text>
                 </Pressable>
 
                 <Pressable
@@ -416,7 +425,7 @@ export default function StayDatePickerModal({
                       nights === 3 ? 'text-white' : 'text-textMain'
                     }`}
                   >
-                    3 đêm
+                    3 {i18n.language === 'vi' ? 'đêm' : 'nights'}
                   </Text>
                 </Pressable>
 
@@ -431,7 +440,7 @@ export default function StayDatePickerModal({
                       nights === 7 ? 'text-white' : 'text-textMain'
                     }`}
                   >
-                    1 tuần (7đ)
+                    {i18n.language === 'vi' ? '1 tuần (7đ)' : '1 week (7n)'}
                   </Text>
                 </Pressable>
               </ScrollView>
@@ -457,7 +466,7 @@ export default function StayDatePickerModal({
                 </Pressable>
 
                 <Text className="text-base font-bold text-textMain">
-                  {MONTH_NAMES[calMonth]} {calYear}
+                  {(i18n.language === 'vi' ? MONTH_NAMES : EN_MONTH_NAMES)[calMonth]} {calYear}
                 </Text>
 
                 <Pressable
@@ -470,7 +479,7 @@ export default function StayDatePickerModal({
 
               {/* Day of week labels */}
               <View className="flex-row mb-1">
-                {WEEKDAY_NAMES.map((dw) => (
+                {(i18n.language === 'vi' ? WEEKDAY_NAMES : EN_WEEKDAY_NAMES).map((dw) => (
                   <Text
                     key={dw}
                     className="flex-1 text-center text-xs font-semibold text-textMuted py-1"

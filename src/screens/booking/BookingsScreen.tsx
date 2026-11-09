@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { getUserBookings, cancelBooking } from '../../services/bookingsService';
 import { convertUsdToVnd } from '../../services/sepayService';
 import SepayQrModal from '../../components/SepayQrModal';
@@ -65,11 +66,61 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
     }
     const { data } = await getUserBookings(userId);
     if (data) {
-      setBookings(data);
+      const now = Date.now();
+      const expiredPendingIds: string[] = [];
+      const validBookings = data.filter((b) => {
+        const isPending = b.payment_status === 'pending' || b.payment_status === 'unpaid';
+        if (isPending && b.created_at) {
+          const elapsedSec = Math.floor((now - new Date(b.created_at).getTime()) / 1000);
+          if (elapsedSec >= 600) {
+            expiredPendingIds.push(b.id);
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Tự động xóa khỏi db nếu giao dịch chờ thanh toán quá 10 phút (bộ đếm giờ về 0:00)
+      if (expiredPendingIds.length > 0) {
+        supabase.from('bookings').delete().in('id', expiredPendingIds).then(() => {});
+      }
+
+      setBookings(validBookings);
     }
     setLoading(false);
     setRefreshing(false);
   }, [userId]);
+
+  // Real-time ticker: Mỗi 3 giây kiểm tra các đơn chờ thanh toán nếu bộ đếm giờ về 0:00 thì tự động xóa khỏi DB và Upcoming
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const expiredPendingIds: string[] = [];
+      setBookings((prev) => {
+        let hasExpired = false;
+        const remainingBookings = prev.filter((b) => {
+          const isPending = b.payment_status === 'pending' || b.payment_status === 'unpaid';
+          if (isPending && b.created_at) {
+            const elapsedSec = Math.floor((now - new Date(b.created_at).getTime()) / 1000);
+            if (elapsedSec >= 600) {
+              expiredPendingIds.push(b.id);
+              hasExpired = true;
+              return false;
+            }
+          }
+          return true;
+        });
+
+        if (hasExpired && expiredPendingIds.length > 0) {
+          supabase.from('bookings').delete().in('id', expiredPendingIds).then(() => {});
+          return remainingBookings;
+        }
+        return prev;
+      });
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     loadBookings();
@@ -214,15 +265,16 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
       >
         {/* Segmented Tabs Bar */}
         <View className="px-5 pt-4">
-          <View className="bg-[#EFEFF8] rounded-full p-1.5 flex-row items-center border border-borderLight/60">
+          <View className="bg-[#EFEFF8] rounded-full p-1 flex-row items-center border border-borderLight/60">
             {/* Tab: Upcoming */}
             <Pressable
               onPress={() => setActiveTab('Upcoming')}
-              className={`flex-1 flex-row items-center justify-center py-2 px-3 rounded-full gap-1.5 ${
+              className={`flex-1 flex-row items-center justify-center py-2 px-1.5 rounded-full gap-1 ${
                 activeTab === 'Upcoming' ? 'bg-brand shadow-sm' : ''
               }`}
             >
               <Text
+                numberOfLines={1}
                 className={`text-xs font-bold ${
                   activeTab === 'Upcoming' ? 'text-white' : 'text-[#3C494C]'
                 }`}
@@ -230,7 +282,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 {t('bookings.upcoming')}
               </Text>
               <View
-                className={`w-4 h-4 rounded-full items-center justify-center ${
+                className={`flex-shrink-0 w-4 h-4 rounded-full items-center justify-center ${
                   activeTab === 'Upcoming' ? 'bg-white/20' : 'bg-borderLight'
                 }`}
               >
@@ -247,11 +299,12 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
             {/* Tab: Completed */}
             <Pressable
               onPress={() => setActiveTab('Completed')}
-              className={`flex-1 flex-row items-center justify-center py-2 px-3 rounded-full gap-1.5 ${
+              className={`flex-1 flex-row items-center justify-center py-2 px-1.5 rounded-full gap-1 ${
                 activeTab === 'Completed' ? 'bg-brand shadow-sm' : ''
               }`}
             >
               <Text
+                numberOfLines={1}
                 className={`text-xs font-bold ${
                   activeTab === 'Completed' ? 'text-white' : 'text-[#3C494C]'
                 }`}
@@ -259,7 +312,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 {t('bookings.completed')}
               </Text>
               <View
-                className={`w-4 h-4 rounded-full items-center justify-center ${
+                className={`flex-shrink-0 w-4 h-4 rounded-full items-center justify-center ${
                   activeTab === 'Completed' ? 'bg-white/20' : 'bg-borderLight'
                 }`}
               >
@@ -276,11 +329,12 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
             {/* Tab: Cancelled */}
             <Pressable
               onPress={() => setActiveTab('Cancelled')}
-              className={`flex-1 flex-row items-center justify-center py-2 px-3 rounded-full gap-1.5 ${
+              className={`flex-1 flex-row items-center justify-center py-2 px-1.5 rounded-full gap-1 ${
                 activeTab === 'Cancelled' ? 'bg-brand shadow-sm' : ''
               }`}
             >
               <Text
+                numberOfLines={1}
                 className={`text-xs font-bold ${
                   activeTab === 'Cancelled' ? 'text-white' : 'text-[#3C494C]'
                 }`}
@@ -288,7 +342,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 {t('bookings.cancelled')}
               </Text>
               <View
-                className={`w-4 h-4 rounded-full items-center justify-center ${
+                className={`flex-shrink-0 w-4 h-4 rounded-full items-center justify-center ${
                   activeTab === 'Cancelled' ? 'bg-white/20' : 'bg-borderLight'
                 }`}
               >
@@ -347,7 +401,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                     {/* Header above card */}
                     <View className="flex-row items-center justify-between">
                       <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
-                        {idx === 0 ? 'ACTIVE RESERVATION' : `UPCOMING STAY #${idx + 1}`}
+                        {idx === 0 ? t('bookings.activeReservation') : `${t('bookings.upcomingStay')} #${idx + 1}`}
                       </Text>
                       <View className="flex-row items-center gap-1.5">
                         {b.payment_status === 'pending' ? (
@@ -356,13 +410,13 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             className="bg-amber-100 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-amber-300 active:opacity-80"
                           >
                             <View className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-                            <Text className="text-[11px] font-bold text-amber-800">Chờ thanh toán (Bấm trả ngay)</Text>
+                            <Text className="text-[11px] font-bold text-amber-800">{t('bookings.pendingPaymentClick')}</Text>
                             <Ionicons name="chevron-forward" size={12} color="#92400E" />
                           </Pressable>
                         ) : (
                           <View className="bg-[#E2E7FF] px-2.5 py-1 rounded-full flex-row items-center gap-1">
                             <View className="w-1.5 h-1.5 rounded-full bg-brand" />
-                            <Text className="text-[11px] font-bold text-brand">Confirmed</Text>
+                            <Text className="text-[11px] font-bold text-brand">{t('bookings.confirmed')}</Text>
                           </View>
                         )}
                       </View>
@@ -392,7 +446,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                           <Text className="text-xs font-bold text-textMain">
                             {place?.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0
                               ? Number(place.rating).toFixed(1)
-                              : 'New'}
+                              : t('common.newBadge')}
                           </Text>
                           {place?.review_count && place.review_count > 0 ? (
                             <Text className="text-[10px] text-[#6C797D]">
@@ -405,7 +459,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                         <View className="gap-1">
                           <View className="self-start bg-[#283044]/70 px-2.5 py-0.5 rounded-full">
                             <Text className="text-[10px] font-bold text-[#E2E7FF] uppercase tracking-wider">
-                              {place?.place_type || place?.category || 'STAY'}
+                              {place?.place_type ? t(`place_types.${place.place_type}`, { defaultValue: place.place_type }) : (place?.category || 'STAY')}
                             </Text>
                           </View>
                           <Text className="text-xl font-bold text-white tracking-tight">
@@ -424,13 +478,13 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                         <View className="flex-1 pr-2">
                           <View className="flex-row items-center gap-1">
                             <Ionicons name="calendar-outline" size={13} color="#6C797D" />
-                            <Text className="text-xs text-[#6C797D]">Dates</Text>
+                            <Text className="text-xs text-[#6C797D]">{t('bookings.dates')}</Text>
                           </View>
                           <Text className="text-sm font-bold text-textMain mt-1">
                             {b.check_in} – {b.check_out}
                           </Text>
                           <Text className="text-xs text-[#6C797D] mt-0.5">
-                            {b.nights} nights · {(b.guests_adults || 1) + (b.guests_children || 0)} guests
+                            {b.nights} {t('common.night')} · {(b.guests_adults || 1) + (b.guests_children || 0)} {t('common.guests')}
                           </Text>
                         </View>
 
@@ -438,7 +492,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                         <View className="flex-1 pl-2 border-l border-borderLight">
                           <View className="flex-row items-center gap-1">
                             <Ionicons name="receipt-outline" size={13} color="#6C797D" />
-                            <Text className="text-xs text-[#6C797D]">Booking Reference</Text>
+                            <Text className="text-xs text-[#6C797D]">{t('bookings.bookingRef')}</Text>
                           </View>
                           <Text className="text-sm font-bold text-brand mt-1">{b.ref_code}</Text>
                           <View className="flex-row items-center gap-1 mt-0.5">
@@ -446,9 +500,9 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                               ${Number(b.total).toFixed(0)}
                             </Text>
                             {b.payment_status === 'pending' ? (
-                              <Text className="text-[11px] font-bold text-amber-600">(Chờ thanh toán)</Text>
+                              <Text className="text-[11px] font-bold text-amber-600">({t('bookings.pendingPayment')})</Text>
                             ) : (
-                              <Text className="text-[11px] font-bold text-emerald-600">(Đã thanh toán)</Text>
+                              <Text className="text-[11px] font-bold text-emerald-600">({t('common.paid')})</Text>
                             )}
                           </View>
                           {b.promo_code ? (
@@ -468,13 +522,13 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                           <Ionicons name="person" size={20} color="#4F46E5" />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-xs font-bold text-textMain">Hosted by {hostName}</Text>
+                          <Text className="text-xs font-bold text-textMain">{t('bookings.hostedBy')} {hostName}</Text>
                           <Text className="text-[11px] text-[#6C797D]">
-                            Verified Host · Typically replies in 5m
+                            {t('bookings.verifiedHost')}
                           </Text>
                         </View>
                         <View className="bg-brand/10 px-2 py-1 rounded-full">
-                          <Text className="text-[10px] font-bold text-brand">Verified Stay</Text>
+                          <Text className="text-[10px] font-bold text-brand">{t('common.verifiedStay')}</Text>
                         </View>
                       </View>
 
@@ -990,6 +1044,12 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
           dueAmountUsd={Number(pendingBookingForPay.deposit_amount || pendingBookingForPay.total)}
           dueAmountVnd={convertUsdToVnd(Number(pendingBookingForPay.deposit_amount || pendingBookingForPay.total))}
           onPaymentSuccess={handleSepaySuccess}
+          onBookingExpired={(expiredId) => {
+            setSepayModalVisible(false);
+            setPendingBookingForPay(null);
+            setBookings((prev) => prev.filter((b) => b.id !== expiredId));
+            loadBookings();
+          }}
         />
       )}
     </View>

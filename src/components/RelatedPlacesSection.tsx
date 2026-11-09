@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { Place } from '../types';
 
 interface RelatedPlacesSectionProps {
@@ -16,6 +17,7 @@ export default function RelatedPlacesSection({
   currentLocation,
   currentPlaceType,
 }: RelatedPlacesSectionProps) {
+  const { t, i18n } = useTranslation();
   if (!relatedPlaces || relatedPlaces.length === 0) return null;
 
   const areaName =
@@ -34,11 +36,13 @@ export default function RelatedPlacesSection({
               <Ionicons name="sparkles" size={15} color="#4F46E5" />
             </View>
             <Text className="text-base font-bold text-textMain">
-              Chỗ Nghỉ Tương Tự
+              {i18n.language === 'vi' ? 'Chỗ Nghỉ Tương Tự' : 'Similar Stays'}
             </Text>
           </View>
           <Text className="mt-0.5 text-xs text-textMuted ml-9">
-            Gợi ý cùng tại {areaName} {currentPlaceType ? `& kiểu ${currentPlaceType}` : ''}
+            {i18n.language === 'vi'
+              ? `Gợi ý cùng tại ${areaName} ${currentPlaceType ? `& kiểu ${currentPlaceType}` : ''}`
+              : `Recommended stays in ${areaName}`}
           </Text>
         </View>
 
@@ -47,7 +51,7 @@ export default function RelatedPlacesSection({
           style={{ backgroundColor: '#F3F4F6' }}
         >
           <Text className="text-[11px] font-bold text-textMuted">
-            {relatedPlaces.length} gợi ý
+            {relatedPlaces.length} {i18n.language === 'vi' ? 'gợi ý' : 'stays'}
           </Text>
         </View>
       </View>
@@ -189,11 +193,13 @@ export default function RelatedPlacesSection({
                     >
                       ${currentPrice}
                     </Text>
-                    <Text className="text-[10px] text-textMuted ml-0.5">/ đêm</Text>
+                    <Text className="text-[10px] text-textMuted ml-0.5">{t('common.perNight')}</Text>
                   </View>
 
                   <View className="flex-row items-center">
-                    <Text className="text-[10px] font-bold text-brand">Xem phòng ›</Text>
+                    <Text className="text-[10px] font-bold text-brand">
+                      {i18n.language === 'vi' ? 'Xem phòng ›' : 'View stay ›'}
+                    </Text>
                   </View>
                 </View>
               </View>

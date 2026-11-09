@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { calculatePricing } from '../../services/pricing';
@@ -28,6 +29,7 @@ import StayDatePickerModal from '../../components/StayDatePickerModal';
 import type { Place } from '../../types';
 
 export default function ConfirmAndPayScreen() {
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { session } = useAuth();
@@ -393,14 +395,14 @@ export default function ConfirmAndPayScreen() {
                 <Text className="text-xs font-bold text-textMain">
                   {place.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0
                     ? Number(place.rating).toFixed(1)
-                    : 'New'}
+                    : t('common.newBadge')}
                 </Text>
                 {place.review_count && place.review_count > 0 ? (
                   <Text className="text-xs text-textMuted">({place.review_count})</Text>
                 ) : null}
               </View>
               <Text className="text-xs font-bold text-brand">
-                ${pricePerNight}/đêm
+                ${pricePerNight} {t('common.perNight')}
               </Text>
             </View>
           </View>
@@ -822,6 +824,10 @@ export default function ConfirmAndPayScreen() {
           dueAmountVnd={dueAmountVnd}
           dueAmountUsd={dueAmountUsd}
           onPaymentSuccess={handleSepaySuccess}
+          onBookingExpired={() => {
+            setShowSepayModal(false);
+            setCreatedBooking(null);
+          }}
         />
       )}
 

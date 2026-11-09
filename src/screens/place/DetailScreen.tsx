@@ -7,6 +7,7 @@ import { addPlaceToCollection, createCollection, getCollections, getCollectionsC
 import { getReviewsByPlace, incrementHelpful } from '../../services/reviewService';
 import type { Collection, Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import AppButton from '../../components/AppButton';
 import RelatedPlacesSection from '../../components/RelatedPlacesSection';
 
@@ -21,6 +22,7 @@ function amenityIcon(name: string): any {
 }
 
 export default function DetailScreen({ route, navigation }: { route: any; navigation: any }) {
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const placeId = route?.params?.placeId as string | undefined;
   const [place, setPlace] = useState<Place | null>(null);
@@ -262,19 +264,19 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
                 <Text className="text-base text-textMuted line-through font-semibold mr-2">${place.original_price}</Text>
                 <View className="px-2 py-0.5 rounded bg-[#FF6B00]">
                   <Text className="text-xs font-bold text-white">
-                    Tiết kiệm {Math.round(((Number(place.original_price) - Number(place.price_per_night)) / Number(place.original_price)) * 100)}%
+                    {t('common.saveDiscount')} {Math.round(((Number(place.original_price) - Number(place.price_per_night)) / Number(place.original_price)) * 100)}%
                   </Text>
                 </View>
               </View>
               <View className="flex-row items-baseline mt-0.5">
                 <Text className="text-3xl font-extrabold text-[#FF6B00]">${place.price_per_night}</Text>
-                <Text className="text-base text-textMuted"> / night</Text>
+                <Text className="text-base text-textMuted"> {t('common.perNight')}</Text>
               </View>
             </View>
           ) : (
             <View className="mt-2 flex-row items-baseline">
               <Text className="text-3xl font-bold text-brand">${place.price_per_night}</Text>
-              <Text className="text-base text-textMuted"> / night</Text>
+              <Text className="text-base text-textMuted"> {t('common.perNight')}</Text>
             </View>
           )}
           <Pressable className="mt-3 flex-row items-center self-start px-3 py-2 rounded-full bg-appBg border border-borderLight" onPress={openSaveModal}>
@@ -445,10 +447,10 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
             <Text className="text-[11px] text-textMuted line-through font-medium">${place.original_price}</Text>
           ) : null}
           <Text className={`text-2xl font-bold ${place.original_price && Number(place.original_price) > Number(place.price_per_night) ? 'text-[#FF6B00]' : 'text-brand'}`}>${place.price_per_night}</Text>
-          <Text className="text-xs text-textMuted">/ night</Text>
+          <Text className="text-xs text-textMuted">{t('common.perNight')}</Text>
         </View>
         <View className="flex-1 ml-4">
-          <AppButton title="Reserve Now" onPress={handleBook} />
+          <AppButton title={i18n.language === 'vi' ? 'Đặt phòng ngay' : 'Reserve Now'} onPress={handleBook} />
         </View>
       </View>
 

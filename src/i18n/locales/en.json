@@ -20,7 +20,13 @@
     "perNight": "/ night",
     "total": "Total",
     "verifiedStay": "Verified Stay",
-    "details": "Details"
+    "details": "Details",
+    "newBadge": "New",
+    "saveDiscount": "Save",
+    "rooms": "rooms",
+    "beds": "beds",
+    "guests": "guests",
+    "paid": "Paid"
   },
   "search": {
     "searchPlaceholder": "Where to?",
@@ -53,6 +59,7 @@
     "All": "All",
     "Treehouse": "Treehouse",
     "Beach": "Beach",
+    "Beachfront": "Beachfront",
     "Cabin": "Cabin",
     "Villa": "Villa",
     "Apartment": "Apartment",
@@ -115,15 +122,18 @@
     "completed": "Completed",
     "cancelled": "Cancelled",
     "activeReservation": "CURRENT RESERVATION",
-    "upcomingStay": "UPCOMING HOLIDAY",
+    "upcomingStay": "UPCOMING STAY",
     "pastAdventures": "PAST ADVENTURES",
     "cancelledReservations": "CANCELLED RESERVATIONS",
     "confirmed": "Confirmed",
     "pendingPayment": "Pending Payment",
+    "pendingPaymentClick": "Pending Payment (Pay Now)",
     "payNowQr": "Pay now (VietQR)",
     "paymentCountdown": "Payment expires in",
     "bookingRef": "Booking Ref",
+    "dates": "Stay Dates",
     "hostedBy": "Hosted by",
+    "verifiedHost": "Verified Host · Typically replies in 5m",
     "viewDetailsAndCheckIn": "View Details & Check-in",
     "messageHost": "Message Host",
     "directions": "Directions",
@@ -135,7 +145,9 @@
     "viewDetails": "View details",
     "noBookings": "You have no bookings in this category.",
     "noPast": "No past adventures yet.",
-    "noCancelled": "No cancelled reservations."
+    "noCancelled": "No cancelled reservations.",
+    "expiredTitle": "Payment Expired",
+    "expiredDesc": "This unpaid booking has expired (10 minutes timeout) and has been removed from the system."
   },
   "smartKey": {
     "title": "Check-in & Smart Key",

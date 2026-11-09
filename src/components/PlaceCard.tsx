@@ -1,5 +1,6 @@
 import { Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { Place } from '../types';
 
 export default function PlaceCard({
@@ -11,6 +12,7 @@ export default function PlaceCard({
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
 }) {
+  const { t } = useTranslation();
   const mainImage =
     Array.isArray(place.images) && place.images.length > 0
       ? place.images[0]
@@ -76,7 +78,7 @@ export default function PlaceCard({
               }}
             >
               <Text className="text-xs font-extrabold text-white tracking-tight">
-                Tiết kiệm {discountPercent}%
+                {t('common.saveDiscount')} {discountPercent}%
               </Text>
             </View>
             {/* Vạt gập 3D ruy băng ở mép phải dưới */}
@@ -150,7 +152,7 @@ export default function PlaceCard({
             <Text className="ml-1 text-xs font-bold text-textMain">
               {place.rating != null && Number(place.rating) > 0 && (place.review_count ?? 0) > 0
                 ? Number(place.rating).toFixed(1)
-                : 'New'}
+                : t('common.newBadge')}
             </Text>
             {place.review_count && place.review_count > 0 ? (
               <Text className="ml-1 text-[11px] text-textMuted">({place.review_count})</Text>
@@ -166,13 +168,13 @@ export default function PlaceCard({
         </View>
 
         <Text className="text-xs text-inactive mt-1">
-          {place.place_type || place.category || 'Stay'}
-          {place.rooms != null ? ` • ${place.rooms} rooms` : ''}
-          {place.beds != null ? ` • ${place.beds} beds` : ''}
-          {place.guests_capacity ? ` • ${place.guests_capacity} guests` : ''}
+          {place.place_type ? t(`place_types.${place.place_type}`, { defaultValue: place.place_type }) : (place.category || 'Stay')}
+          {place.rooms != null ? ` • ${place.rooms} ${t('common.rooms')}` : ''}
+          {place.beds != null ? ` • ${place.beds} ${t('common.beds')}` : ''}
+          {place.guests_capacity ? ` • ${place.guests_capacity} ${t('common.guests')}` : ''}
         </Text>
 
-        {/* Giá tiền (Ảnh 1: Giá gốc gạch ngang ở trên, giá mới màu cam nổi bật ở dưới) */}
+        {/* Giá tiền */}
         {hasDiscount ? (
           <View className="mt-2">
             <Text className="text-xs text-[#8A90A6] line-through font-medium">
@@ -180,13 +182,13 @@ export default function PlaceCard({
             </Text>
             <View className="flex-row items-baseline">
               <Text className="text-xl font-extrabold text-[#FF6B00]">${currentPrice}</Text>
-              <Text className="text-[13px] text-textMuted font-medium ml-1">/ night</Text>
+              <Text className="text-[13px] text-textMuted font-medium ml-1">{t('common.perNight')}</Text>
             </View>
           </View>
         ) : (
           <View className="flex-row items-baseline mt-2.5">
             <Text className="text-lg font-bold text-brand">${currentPrice}</Text>
-            <Text className="text-[13px] text-textMuted font-medium ml-1">/ night</Text>
+            <Text className="text-[13px] text-textMuted font-medium ml-1">{t('common.perNight')}</Text>
           </View>
         )}
       </View>

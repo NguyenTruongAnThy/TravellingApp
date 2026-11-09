@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import {
   SEPAY_CONFIG,
   buildSepayQrUrl,
@@ -28,6 +29,7 @@ interface SepayQrModalProps {
   dueAmountVnd: number;
   dueAmountUsd: number;
   onPaymentSuccess: (booking: any) => void;
+  onBookingExpired?: (bookingId: string) => void;
 }
 
 export default function SepayQrModal({
@@ -37,10 +39,13 @@ export default function SepayQrModal({
   dueAmountVnd,
   dueAmountUsd,
   onPaymentSuccess,
+  onBookingExpired,
 }: SepayQrModalProps) {
+  const { t } = useTranslation();
   const [checking, setChecking] = useState(false);
   const [countdown, setCountdown] = useState(600); // Đếm ngược thời gian từ lúc tạo giao dịch
   const timerRef = useRef<any>(null);
+  const hasExpiredRef = useRef(false);
 
   const cleanRefCode = booking?.ref_code
     ? String(booking.ref_code).replace(/[^a-zA-Z0-9]/g, '')
@@ -50,9 +55,33 @@ export default function SepayQrModal({
   const demoAmountVnd = getDemoPaymentAmountVnd(dueAmountVnd);
   const qrUrl = buildSepayQrUrl(demoAmountVnd, cleanRefCode);
 
+  const handleExpired = async () => {
+    if (hasExpiredRef.current) return;
+    hasExpiredRef.current = true;
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    if (booking?.id) {
+      try {
+        await supabase.from('bookings').delete().eq('id', booking.id);
+      } catch (err) {
+        console.warn('Could not auto-delete expired booking from database:', err);
+      }
+      onBookingExpired?.(booking.id);
+    }
+
+    Alert.alert(
+      t('bookings.expiredTitle', { defaultValue: 'Hết thời gian thanh toán' }),
+      t('bookings.expiredDesc', {
+        defaultValue: 'Giao dịch chưa thanh toán đã hết hạn (10 phút) và tự động bị hủy khỏi hệ thống.',
+      })
+    );
+    onClose();
+  };
+
   // Đếm ngược chính xác kể từ thời điểm tạo giao dịch (booking.created_at)
   useEffect(() => {
     if (!visible) return;
+    hasExpiredRef.current = false;
 
     const calcRemainingSeconds = () => {
       const TOTAL_TIMEOUT = 600; // 10 phút đếm ngược (600 giây)
@@ -64,12 +93,19 @@ export default function SepayQrModal({
       return remaining > 0 ? remaining : 0;
     };
 
-    setCountdown(calcRemainingSeconds());
+    const initialRem = calcRemainingSeconds();
+    if (initialRem <= 0) {
+      handleExpired();
+      return;
+    }
+
+    setCountdown(initialRem);
 
     timerRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
+          handleExpired();
           return 0;
         }
         return prev - 1;
@@ -79,7 +115,7 @@ export default function SepayQrModal({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [visible, booking?.created_at]);
+  }, [visible, booking?.created_at, booking?.id]);
 
   // Lắng nghe Supabase Realtime khi Webhook cập nhật đơn hàng thành "paid"
   useEffect(() => {
