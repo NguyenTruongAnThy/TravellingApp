@@ -373,16 +373,16 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 <Ionicons name="calendar-outline" size={32} color="#4F46E5" />
               </View>
               <Text className="text-lg font-bold text-textMain text-center">
-                No upcoming reservations
+                {t('bookings.noUpcomingTitle')}
               </Text>
               <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
-                When you book a stay, your active reservation, keyless smart key PIN, and arrival directions will appear right here.
+                {t('bookings.noUpcomingDesc')}
               </Text>
               <Pressable
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })}
                 className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
               >
-                <Text className="text-xs font-bold text-white">Explore Stays</Text>
+                <Text className="text-xs font-bold text-white">{t('bookings.exploreStays')}</Text>
               </Pressable>
             </View>
           ) : (
@@ -638,23 +638,23 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 <Ionicons name="time-outline" size={32} color="#4F46E5" />
               </View>
               <Text className="text-lg font-bold text-textMain text-center">
-                No past adventures yet
+                {t('bookings.noPastTitle')}
               </Text>
               <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
-                Completed stays and verified trip receipts will appear here after your holiday.
+                {t('bookings.noPastDesc')}
               </Text>
               <Pressable
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })}
                 className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
               >
-                <Text className="text-xs font-bold text-white">Find your next stay</Text>
+                <Text className="text-xs font-bold text-white">{t('bookings.findNextStay')}</Text>
               </Pressable>
             </View>
           ) : (
             <View className="px-5 pt-6 gap-3.5">
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
-                  PAST ADVENTURES ({completedCount})
+                  {t('bookings.pastAdventures')} ({completedCount})
                 </Text>
               </View>
 
@@ -708,10 +708,12 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                       <View className="flex-row items-center justify-between pt-2 border-t border-borderLight/60">
                         <Pressable
                           onPress={() => handleOpenReceipt(b)}
-                          className="flex-row items-center gap-1"
+                          className="flex-row items-center gap-1 py-1"
                         >
                           <Ionicons name="receipt-outline" size={12} color="#131B2E" />
-                          <Text className="text-xs font-bold text-textMain">View receipt</Text>
+                          <Text className="text-xs font-bold text-textMain" numberOfLines={1}>
+                            {t('bookings.viewReceipt')}
+                          </Text>
                         </Pressable>
 
                         <Pressable
@@ -722,10 +724,12 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                               navigation.navigate('Search');
                             }
                           }}
-                          className="flex-row items-center gap-1"
+                          className="flex-row items-center gap-1 py-1"
                         >
                           <Ionicons name="refresh-outline" size={12} color="#4F46E5" />
-                          <Text className="text-xs font-bold text-brand">{t('bookings.rebookStay')}</Text>
+                          <Text className="text-xs font-bold text-brand" numberOfLines={1}>
+                            {t('bookings.rebookStay')}
+                          </Text>
                         </Pressable>
                       </View>
                     </View>
@@ -766,11 +770,18 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                     </View>
                   ) : null}
                   <View className="mt-3 pt-3 border-t border-borderLight flex-row justify-between items-center">
-                    <Text className="text-xs text-textMuted">
+                    <Text className="text-xs text-textMuted flex-1 mr-2" numberOfLines={1}>
                       {b.check_in} – {b.check_out} · ${Number(b.total).toFixed(0)}
                     </Text>
-                    <Pressable onPress={() => handleOpenReceipt(b)}>
-                      <Text className="text-xs font-bold text-brand">{t('bookings.viewDetails')}</Text>
+                    <Pressable
+                      onPress={() => handleOpenReceipt(b)}
+                      className="flex-shrink-0 flex-row items-center py-1 pl-2"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text className="text-xs font-bold text-brand" numberOfLines={1}>
+                        {t('bookings.viewDetails')}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={13} color="#4F46E5" style={{ marginLeft: 2 }} />
                     </Pressable>
                   </View>
                 </View>
@@ -782,16 +793,16 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 <Ionicons name="checkmark-circle-outline" size={32} color="#4F46E5" />
               </View>
               <Text className="text-lg font-bold text-textMain text-center">
-                No cancelled reservations
+                {t('bookings.noCancelledTitle')}
               </Text>
               <Text className="text-xs text-[#6C797D] text-center mt-1.5 px-6 leading-5">
-                You have no cancelled bookings. Free cancellation is always available up to 48 hours prior to check-in per BR05.
+                {t('bookings.noCancelledDesc')}
               </Text>
               <Pressable
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Search' })}
                 className="mt-6 bg-brand px-6 py-3 rounded-full shadow-sm"
               >
-                <Text className="text-xs font-bold text-white">Explore more stays</Text>
+                <Text className="text-xs font-bold text-white">{t('bookings.exploreMoreStays')}</Text>
               </Pressable>
             </View>
           )
@@ -805,9 +816,9 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                 <Ionicons name="headset-outline" size={20} color="#4F46E5" />
               </View>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-textMain">Need assistance?</Text>
+                <Text className="text-xs font-bold text-textMain">{t('bookings.needAssistance')}</Text>
                 <Text className="text-xs text-[#6C797D] mt-0.5">
-                  24/7 dedicated traveler support
+                  {t('bookings.dedicatedSupport')}
                 </Text>
               </View>
             </View>
@@ -816,7 +827,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
               onPress={() => setHelpModalVisible(true)}
               className="bg-white px-3.5 py-1.5 rounded-full shadow-sm border border-borderLight"
             >
-              <Text className="text-xs font-bold text-brand">Help Hub</Text>
+              <Text className="text-xs font-bold text-brand">{t('bookings.helpHub')}</Text>
             </Pressable>
           </View>
         </View>
