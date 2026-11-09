@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { Place } from '../types';
 
 interface BestSellersCarouselProps {
@@ -16,6 +17,7 @@ export default function BestSellersCarousel({
   onToggleFavorite,
   onSelectPlace,
 }: BestSellersCarouselProps) {
+  const { t } = useTranslation();
   // Lọc và xếp hạng Best Sellers: sao >= 4.5, có review, ưu tiên lượt review nhiều nhất
   const bestSellers = React.useMemo(() => {
     return places
@@ -43,7 +45,7 @@ export default function BestSellersCarousel({
               <Ionicons name="flame" size={16} color="#EF4444" />
             </View>
             <Text className="text-lg font-black text-textMain tracking-tight">
-              Chỗ Ở Bán Chạy Nhất
+              {t('search.bestSellers')}
             </Text>
           </View>
         </View>

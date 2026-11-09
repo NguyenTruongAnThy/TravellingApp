@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { Place } from '../../types';
 import { normalizeText } from '../../utils/normalize';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
 import BestSellersCarousel from '../../components/BestSellersCarousel';
@@ -94,6 +95,7 @@ const MOCK_NOTIFICATIONS = [
 ];
 
 export default function SearchScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const { t, i18n } = useTranslation();
   const hookNavigation = useNavigation<any>();
   const navigation = propNavigation || hookNavigation;
   const { session } = useAuth();
@@ -263,8 +265,10 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                 <Ionicons name="search-outline" size={18} color="#5A6478" />
               </View>
               <View className="flex-1 ml-2">
-                <Text className="text-base text-textMain" numberOfLines={1}>{query || 'Where to?'}</Text>
-                <Text className="text-xs text-textMuted" numberOfLines={1}>{checkIn || checkOut ? `${checkIn || '...'} - ${checkOut || '...'}` : 'Pick dates'} • {guests > 0 ? `${guests} guests` : 'Add guests'}</Text>
+                <Text className="text-base text-textMain" numberOfLines={1}>{query || t('search.searchPlaceholder')}</Text>
+                <Text className="text-xs text-textMuted" numberOfLines={1}>
+                  {checkIn || checkOut ? `${checkIn || '...'} - ${checkOut || '...'}` : (i18n.language === 'vi' ? 'Chọn ngày' : 'Pick dates')} • {guests > 0 ? `${guests} ${i18n.language === 'vi' ? 'khách' : 'guests'}` : (i18n.language === 'vi' ? 'Thêm khách' : 'Add guests')}
+                </Text>
               </View>
             </Pressable>
             {query ? (
@@ -302,7 +306,9 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
               onPress={() => setPlaceType(item)}
             >
               <Ionicons name={placeTypeIcon(item)} size={14} color={active ? '#FFFFFF' : '#131B2E'} />
-              <Text style={{ marginLeft: 6, fontSize: 12, fontWeight: active ? '700' : '500', color: active ? '#FFFFFF' : '#131B2E' }}>{placeTypeLabel(item)}</Text>
+              <Text style={{ marginLeft: 6, fontSize: 12, fontWeight: active ? '700' : '500', color: active ? '#FFFFFF' : '#131B2E' }}>
+                {t(`place_types.${item}`, { defaultValue: item })}
+              </Text>
             </Pressable>
           );
         })}
@@ -404,7 +410,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
             {priceError ? <Text className="mt-2 text-sm text-red-500">{priceError}</Text> : null}
             <FilterDivider />
             <View className="mt-6"><FilterSectionTitle icon="home-outline" title="Type of place" /></View>
-            <View className="mt-3 flex-row flex-wrap">{PLACE_TYPES.filter((x) => x !== 'All').map((item) => { const act = placeType === item; return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setPlaceType(item)}><View className="flex-row items-center"><Ionicons name={placeTypeIcon(item)} size={14} color={act ? '#FFFFFF' : '#4F46E5'} /><Text className={`ml-1.5 text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{placeTypeLabel(item)}</Text></View></Pressable>); })}</View>
+            <View className="mt-3 flex-row flex-wrap">{PLACE_TYPES.filter((x) => x !== 'All').map((item) => { const act = placeType === item; return (<Pressable key={item} className={`mr-2 mb-2 px-4 py-2.5 rounded-full border ${act ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`} style={act ? { shadowColor: '#4F46E5', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } : undefined} onPress={() => setPlaceType(item)}><View className="flex-row items-center"><Ionicons name={placeTypeIcon(item)} size={14} color={act ? '#FFFFFF' : '#4F46E5'} /><Text className={`ml-1.5 text-sm font-bold ${act ? 'text-white' : 'text-textMain'}`}>{t(`place_types.${item}`, { defaultValue: item })}</Text></View></Pressable>); })}</View>
             <FilterDivider />
             <View className="mt-6"><FilterSectionTitle icon="people-outline" title="Guests and rooms" /></View>
             <Stepper label="Adults (13 or above)" value={adults} onChange={setAdults} />
@@ -498,17 +504,17 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                     <View className="flex-row items-center justify-between pb-3 pt-2 border-t border-borderLight">
                       <View>
                         <Text className="text-base font-bold text-textMain">
-                          Tất Cả Chỗ Nghỉ Khám Phá
+                          {t('search.allStays')}
                         </Text>
                         <Text className="text-xs text-textMuted mt-0.5">
-                          {filteredPlaces.length} chỗ nghỉ tuyệt vời cho kỳ nghỉ của bạn
+                          {filteredPlaces.length} {i18n.language === 'vi' ? 'chỗ nghỉ tuyệt vời cho kỳ nghỉ của bạn' : 'great stays for your holiday'}
                         </Text>
                       </View>
                     </View>
                   </View>
                 ) : (
                   <Text className="pb-2 text-sm text-textMuted">
-                    {filteredPlaces.length} matching stays
+                    {filteredPlaces.length} {i18n.language === 'vi' ? 'chỗ nghỉ phù hợp' : 'matching stays'}
                   </Text>
                 )
               }

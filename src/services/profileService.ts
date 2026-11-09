@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 
 export type ProfileCounts = {
@@ -69,8 +70,33 @@ export async function getProfile(userId: string) {
     .select('name, phone, email, avatar_url')
     .eq('id', userId)
     .single();
-  if (error) return { data: null, error };
-  return { data, error: null };
+
+  let localAvatar = '';
+  try {
+    localAvatar = (await AsyncStorage.getItem(`@user_avatar_${userId}`)) || '';
+  } catch {}
+
+  const finalAvatar = data?.avatar_url || localAvatar || '';
+
+  if (error || !data) {
+    return {
+      data: {
+        name: '',
+        phone: '',
+        email: '',
+        avatar_url: finalAvatar,
+      },
+      error: null,
+    };
+  }
+
+  return {
+    data: {
+      ...data,
+      avatar_url: finalAvatar,
+    },
+    error: null,
+  };
 }
 
 export async function saveProfile(
@@ -83,6 +109,9 @@ export async function saveProfile(
   const payload: any = { id: userId, email, name: name.trim(), phone: phone.trim() || null };
   if (avatarUrl) {
     payload.avatar_url = avatarUrl;
+    try {
+      await AsyncStorage.setItem(`@user_avatar_${userId}`, avatarUrl);
+    } catch {}
   }
   const { error } = await supabase
     .from('users')
@@ -97,6 +126,11 @@ export async function getUserPersonalInfo(userId: string): Promise<UserPersonalI
     .eq('id', userId)
     .single();
 
+  let localAvatar = '';
+  try {
+    localAvatar = (await AsyncStorage.getItem(`@user_avatar_${userId}`)) || '';
+  } catch {}
+
   if (error || !data) {
     return {
       legalName: '',
@@ -110,8 +144,7 @@ export async function getUserPersonalInfo(userId: string): Promise<UserPersonalI
       emergencyContactPhone: '',
       address: '',
       nationality: 'Vietnam',
-      avatar:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+      avatar: localAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
       isVerified: false,
       idApprovalDate: 'April 12, 2024',
     };
@@ -140,6 +173,7 @@ export async function getUserPersonalInfo(userId: string): Promise<UserPersonalI
     nationality: data.nationality || 'Vietnam',
     avatar:
       data.avatar_url ||
+      localAvatar ||
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
     isVerified,
     idApprovalDate: approvalDate,
@@ -150,7 +184,7 @@ export async function updateUserPersonalInfo(
   userId: string,
   info: Partial<UserPersonalInfo>
 ): Promise<void> {
-  const updatePayload: Record<string, any> = {};
+  const updatePayload: Record<string, any> = { id: userId };
 
   if (info.legalName !== undefined) updatePayload.name = info.legalName.trim();
   if (info.preferredName !== undefined) updatePayload.preferred_name = info.preferredName.trim();
@@ -166,11 +200,17 @@ export async function updateUserPersonalInfo(
     updatePayload.emergency_contact_phone = info.emergencyContactPhone.trim();
   if (info.address !== undefined) updatePayload.address = info.address.trim();
   if (info.nationality !== undefined) updatePayload.nationality = info.nationality.trim();
-  if (info.avatar !== undefined) updatePayload.avatar_url = info.avatar.trim();
+  if (info.avatar !== undefined) {
+    updatePayload.avatar_url = info.avatar.trim();
+    try {
+      await AsyncStorage.setItem(`@user_avatar_${userId}`, info.avatar.trim());
+    } catch {}
+  }
 
-  const { error } = await supabase.from('users').update(updatePayload).eq('id', userId);
+  // Use upsert to create or update user record
+  const { error } = await supabase.from('users').upsert(updatePayload);
   if (error) {
-    throw error;
+    await supabase.from('users').update(updatePayload).eq('id', userId);
   }
 }
 

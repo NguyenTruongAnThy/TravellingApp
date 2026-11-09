@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { cancelBooking } from '../../services/bookingsService';
@@ -65,6 +66,7 @@ export default function TravelAssistantScreen({
   navigation,
   route,
 }: TravelAssistantScreenProps) {
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const userId = session?.user?.id;
   const userName = session?.user?.user_metadata?.name || 'Bạn';
@@ -338,12 +340,12 @@ export default function TravelAssistantScreen({
             {/* Titles */}
             <View className="ml-1 flex-1">
               <Text className="text-base font-bold text-[#131B2E]" numberOfLines={1}>
-                WanderStay Support AI
+                {t('support.title')}
               </Text>
               <View className="flex-row items-center gap-1 mt-0.5">
                 <View className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 <Text className="text-[11px] font-semibold text-emerald-600">
-                  Trực tuyến 24/7
+                  {t('support.onlineStatus')}
                 </Text>
               </View>
             </View>
@@ -355,8 +357,10 @@ export default function TravelAssistantScreen({
               className="w-9 h-9 rounded-full bg-[#F8F7FF] border border-[#E6E3F5] items-center justify-center active:opacity-70"
               onPress={() =>
                 Alert.alert(
-                  'Tổng đài 24/7',
-                  'Kết nối đường dây nóng ưu tiên WanderStay Hotline: +84 1900 6868 (Miễn phí cước gọi).'
+                  i18n.language === 'vi' ? 'Tổng đài 24/7' : '24/7 Hotline',
+                  i18n.language === 'vi'
+                    ? 'Kết nối đường dây nóng ưu tiên WanderStay Hotline: +84 1900 6868 (Miễn phí cước gọi).'
+                    : 'Connect to priority WanderStay Hotline: +84 1900 6868 (Toll-free).'
                 )
               }
             >
@@ -389,34 +393,34 @@ export default function TravelAssistantScreen({
             >
               <Pressable
                 className="bg-white rounded-full px-3.5 py-2 shadow-xs border border-[#E6E3F5] flex-row items-center gap-1.5 active:opacity-70"
-                onPress={() => handleQuickChipPress('Chuyến đi của tôi')}
+                onPress={() => handleQuickChipPress(t('support.quickTrip'))}
               >
                 <Ionicons name="calendar-outline" size={14} color="#4F46E5" />
-                <Text className="text-xs font-bold text-[#131B2E]">Chuyến đi của tôi</Text>
+                <Text className="text-xs font-bold text-[#131B2E]">{t('support.quickTrip')}</Text>
               </Pressable>
 
               <Pressable
                 className="bg-white rounded-full px-3.5 py-2 shadow-xs border border-[#E6E3F5] flex-row items-center gap-1.5 active:opacity-70"
-                onPress={() => handleQuickChipPress('Hủy & Hoàn tiền')}
+                onPress={() => handleQuickChipPress(t('support.quickCancel'))}
               >
                 <Ionicons name="shield-outline" size={14} color="#EF4444" />
-                <Text className="text-xs font-bold text-[#131B2E]">Hủy & Hoàn tiền</Text>
+                <Text className="text-xs font-bold text-[#131B2E]">{t('support.quickCancel')}</Text>
               </Pressable>
 
               <Pressable
                 className="bg-white rounded-full px-3.5 py-2 shadow-xs border border-[#E6E3F5] flex-row items-center gap-1.5 active:opacity-70"
-                onPress={() => handleQuickChipPress('Xe đón $35')}
+                onPress={() => handleQuickChipPress(t('support.quickTransfer'))}
               >
                 <Ionicons name="car-outline" size={14} color="#4F46E5" />
-                <Text className="text-xs font-bold text-[#131B2E]">Xe đón $35</Text>
+                <Text className="text-xs font-bold text-[#131B2E]">{t('support.quickTransfer')}</Text>
               </Pressable>
 
               <Pressable
                 className="bg-white rounded-full px-3.5 py-2 shadow-xs border border-[#E6E3F5] flex-row items-center gap-1.5 active:opacity-70"
-                onPress={() => handleQuickChipPress('Hóa đơn VAT')}
+                onPress={() => handleQuickChipPress(t('support.quickInvoice'))}
               >
                 <Ionicons name="receipt-outline" size={14} color="#4F46E5" />
-                <Text className="text-xs font-bold text-[#131B2E]">Hóa đơn VAT</Text>
+                <Text className="text-xs font-bold text-[#131B2E]">{t('support.quickInvoice')}</Text>
               </Pressable>
 
               <Pressable
@@ -687,7 +691,7 @@ export default function TravelAssistantScreen({
             <TextInput
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Hỏi AI về chuyến đi, mã PIN, hủy phòng..."
+              placeholder={t('support.inputPlaceholder')}
               placeholderTextColor="#8A90A6"
               className="flex-1 h-full text-sm text-[#131B2E]"
               onSubmitEditing={() => sendMessage(inputText)}

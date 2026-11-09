@@ -3,6 +3,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -83,6 +84,8 @@ function SupportTab() {
 }
 
 function MainTabs() {
+  const { t } = useTranslation();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -96,7 +99,7 @@ function MainTabs() {
         name="Search"
         component={SearchScreen}
         options={{
-          tabBarLabel: 'Search',
+          tabBarLabel: t('tabs.search'),
           tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" size={size} color={color} />,
         }}
       />
@@ -104,7 +107,7 @@ function MainTabs() {
         name="My lists"
         component={MyListsTab}
         options={{
-          tabBarLabel: 'Favorites',
+          tabBarLabel: t('tabs.favorites'),
           tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
         }}
       />
@@ -112,7 +115,7 @@ function MainTabs() {
         name="Booking"
         component={BookingTab}
         options={{
-          tabBarLabel: 'Bookings',
+          tabBarLabel: t('tabs.bookings'),
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
         }}
       />
@@ -120,7 +123,7 @@ function MainTabs() {
         name="Support"
         component={SupportTab}
         options={{
-          tabBarLabel: 'Support',
+          tabBarLabel: t('tabs.support'),
           tabBarIcon: ({ color, size }) => <Ionicons name="headset-outline" size={size} color={color} />,
         }}
       />
@@ -128,7 +131,7 @@ function MainTabs() {
         name="Profile"
         component={ProfileTab}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />

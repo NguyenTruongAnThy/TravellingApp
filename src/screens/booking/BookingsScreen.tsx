@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { getUserBookings, cancelBooking } from '../../services/bookingsService';
 import { convertUsdToVnd } from '../../services/sepayService';
@@ -23,6 +24,7 @@ import type { Booking } from '../../types';
 type TabType = 'Upcoming' | 'Completed' | 'Cancelled';
 
 export default function BookingsScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const { t, i18n } = useTranslation();
   const hookNavigation = useNavigation<any>();
   const navigation = propNavigation || hookNavigation;
   const insets = useSafeAreaInsets();
@@ -182,10 +184,10 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
       >
         <View className="flex-1">
           <Text className="text-2xl font-black text-textMain tracking-tight">
-            My Bookings
+            {t('bookings.title')}
           </Text>
           <Text className="text-xs text-[#6C797D] mt-0.5 font-medium">
-            Manage upcoming and past reservations
+            {t('bookings.subtitle')}
           </Text>
         </View>
 
@@ -225,7 +227,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                   activeTab === 'Upcoming' ? 'text-white' : 'text-[#3C494C]'
                 }`}
               >
-                Upcoming
+                {t('bookings.upcoming')}
               </Text>
               <View
                 className={`w-4 h-4 rounded-full items-center justify-center ${
@@ -254,7 +256,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                   activeTab === 'Completed' ? 'text-white' : 'text-[#3C494C]'
                 }`}
               >
-                Completed
+                {t('bookings.completed')}
               </Text>
               <View
                 className={`w-4 h-4 rounded-full items-center justify-center ${
@@ -283,7 +285,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                   activeTab === 'Cancelled' ? 'text-white' : 'text-[#3C494C]'
                 }`}
               >
-                Cancelled
+                {t('bookings.cancelled')}
               </Text>
               <View
                 className={`w-4 h-4 rounded-full items-center justify-center ${
@@ -507,8 +509,8 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                           />
                           <Text className="text-sm font-bold text-white">
                             {b.payment_status === 'pending'
-                              ? 'Thanh toán ngay (Quét VietQR)'
-                              : 'View Details & Check-in'}
+                              ? t('bookings.payNowQr')
+                              : t('bookings.viewDetailsAndCheckIn')}
                           </Text>
                         </Pressable>
 
@@ -530,7 +532,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
                           >
                             <Ionicons name="chatbubble-ellipses-outline" size={16} color="#131B2E" />
-                            <Text className="text-xs font-bold text-textMain">Message Host</Text>
+                            <Text className="text-xs font-bold text-textMain">{t('bookings.messageHost')}</Text>
                           </Pressable>
 
                           <Pressable
@@ -544,7 +546,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             className="flex-1 bg-white border border-borderLight rounded-full py-2.5 flex-row items-center justify-center gap-1.5 shadow-sm"
                           >
                             <Ionicons name="navigate-outline" size={16} color="#131B2E" />
-                            <Text className="text-xs font-bold text-textMain">Directions</Text>
+                            <Text className="text-xs font-bold text-textMain">{t('bookings.directions')}</Text>
                           </Pressable>
                         </View>
 
@@ -555,14 +557,14 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             className="flex-row items-center gap-1 py-1"
                           >
                             <Ionicons name="receipt-outline" size={14} color="#4F46E5" />
-                            <Text className="text-xs font-bold text-brand">View Receipt</Text>
+                            <Text className="text-xs font-bold text-brand">{t('bookings.viewReceipt')}</Text>
                           </Pressable>
                           <Pressable
                             onPress={() => handleCancelBooking(b.id)}
                             className="flex-row items-center gap-1 py-1"
                           >
                             <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
-                            <Text className="text-xs font-bold text-red-500">Cancel Booking</Text>
+                            <Text className="text-xs font-bold text-red-500">{t('bookings.cancelBooking')}</Text>
                           </Pressable>
                         </View>
                       </View>
@@ -669,7 +671,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                           className="flex-row items-center gap-1"
                         >
                           <Ionicons name="refresh-outline" size={12} color="#4F46E5" />
-                          <Text className="text-xs font-bold text-brand">Rebook stay</Text>
+                          <Text className="text-xs font-bold text-brand">{t('bookings.rebookStay')}</Text>
                         </Pressable>
                       </View>
                     </View>
@@ -685,7 +687,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
           cancelledCount > 0 ? (
             <View className="px-5 pt-6 gap-3.5">
               <Text className="text-xs font-bold uppercase tracking-wider text-[#6C797D]">
-                CANCELLED RESERVATIONS ({cancelledCount})
+                {t('bookings.cancelledReservations')} ({cancelledCount})
               </Text>
               {cancelledBookings.map((b) => (
                 <View key={b.id} className="bg-white rounded-2xl p-4 border border-borderLight shadow-sm">
@@ -695,14 +697,17 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                       <Text className="text-xs text-[#6C797D] mt-0.5">{b.places?.location || 'Indonesia'}</Text>
                     </View>
                     <View className="bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-                      <Text className="text-[10px] font-bold text-red-600">Cancelled</Text>
+                      <Text className="text-[10px] font-bold text-red-600">{t('bookings.cancelled')}</Text>
                     </View>
                   </View>
                   {b.cancel_reason ? (
                     <View className="mt-2.5 px-3 py-1.5 rounded-xl bg-red-50/70 border border-red-100 flex-row items-center">
                       <Ionicons name="information-circle-outline" size={14} color="#DC2626" />
                       <Text className="ml-1.5 text-xs text-red-700 flex-1" numberOfLines={2}>
-                        Lý do: {b.cancel_reason}
+                        {t('bookings.cancelReason')}:{' '}
+                        {b.cancel_reason === 'Cancelled by guest'
+                          ? t('bookings.cancelledByGuest')
+                          : b.cancel_reason}
                       </Text>
                     </View>
                   ) : null}
@@ -711,7 +716,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                       {b.check_in} – {b.check_out} · ${Number(b.total).toFixed(0)}
                     </Text>
                     <Pressable onPress={() => handleOpenReceipt(b)}>
-                      <Text className="text-xs font-bold text-brand">View details</Text>
+                      <Text className="text-xs font-bold text-brand">{t('bookings.viewDetails')}</Text>
                     </Pressable>
                   </View>
                 </View>
