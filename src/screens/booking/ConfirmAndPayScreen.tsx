@@ -8,20 +8,22 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { WebView } from 'react-native-webview';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { calculatePricing } from '../../services/pricing';
 import { createBooking, checkBookingConflict } from '../../services/bookingsService';
+import { validatePromoCode } from '../../services/promotionsService';
 import {
-  buildVnpayPaymentUrl,
-  verifyVnpayReturnUrl,
-  USD_TO_VND_RATE,
-} from '../../services/vnpayService';
+  SEPAY_CONFIG,
+  convertUsdToVnd,
+} from '../../services/sepayService';
+import SepayQrModal from '../../components/SepayQrModal';
 import StayDatePickerModal from '../../components/StayDatePickerModal';
 import type { Place } from '../../types';
 
@@ -50,14 +52,13 @@ export default function ConfirmAndPayScreen() {
   const [adults, setAdults] = useState<number>(1);
   const [children, setChildren] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'pay_in_full' | 'pay_a_part_now'>('pay_in_full');
-  const [selectedCard, setSelectedCard] = useState<'vnpay' | 'visa' | 'wallet' | 'apple_pay'>('vnpay');
+  const [selectedCard, setSelectedCard] = useState<'sepay' | 'visa'>('sepay');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // VNPAY Modal & URL states
-  const [vnpayUrl, setVnpayUrl] = useState<string | null>(null);
-  const [showVnpayModal, setShowVnpayModal] = useState<boolean>(false);
+  // SePay VietQR Modal states
+  const [showSepayModal, setShowSepayModal] = useState<boolean>(false);
+  const [createdBooking, setCreatedBooking] = useState<any>(null);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
-  const isProcessingVnpayRef = useRef<boolean>(false);
 
   // Proactive date conflict state
   const [hasDateConflict, setHasDateConflict] = useState<boolean>(false);
@@ -117,6 +118,12 @@ export default function ConfirmAndPayScreen() {
   const kayakFee = place?.kayak_fee != null ? Number(place.kayak_fee) : 5;
   const parkingFee = place?.parking_fee != null ? Number(place.parking_fee) : 5;
 
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoValidating, setPromoValidating] = useState(false);
+
   const pricing = useMemo(() => {
     return calculatePricing(pricePerNight, nights, kayakFee, parkingFee);
   }, [pricePerNight, nights, kayakFee, parkingFee]);
@@ -124,8 +131,37 @@ export default function ConfirmAndPayScreen() {
   const maxCapacity = place?.guests_capacity || 2;
   const totalGuests = adults + children;
 
-  const dueAmountUsd = paymentMethod === 'pay_a_part_now' ? pricing.depositAmount : pricing.total;
-  const dueAmountVnd = Math.round(dueAmountUsd * USD_TO_VND_RATE);
+  const subtotal = pricing.total;
+  const finalTotal = Math.max(0, Math.round((subtotal - discountAmount) * 100) / 100);
+  const depositAmount = Math.round(finalTotal * 0.5 * 100) / 100;
+  const remainingAmount = Math.round((finalTotal - depositAmount) * 100) / 100;
+
+  const dueAmountUsd = paymentMethod === 'pay_a_part_now' ? depositAmount : finalTotal;
+  const dueAmountVnd = convertUsdToVnd(dueAmountUsd);
+
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setPromoValidating(true);
+    setPromoMessage('');
+    const res = await validatePromoCode(promoCodeInput, subtotal);
+    setPromoValidating(false);
+    if (res.valid && res.discountAmount > 0) {
+      setAppliedPromo(res.promotion);
+      setDiscountAmount(res.discountAmount);
+      setPromoMessage(`Áp dụng thành công mã ${promoCodeInput.toUpperCase()}! Giảm $${res.discountAmount.toFixed(2)}`);
+    } else {
+      setPromoMessage(res.message || 'Mã ưu đãi không hợp lệ.');
+      setDiscountAmount(0);
+      setAppliedPromo(null);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setDiscountAmount(0);
+    setPromoCodeInput('');
+    setPromoMessage('');
+  };
 
   const handleAdjustNights = (delta: number) => {
     const newNights = Math.max(1, nights + delta);
@@ -138,10 +174,6 @@ export default function ConfirmAndPayScreen() {
    * Finalizes booking in Supabase and navigates straight to My Bookings ("màn hình đơn hàng")
    */
   const finalizeBookingAndGoToOrders = async (paidAmount: number) => {
-    if (isProcessingVnpayRef.current) return;
-    isProcessingVnpayRef.current = true;
-
-    setShowVnpayModal(false);
     setSubmitting(true);
 
     try {
@@ -156,16 +188,17 @@ export default function ConfirmAndPayScreen() {
         pricePerNight,
         kayakFee,
         parkingFee,
-        total: pricing.total,
+        total: finalTotal,
         paymentMethod,
-        depositAmount: pricing.depositAmount,
+        depositAmount: paymentMethod === 'pay_a_part_now' ? depositAmount : undefined,
+        promoCode: appliedPromo?.code || undefined,
+        discountAmount: discountAmount > 0 ? discountAmount : undefined,
         pinCode: place.smart_lock_pin || '4821#',
       });
 
       if (!res.success || !res.booking) {
         Alert.alert('Không thể đặt phòng', res.error || 'Vui lòng thử lại sau.');
         setSubmitting(false);
-        isProcessingVnpayRef.current = false;
         return;
       }
 
@@ -179,47 +212,33 @@ export default function ConfirmAndPayScreen() {
       Alert.alert('Lỗi đặt phòng', err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
     } finally {
       setSubmitting(false);
-      isProcessingVnpayRef.current = false;
     }
   };
 
-  // Callback to finalize booking after VNPAY completes (deep link or webview)
-  const handleVnpayCallback = (returnUrl: string) => {
-    const result = verifyVnpayReturnUrl(returnUrl);
-    if (!result.isSuccess) {
-      Alert.alert('Thanh toán VNPAY không thành công', result.message);
-      setShowVnpayModal(false);
-      setSubmitting(false);
-      isProcessingVnpayRef.current = false;
-      return;
-    }
-
-    finalizeBookingAndGoToOrders(dueAmountUsd);
+  const handleSepaySuccess = (booking: any) => {
+    setShowSepayModal(false);
+    navigation.navigate('MainTabs', { screen: 'Booking' });
+    Alert.alert(
+      'Thanh toán SePay thành công! 🎉',
+      `Đơn đặt phòng #${booking.ref_code} của bạn đã được xác nhận tự động qua BIDV và hiển thị trong danh sách chuyến đi.`
+    );
   };
 
-  // Deep Link Listener for wanderstay://vnpay-return
-  useEffect(() => {
-    const handleUrlEvent = (event: { url: string }) => {
-      if (
-        event.url &&
-        (event.url.startsWith('wanderstay://') || event.url.includes('vnpay-return'))
-      ) {
-        handleVnpayCallback(event.url);
-      }
-    };
-
-    const subscription = Linking.addEventListener('url', handleUrlEvent);
-
-    Linking.getInitialURL().then((url) => {
-      if (url && (url.startsWith('wanderstay://') || url.includes('vnpay-return'))) {
-        handleVnpayCallback(url);
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [userId, place, checkIn, checkOut, nights, adults, children, paymentMethod, pricing, dueAmountUsd]);
+  const handleCloseSepayModal = () => {
+    Alert.alert(
+      'Đóng phiên thanh toán VietQR?',
+      'Bạn có muốn đóng màn hình thanh toán VietQR không? Giao dịch chưa hoàn tất.',
+      [
+        { text: 'Quét tiếp', style: 'cancel' },
+        {
+          text: 'Đóng',
+          onPress: () => {
+            setShowSepayModal(false);
+          },
+        },
+      ]
+    );
+  };
 
   const handleConfirmPay = async () => {
     if (!session || !userId) {
@@ -267,19 +286,42 @@ export default function ConfirmAndPayScreen() {
       console.warn('Lỗi kiểm tra trùng lịch:', err);
     }
 
-    // 2. VNPAY Flow (Method: Deep Link / In-app WebView)
-    if (selectedCard === 'vnpay') {
-      setSubmitting(false);
-      const orderId = `WS${Date.now().toString().slice(-8)}`;
-      const url = buildVnpayPaymentUrl({
-        orderId,
-        amountUsd: dueAmountUsd,
-        orderInfo: `WanderStay ${place.title?.slice(0, 20) || 'Booking'}`,
-      });
+    // 2. SePay VietQR Flow
+    if (selectedCard === 'sepay') {
+      try {
+        const res = await createBooking({
+          userId: userId!,
+          placeId: place.id,
+          checkIn,
+          checkOut,
+          nights,
+          guestsAdults: adults,
+          guestsChildren: children,
+          pricePerNight,
+          kayakFee,
+          parkingFee,
+          total: finalTotal,
+          paymentMethod,
+          depositAmount: paymentMethod === 'pay_a_part_now' ? depositAmount : undefined,
+          promoCode: appliedPromo?.code || undefined,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          pinCode: place.smart_lock_pin || '4821#',
+          paymentStatus: 'pending',
+        });
 
-      isProcessingVnpayRef.current = false;
-      setVnpayUrl(url);
-      setShowVnpayModal(true);
+        setSubmitting(false);
+
+        if (!res.success || !res.booking) {
+          Alert.alert('Không thể tạo đơn đặt phòng', res.error || 'Vui lòng thử lại sau.');
+          return;
+        }
+
+        setCreatedBooking(res.booking);
+        setShowSepayModal(true);
+      } catch (err: any) {
+        setSubmitting(false);
+        Alert.alert('Lỗi đặt phòng', err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+      }
       return;
     }
 
@@ -349,9 +391,13 @@ export default function ConfirmAndPayScreen() {
               <View className="flex-row items-center gap-1">
                 <Ionicons name="star" size={13} color="#F59E0B" />
                 <Text className="text-xs font-bold text-textMain">
-                  {place.rating != null ? place.rating.toFixed(1) : '4.9'}
+                  {place.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0
+                    ? Number(place.rating).toFixed(1)
+                    : 'New'}
                 </Text>
-                <Text className="text-xs text-textMuted">({place.review_count || 128})</Text>
+                {place.review_count && place.review_count > 0 ? (
+                  <Text className="text-xs text-textMuted">({place.review_count})</Text>
+                ) : null}
               </View>
               <Text className="text-xs font-bold text-brand">
                 ${pricePerNight}/đêm
@@ -501,7 +547,7 @@ export default function ConfirmAndPayScreen() {
             <View className="flex-1 pr-3">
               <Text className="text-sm font-bold text-textMain">Pay in full</Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Trả 100%: ${pricing.total.toFixed(2)} (~ {(Math.round(pricing.total * USD_TO_VND_RATE)).toLocaleString('vi-VN')} VND).
+                Trả 100%: ${finalTotal.toFixed(2)} (~ {convertUsdToVnd(finalTotal).toLocaleString('vi-VN')} VND).
               </Text>
             </View>
             <View
@@ -526,10 +572,10 @@ export default function ConfirmAndPayScreen() {
           >
             <View className="flex-1 pr-3">
               <Text className="text-sm font-bold text-textMain">
-                Pay a part now (${pricing.depositAmount.toFixed(2)})
+                Pay a part now (${depositAmount.toFixed(2)})
               </Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Đặt cọc trước 50%: ${pricing.depositAmount.toFixed(2)} (~ {(Math.round(pricing.depositAmount * USD_TO_VND_RATE)).toLocaleString('vi-VN')} VND), còn lại ${pricing.remainingAmount.toFixed(2)} thanh toán khi nhận phòng.
+                Đặt cọc trước 50%: ${depositAmount.toFixed(2)} (~ {convertUsdToVnd(depositAmount).toLocaleString('vi-VN')} VND), còn lại ${remainingAmount.toFixed(2)} thanh toán khi nhận phòng.
               </Text>
             </View>
             <View
@@ -548,33 +594,30 @@ export default function ConfirmAndPayScreen() {
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-3">
           <Text className="text-base font-bold text-textMain">Payment method</Text>
 
-          {/* VNPAY Payment Gateway Option */}
+          {/* SePay VietQR (BIDV) Option */}
           <Pressable
-            onPress={() => setSelectedCard('vnpay')}
+            onPress={() => setSelectedCard('sepay')}
             className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
-              selectedCard === 'vnpay' ? 'border-brand bg-[#F2F3FF]' : 'border-borderLight'
+              selectedCard === 'sepay' ? 'border-brand bg-[#F2F3FF]' : 'border-borderLight'
             }`}
           >
             <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 items-center justify-center">
-                <Ionicons name="qr-code-outline" size={18} color="#DC2626" />
+              <View className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 items-center justify-center">
+                <Ionicons name="qr-code-outline" size={18} color="#006B68" />
               </View>
               <View>
                 <View className="flex-row items-center gap-1.5">
-                  <Text className="text-xs font-bold text-textMain">Cổng VNPAY (Sandbox)</Text>
+                  <Text className="text-xs font-bold text-textMain">Chuyển khoản VietQR (SePay)</Text>
                   <View className="bg-emerald-100 px-1.5 py-0.2 rounded">
-                    <Text className="text-[9px] font-bold text-emerald-700">Online</Text>
+                    <Text className="text-[9px] font-bold text-emerald-700">Tự động</Text>
                   </View>
                 </View>
-                <Text className="text-[11px] text-textMuted">
-                  VNPAY-QR, Thẻ ATM NCB, Visa/Master
-                </Text>
               </View>
             </View>
             <Ionicons
-              name={selectedCard === 'vnpay' ? 'checkmark-circle' : 'ellipse-outline'}
+              name={selectedCard === 'sepay' ? 'checkmark-circle' : 'ellipse-outline'}
               size={20}
-              color={selectedCard === 'vnpay' ? '#4F46E5' : '#D1D5DB'}
+              color={selectedCard === 'sepay' ? '#4F46E5' : '#D1D5DB'}
             />
           </Pressable>
 
@@ -600,29 +643,64 @@ export default function ConfirmAndPayScreen() {
               color={selectedCard === 'visa' ? '#4F46E5' : '#D1D5DB'}
             />
           </Pressable>
+        </View>
 
-          {/* Wallet Option */}
-          <Pressable
-            onPress={() => setSelectedCard('wallet')}
-            className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
-              selectedCard === 'wallet' ? 'border-brand bg-[#F2F3FF]' : 'border-borderLight'
-            }`}
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 items-center justify-center">
-                <Ionicons name="wallet-outline" size={18} color="#059669" />
-              </View>
-              <View>
-                <Text className="text-xs font-bold text-textMain">WanderStay Wallet</Text>
-                <Text className="text-[11px] text-textMuted">Balance: $120.00</Text>
-              </View>
+        {/* Section: Promo Code / Voucher */}
+        <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-3">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="pricetag-outline" size={18} color="#FF6B00" />
+              <Text className="text-base font-bold text-textMain">Mã ưu đãi / Khuyến mại</Text>
             </View>
-            <Ionicons
-              name={selectedCard === 'wallet' ? 'checkmark-circle' : 'ellipse-outline'}
-              size={20}
-              color={selectedCard === 'wallet' ? '#4F46E5' : '#D1D5DB'}
-            />
-          </Pressable>
+            {appliedPromo ? (
+              <Pressable onPress={handleRemovePromo}>
+                <Text className="text-xs font-bold text-red-500">Gỡ bỏ</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {appliedPromo ? (
+            <View className="bg-orange-50 border border-orange-200 p-3 rounded-2xl flex-row items-center justify-between">
+              <View className="flex-1 pr-2">
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="text-xs font-bold text-[#FF6B00]">{appliedPromo.code}</Text>
+                  <View className="bg-[#FF6B00] px-1.5 py-0.2 rounded">
+                    <Text className="text-[9px] font-bold text-white">Đã áp dụng</Text>
+                  </View>
+                </View>
+                <Text className="text-[11px] text-[#C2410C] mt-0.5" numberOfLines={1}>{appliedPromo.title}</Text>
+              </View>
+              <Text className="text-base font-black text-[#FF6B00]">-${discountAmount.toFixed(2)}</Text>
+            </View>
+          ) : (
+            <View className="flex-row items-center gap-2">
+              <TextInput
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-borderLight bg-appBg text-xs font-bold text-textMain"
+                placeholder="Nhập mã (VD: WANDER10, BALI50, WELCOME20)"
+                placeholderTextColor="#8A90A6"
+                autoCapitalize="characters"
+                value={promoCodeInput}
+                onChangeText={(t) => { setPromoCodeInput(t); setPromoMessage(''); }}
+              />
+              <Pressable
+                className="px-4 py-2.5 rounded-xl bg-brand items-center justify-center"
+                onPress={handleApplyPromo}
+                disabled={promoValidating || !promoCodeInput.trim()}
+              >
+                {promoValidating ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-xs font-bold text-white">Áp dụng</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+
+          {promoMessage ? (
+            <Text className={`text-[11px] font-medium ${appliedPromo ? 'text-emerald-600' : 'text-red-500'}`}>
+              {promoMessage}
+            </Text>
+          ) : null}
         </View>
 
         {/* Section: Price Details (BR01 Transparent Pricing) */}
@@ -648,14 +726,24 @@ export default function ConfirmAndPayScreen() {
             <Text className="text-xs font-bold text-textMain">${parkingFee.toFixed(2)}</Text>
           </View>
 
+          {discountAmount > 0 && (
+            <View className="flex-row justify-between items-center py-1">
+              <View className="flex-row items-center gap-1.5">
+                <Ionicons name="pricetag" size={13} color="#FF6B00" />
+                <Text className="text-xs font-bold text-[#FF6B00]">Ưu đãi ({appliedPromo?.code})</Text>
+              </View>
+              <Text className="text-xs font-extrabold text-[#FF6B00]">-${discountAmount.toFixed(2)}</Text>
+            </View>
+          )}
+
           <View className="flex-row justify-between items-center pt-3 border-t border-borderLight">
             <View>
               <Text className="text-sm font-bold text-textMain">Tổng chi phí (USD)</Text>
               <Text className="text-[11px] text-textMuted">
-                ~ {(Math.round(pricing.total * USD_TO_VND_RATE)).toLocaleString('vi-VN')} VND
+                ~ {convertUsdToVnd(finalTotal).toLocaleString('vi-VN')} VND
               </Text>
             </View>
-            <Text className="text-base font-black text-brand">${pricing.total.toFixed(2)}</Text>
+            <Text className="text-base font-black text-brand">${finalTotal.toFixed(2)}</Text>
           </View>
 
           {paymentMethod === 'pay_a_part_now' && (
@@ -667,15 +755,15 @@ export default function ConfirmAndPayScreen() {
                 </Text>
               </View>
               <Text className="text-sm font-black text-brand">
-                ${pricing.depositAmount.toFixed(2)}
+                ${depositAmount.toFixed(2)}
               </Text>
             </View>
           )}
 
-          {selectedCard === 'vnpay' && (
-            <View className="mt-2 bg-[#F8F7FF] p-2.5 rounded-xl border border-brand/20 flex-row justify-between items-center">
-              <Text className="text-[11px] font-medium text-textMuted">Số tiền VNPAY thu:</Text>
-              <Text className="text-xs font-bold text-brand">
+          {selectedCard === 'sepay' && (
+            <View className="mt-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex-row justify-between items-center">
+              <Text className="text-[11px] font-medium text-emerald-800">Số tiền chuyển khoản:</Text>
+              <Text className="text-xs font-bold text-[#006B68]">
                 {dueAmountVnd.toLocaleString('vi-VN')} VND (${dueAmountUsd.toFixed(2)})
               </Text>
             </View>
@@ -725,106 +813,17 @@ export default function ConfirmAndPayScreen() {
         </Pressable>
       </View>
 
-      {/* VNPAY In-App WebView Modal & External Browser fallback */}
-      <Modal
-        visible={showVnpayModal}
-        animationType="slide"
-        onRequestClose={() => setShowVnpayModal(false)}
-      >
-        <SafeAreaView className="flex-1 bg-white" edges={['top', 'left', 'right', 'bottom']}>
-          {/* Modal Header */}
-          <View className="h-14 px-4 flex-row items-center justify-between border-b border-borderLight bg-white">
-            <View className="flex-row items-center gap-2">
-              <View className="w-8 h-8 rounded-xl bg-red-50 border border-red-200 items-center justify-center">
-                <Ionicons name="qr-code-outline" size={16} color="#DC2626" />
-              </View>
-              <View>
-                <Text className="text-base font-bold text-textMain">Cổng thanh toán VNPAY</Text>
-                <Text className="text-[10px] text-brand font-semibold">
-                  Số tiền: {dueAmountVnd.toLocaleString('vi-VN')} VND
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center gap-2">
-              <Pressable
-                onPress={() => {
-                  if (vnpayUrl) {
-                    Linking.openURL(vnpayUrl);
-                  }
-                }}
-                className="px-2.5 py-1.5 bg-brand/10 rounded-lg flex-row items-center gap-1"
-              >
-                <Ionicons name="open-outline" size={13} color="#4F46E5" />
-                <Text className="text-[11px] font-bold text-brand">Mở trình duyệt</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setShowVnpayModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
-              >
-                <Ionicons name="close" size={20} color="#131B2E" />
-              </Pressable>
-            </View>
-          </View>
-
-          {/* WebView Container */}
-          {vnpayUrl && (
-            <WebView
-              source={{ uri: vnpayUrl }}
-              style={{ flex: 1 }}
-              javaScriptEnabled
-              domStorageEnabled
-              originWhitelist={['*']}
-              startInLoadingState
-              renderLoading={() => (
-                <View className="absolute inset-0 bg-white items-center justify-center">
-                  <ActivityIndicator size="large" color="#4F46E5" />
-                  <Text className="mt-3 text-xs text-textMuted">
-                    Đang kết nối tới cổng thanh toán VNPAY Sandbox...
-                  </Text>
-                </View>
-              )}
-              onShouldStartLoadWithRequest={(request) => {
-                if (
-                  request.url.startsWith('wanderstay://') ||
-                  request.url.includes('vnpay-return') ||
-                  request.url.includes('vnp_ResponseCode=')
-                ) {
-                  handleVnpayCallback(request.url);
-                  return false;
-                }
-                return true;
-              }}
-              onNavigationStateChange={(navState) => {
-                if (
-                  navState.url.startsWith('wanderstay://') ||
-                  navState.url.includes('vnpay-return') ||
-                  navState.url.includes('vnp_ResponseCode=')
-                ) {
-                  handleVnpayCallback(navState.url);
-                }
-              }}
-            />
-          )}
-
-          {/* Bottom Confirmation Bar */}
-          <View className="p-3.5 bg-white border-t border-borderLight flex-row items-center justify-between gap-3 shadow-lg">
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-textMain">Đã thanh toán OTP thành công?</Text>
-              <Text className="text-[10px] text-textMuted">
-                Nhấn nút bên phải để lưu đơn đặt phòng vào hệ thống
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => finalizeBookingAndGoToOrders(dueAmountUsd)}
-              className="bg-emerald-600 px-4 py-2.5 rounded-full flex-row items-center gap-1.5 shadow-sm active:opacity-80"
-            >
-              <Ionicons name="checkmark-circle" size={16} color="#FFF" />
-              <Text className="text-xs font-bold text-white">Xác nhận xong</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </Modal>
+      {/* SePay VietQR Modal */}
+      {createdBooking && (
+        <SepayQrModal
+          visible={showSepayModal}
+          onClose={handleCloseSepayModal}
+          booking={createdBooking}
+          dueAmountVnd={dueAmountVnd}
+          dueAmountUsd={dueAmountUsd}
+          onPaymentSuccess={handleSepaySuccess}
+        />
+      )}
 
       {/* Modern Visual Stay Date Picker Modal (Standard Airbnb / Booking.com) */}
       <StayDatePickerModal

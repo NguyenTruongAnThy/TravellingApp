@@ -61,7 +61,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
           ),
       },
       {
-        text: 'Contact Host Wayan',
+        text: `Liên hệ chủ nhà ${data.hostName}`,
         onPress: handleMessageHost,
       },
       { text: 'Cancel', style: 'cancel' },

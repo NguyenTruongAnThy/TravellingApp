@@ -60,24 +60,24 @@ export function isSmartKeyActive(checkInDateStr: string, checkOutDateStr: string
  * Returns Smart Key details for booking dynamically from database records (BR03, UC013)
  */
 export function getSmartKeyDetails(booking?: any): SmartKeyInfo {
-  const checkInDate = booking?.check_in || '2024-05-24';
-  const checkOutDate = booking?.check_out || '2024-05-29';
+  const checkInDate = booking?.check_in || new Date().toISOString().split('T')[0];
+  const checkOutDate = booking?.check_out || new Date(Date.now() + 86400000).toISOString().split('T')[0];
   const active = isSmartKeyActive(checkInDate, checkOutDate);
   const place = booking?.places;
 
   const pinCode = booking?.pin_code || place?.smart_lock_pin || '4821#';
   const wifiSSID = place?.wifi_ssid || 'WanderStay_Guest_5G';
-  const wifiPassword = place?.wifi_password || 'jungleparadise';
-  const hostName = place?.host_name || 'Wayan Sutama';
-  const hostPhone = place?.host_phone || '+62 812 3456 7890';
-  const address = place?.address || place?.location || 'Jl. Pantai Balian, Lalanglinggah, Tabanan, Bali 82162';
+  const wifiPassword = place?.wifi_password || 'wanderstay2026';
+  const hostName = place?.host_name || 'Chủ nhà';
+  const hostPhone = place?.host_phone || '+84 912 345 678';
+  const address = place?.address || place?.location || 'Việt Nam';
 
   return {
     bookingId: booking?.id || '',
-    refCode: booking?.ref_code || '#WS-84920',
-    placeTitle: place?.title || 'Balian Treehouse Escape',
-    placeLocation: place?.location || 'Bali, Indonesia',
-    category: place?.category || place?.place_type || 'ECO SANCTUARY',
+    refCode: booking?.ref_code || '#WS-BOOKING',
+    placeTitle: place?.title || 'Chỗ nghỉ của bạn',
+    placeLocation: place?.location || 'Việt Nam',
+    category: place?.category || place?.place_type || 'HOMESTAY',
     image:
       place?.images?.[0] ||
       'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80',
@@ -95,13 +95,14 @@ export function getSmartKeyDetails(booking?: any): SmartKeyInfo {
     wifiPassword,
     hostName,
     hostAvatar:
-      'https://api.builder.io/api/v1/image/assets/TEMP/66ed4209be3963958431159f49510a846430e5bd?width=96',
-    hostReplyTime: 'Typically replies in 5m',
+      place?.images?.[0] ||
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=96',
+    hostReplyTime: 'Phản hồi trong 5 phút',
     hostPhone,
     address,
     mapCoordinates: {
-      latitude: -8.5028,
-      longitude: 115.0275,
+      latitude: place?.latitude != null ? Number(place.latitude) : 21.0285,
+      longitude: place?.longitude != null ? Number(place.longitude) : 105.8542,
     },
     checkInSteps: [
       {

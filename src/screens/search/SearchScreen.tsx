@@ -20,6 +20,7 @@ import { normalizeText } from '../../utils/normalize';
 import { useNavigation } from '@react-navigation/native';
 import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
+import BestSellersCarousel from '../../components/BestSellersCarousel';
 
 // Pill loc theo LOAI CAN (place_type) da chuan hoa tren Supabase 2026-11-05: Apartment 1, Beachfront 1, Cabin 3, House 3, Treehouse 2, Villa 2. Khong loc theo category (vi tri thien nhien) nua.
 const PLACE_TYPES = ['All', 'Treehouse', 'Villa', 'Cabin', 'Beachfront', 'House', 'Apartment'];
@@ -44,6 +45,54 @@ function FilterSectionTitle({ icon, title }: { icon: any; title: string }) {
 
 const FilterDivider = () => (<View className="mt-6" style={{ height: 1, backgroundColor: '#E6E3F5' }} />);
 
+const MOCK_NOTIFICATIONS = [
+  {
+    id: '1',
+    title: 'Chào mừng bạn đến với WanderStay! 🎉',
+    message: 'Khám phá hàng ngàn chỗ nghỉ dưỡng độc đáo với chìa khóa số thông minh (Keyless Smart Key) và hướng dẫn lộ trình chi tiết.',
+    time: 'Vừa xong',
+    icon: 'sparkles',
+    iconColor: '#4F46E5',
+    bgColor: '#EEF2FF',
+  },
+  {
+    id: '2',
+    title: 'Ưu đãi dành cho thành viên mới 🎁',
+    message: 'Nhập mã WANDER10 tại bước thanh toán để được giảm ngay 10% cho kỳ nghỉ đầu tiên của bạn.',
+    time: '2 giờ trước',
+    icon: 'pricetag',
+    iconColor: '#FF6B00',
+    bgColor: '#FFF7ED',
+  },
+  {
+    id: '3',
+    title: 'Thanh toán VietQR tự động qua SePay 💳',
+    message: 'Giờ đây bạn có thể quét mã VietQR ngân hàng BIDV để tự động xác nhận đơn phòng 24/7 tức thì.',
+    time: '5 giờ trước',
+    icon: 'qr-code',
+    iconColor: '#059669',
+    bgColor: '#ECFDF5',
+  },
+  {
+    id: '4',
+    title: 'Nhắc nhở nhận phòng thông minh 🔑',
+    message: 'Mã PIN mở khóa cửa sẽ tự động kích hoạt vào lúc 14:00 ngày nhận phòng và hết hạn lúc 12:00 ngày trả phòng.',
+    time: '1 ngày trước',
+    icon: 'key',
+    iconColor: '#7C3AED',
+    bgColor: '#F5F3FF',
+  },
+  {
+    id: '5',
+    title: 'Bảo mật tài khoản 2 lớp (2FA) 🛡️',
+    message: 'Kiểm tra điểm sức khỏe bảo mật và kích hoạt xác thực 2 bước trong mục Hồ sơ để bảo vệ an toàn thông tin.',
+    time: '2 ngày trước',
+    icon: 'shield-checkmark',
+    iconColor: '#2563EB',
+    bgColor: '#EFF6FF',
+  },
+];
+
 export default function SearchScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
   const hookNavigation = useNavigation<any>();
   const navigation = propNavigation || hookNavigation;
@@ -65,6 +114,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [showFilter, setShowFilter] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [minPrice, setMinPrice] = useState('10');
   const [maxPrice, setMaxPrice] = useState('250');
   // guests cu da tach thanh adults + children, khong con Infants/Pets (chot 2026-11-05)
@@ -74,7 +124,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 15;
   const listRef = useRef<any>(null);
 
   // Debounce 400ms: search only after the user stops typing for 400ms
@@ -197,10 +247,11 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
               <Text className="ml-2 text-xl font-bold text-white">WanderStay</Text>
             </View>
             <View className="flex-row items-center">
-              <View className="px-2.5 py-1.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}>
-                <Text className="text-[11px] font-bold text-white">USD $</Text>
-              </View>
-              <Pressable className="ml-2.5 w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }} onPress={() => { if (!session) { navigation.navigate('Login'); return; } navigation.navigate('MainTabs', { screen: 'Inbox' }); }}>
+              <Pressable
+                className="w-8 h-8 rounded-full items-center justify-center"
+                style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }}
+                onPress={() => setShowNotifications(true)}
+              >
                 <Ionicons name="notifications-outline" size={16} color="#FFFFFF" />
                 <View style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }} />
               </Pressable>
@@ -274,7 +325,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                 <Text className="mt-4 text-base font-bold text-textMain">{query ? 'Suggestions' : 'Popular places'}</Text>
                 <Text className="mt-1 text-sm text-textMuted">{query ? 'Type to filter, tap a suggestion to pick that stay.' : 'Tap a stay to pick it, no need to remember the exact name.'}</Text>
                 {whereSuggestions.length === 0 ? (
-                  <Text className="mt-3 text-base text-textMuted">No such place. WanderStay currently only has stays in Bali, try another keyword like Balian, Kuta, or Ubud.</Text>
+                  <Text className="mt-3 text-base text-textMuted">No such place. Try searching for destinations like Bãi Cháy, Đà Lạt, Phú Quốc, Sa Pa, or Bali (Balian, Ubud, Kuta)...</Text>
                 ) : whereSuggestions.map((pl) => (<Pressable key={pl.id} className="flex-row items-center py-3" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => { setQuery(pl.title); setShowWhere(false); setShowSchedule(true); }}><Ionicons name="search-outline" size={18} color="#5A6478" /><View className="ml-3 flex-1"><Text className="text-base font-bold text-textMain">{pl.title}</Text><Text className="text-sm text-textMuted">{pl.location}</Text></View></Pressable>))}
               </View>
             </ScrollView>
@@ -393,7 +444,6 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
         </View>
       ) : (
         <>
-          <Text className="px-5 pb-2 text-sm text-textMuted">{filteredPlaces.length} matching stays</Text>
           {filteredPlaces.length === 0 ? (
             <View className="flex-1 items-center justify-center px-6">
               <Text className="text-lg font-bold text-textMain text-center">No places found</Text>
@@ -417,6 +467,51 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
               style={{ flex: 1 }}
               data={pagePlaces}
               keyExtractor={(item) => item.id}
+              ListHeaderComponent={
+                !debouncedQuery && safePage === 1 ? (
+                  <View className="pt-2 mb-2">
+                    <BestSellersCarousel
+                      places={places}
+                      favoriteIds={favoriteIds}
+                      onToggleFavorite={async (placeId, isFav) => {
+                        if (!session) {
+                          navigation.navigate('Login');
+                          return;
+                        }
+                        try {
+                          await toggleFavorite(session.user.id, placeId, isFav);
+                          setFavoriteIds((prev) =>
+                            isFav ? prev.filter((x) => x !== placeId) : [...prev, placeId]
+                          );
+                        } catch (err) {
+                          console.warn('Could not toggle favorite:', err);
+                        }
+                      }}
+                      onSelectPlace={(placeId) => {
+                        navigation.navigate('Detail', {
+                          placeId,
+                          checkIn: checkIn || undefined,
+                          checkOut: checkOut || undefined,
+                        });
+                      }}
+                    />
+                    <View className="flex-row items-center justify-between pb-3 pt-2 border-t border-borderLight">
+                      <View>
+                        <Text className="text-base font-bold text-textMain">
+                          Tất Cả Chỗ Nghỉ Khám Phá
+                        </Text>
+                        <Text className="text-xs text-textMuted mt-0.5">
+                          {filteredPlaces.length} chỗ nghỉ tuyệt vời cho kỳ nghỉ của bạn
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <Text className="pb-2 text-sm text-textMuted">
+                    {filteredPlaces.length} matching stays
+                  </Text>
+                )
+              }
               renderItem={({ item }) => {
                 const isFavorite = favoriteIds.includes(item.id);
                 return (
@@ -474,6 +569,81 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
           )}
         </>
       )}
+
+      {/* Modal: Notifications with Default Mock Data */}
+      <Modal
+        visible={showNotifications}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <Pressable
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+          onPress={() => setShowNotifications(false)}
+        >
+          <Pressable
+            className="bg-white rounded-t-3xl overflow-hidden"
+            style={{ maxHeight: '80%' }}
+            onPress={() => {}}
+          >
+            <View className="items-center pt-3 pb-1">
+              <View className="w-10 h-1 rounded-full bg-borderLight" />
+            </View>
+
+            {/* Header */}
+            <View className="px-5 py-3 border-b border-borderLight flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-full bg-brand/10 items-center justify-center">
+                  <Ionicons name="notifications" size={17} color="#4F46E5" />
+                </View>
+                <Text className="text-lg font-bold text-textMain">Thông báo</Text>
+                <View className="bg-red-500 px-2 py-0.5 rounded-full ml-1">
+                  <Text className="text-[10px] font-bold text-white">Mới</Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => setShowNotifications(false)}
+                className="w-8 h-8 rounded-full bg-appBg items-center justify-center border border-borderLight active:opacity-80"
+              >
+                <Ionicons name="close" size={18} color="#131B2E" />
+              </Pressable>
+            </View>
+
+            {/* Notifications List */}
+            <ScrollView className="p-4" showsVerticalScrollIndicator={false}>
+              {MOCK_NOTIFICATIONS.map((item) => (
+                <View
+                  key={item.id}
+                  className="bg-appBg rounded-2xl p-3.5 mb-3 border border-borderLight/80 flex-row items-start gap-3"
+                >
+                  <View
+                    className="w-10 h-10 rounded-2xl items-center justify-center mt-0.5"
+                    style={{ backgroundColor: item.bgColor }}
+                  >
+                    <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-xs font-bold text-textMain flex-1 mr-2" numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text className="text-[10px] text-textMuted font-medium">
+                        {item.time}
+                      </Text>
+                    </View>
+                    <Text className="text-[11px] text-textMuted mt-1 leading-4">
+                      {item.message}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              <View className="h-6" />
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

@@ -17,6 +17,9 @@ export interface CreateBookingParams {
   paymentMethod: 'pay_in_full' | 'pay_a_part_now';
   depositAmount?: number;
   pinCode?: string;
+  promoCode?: string;
+  discountAmount?: number;
+  paymentStatus?: 'pending' | 'paid' | 'simulated';
 }
 
 /**
@@ -104,9 +107,11 @@ export async function createBooking(
         kayak_fee: params.kayakFee || 0,
         parking_fee: params.parkingFee || 0,
         total: params.total,
+        promo_code: params.promoCode || null,
+        discount_amount: params.discountAmount || null,
         payment_method: params.paymentMethod,
         deposit_amount: params.paymentMethod === 'pay_a_part_now' ? params.depositAmount : null,
-        payment_status: 'paid',
+        payment_status: params.paymentStatus || 'paid',
         status: 'booked',
         pin_code: pinCode,
       })
@@ -164,6 +169,26 @@ export async function cancelBooking(
   reason: string = 'User requested cancellation'
 ): Promise<{ success: boolean; error: unknown }> {
   try {
+    // 1. Kiểm tra trạng thái thanh toán của booking
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('payment_status')
+      .eq('id', bookingId)
+      .single();
+
+    // 2. Nếu là giao dịch chưa thanh toán (pending / unpaid): XÓA HOÀN TOÀN KHỎI DATABASE
+    // để không lưu vào mục "Cancelled" và giải phóng lịch phòng ngay lập tức
+    if (booking?.payment_status === 'pending' || booking?.payment_status === 'unpaid') {
+      const { error: deleteErr } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+
+      if (deleteErr) return { success: false, error: deleteErr };
+      return { success: true, error: null };
+    }
+
+    // 3. Đối với các đơn đã thanh toán: cập nhật status thành 'cancelled' để lưu lịch sử
     const { error } = await supabase
       .from('bookings')
       .update({

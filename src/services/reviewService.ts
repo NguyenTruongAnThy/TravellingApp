@@ -74,11 +74,30 @@ export async function createReview(
     } catch {
       reviewerName = null;
     }
+
+    // BR07: Chỉ cho phép review khi người dùng đã có booking ở trạng thái completed
+    const { data: completedBooking } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('place_id', placeId)
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .limit(1)
+      .maybeSingle();
+
+    if (!completedBooking) {
+      return {
+        data: null,
+        error: new Error('Chỉ khách hàng đã hoàn thành kỳ nghỉ (Completed) mới có thể gửi đánh giá nhận xét.'),
+      };
+    }
+
     const { data, error } = await supabase
       .from('reviews')
       .insert({
         place_id: placeId,
         user_id: userId,
+        booking_id: completedBooking.id,
         rating,
         comment,
         helpful_count: 0,

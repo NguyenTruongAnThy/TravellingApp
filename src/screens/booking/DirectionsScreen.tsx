@@ -28,15 +28,15 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
 
   const booking = route?.params?.booking;
   const place = booking?.places;
-  const placeTitle = place?.title || 'Balian Treehouse Escape';
-  const placeLocation = place?.location || 'Tabanan Regency, West Bali';
+  const placeTitle = place?.title || 'Chỗ nghỉ của bạn';
+  const placeLocation = place?.location || 'Việt Nam';
   const address = place?.address || place?.location || 'Jl. Pantai Balian No. 18, Banjar Pengembungan, Tabanan, Bali 82162, Indonesia';
-  const hostName = place?.host_name || 'Wayan Sutama';
+  const hostName = place?.host_name || 'Chủ nhà';
   const hostPhone = place?.host_phone || '+62 812 3456 7890';
   const pinCode = booking?.pin_code || place?.smart_lock_pin || '4821#';
-  const gpsCoords = '-8.5029° S, 114.9684° E';
-  const latitude = -8.5029;
-  const longitude = 114.9684;
+  const latitude = place?.latitude != null ? Number(place.latitude) : 21.0285;
+  const longitude = place?.longitude != null ? Number(place.longitude) : 105.8542;
+  const gpsCoords = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
 
   const handleShare = async () => {
     try {
@@ -263,7 +263,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
               <View className="self-start px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-md flex-row items-center gap-2 shadow-sm">
                 <Ionicons name="car-outline" size={15} color="#131B2E" />
                 <Text className="text-xs font-semibold text-[#131B2E]">
-                  1h 45m from Ngurah Rai (DPS)
+                  Lộ trình di chuyển đến chỗ nghỉ
                 </Text>
               </View>
             </View>
@@ -309,7 +309,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                     </View>
                   </View>
                   <Text className="text-sm text-[#3C494C] leading-5 mt-1">
-                    Host Wayan arranges air-conditioned private SUV pickup directly from international arrivals holding your custom name board.
+                    Chủ nhà  hỗ trợ bố trí xe đưa đón tận nơi kèm bảng tên đón bạn tại điểm đến.
                   </Text>
                   <Pressable
                     className="flex-row items-center gap-1 mt-2 self-start active:opacity-70"
@@ -490,7 +490,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                   <>
                     <Ionicons name="paper-plane-outline" size={17} color="#FFFFFF" />
                     <Text className="text-sm font-semibold text-white">
-                      Share Location with Wayan
+                      Share Location with Host
                     </Text>
                   </>
                 )}

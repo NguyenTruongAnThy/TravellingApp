@@ -19,9 +19,9 @@ export default function PaymentSuccessScreen() {
   const place: Place = route.params?.place || booking?.places;
   const paidAmount = route.params?.paidAmount || booking?.total || 0;
 
-  const refCode = booking?.ref_code || '#WS-84920';
-  const placeTitle = place?.title || booking?.places?.title || 'Stay';
-  const placeLocation = place?.location || booking?.places?.location || 'Indonesia';
+  const refCode = booking?.ref_code || '#WS-SUCCESS';
+  const placeTitle = place?.title || booking?.places?.title || 'Kỳ nghỉ của bạn';
+  const placeLocation = place?.location || booking?.places?.location || 'Việt Nam';
   const heroImage =
     place?.images?.[0] ||
     booking?.places?.images?.[0] ||

@@ -171,9 +171,9 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
         {/* Figma Reviews summary: big score + stars on the left, distribution bars on the right. Real data only. */}
         <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5 flex-row">
           <Pressable className="items-center justify-center pr-4" style={{ borderRightWidth: 1, borderRightColor: '#E6E3F5' }} onPress={() => setFilter('all')}>
-            <Text className="text-5xl font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}</Text>
+            <Text className="text-5xl font-bold text-textMain">{place.rating != null && Number(place.rating) > 0 ? Number(place.rating).toFixed(1) : 'New'}</Text>
             <View className="mt-1 flex-row">{[1, 2, 3, 4, 5].map((i) => (<Ionicons key={i} name={place.rating != null && i <= Math.round(place.rating) ? 'star' : 'star-outline'} size={14} color={place.rating != null && i <= Math.round(place.rating) ? '#FFB020' : '#D9D4F0'} />))}</View>
-            <Text className="mt-1 text-sm text-textMuted">{place.review_count || total} reviews</Text>
+            <Text className="mt-1 text-sm text-textMuted">{(place.review_count ?? total) > 0 ? `${place.review_count ?? total} reviews` : 'Chưa có đánh giá'}</Text>
           </Pressable>
           <View className="flex-1 pl-4 justify-center">
             {total === 0 ? <Text className="text-base text-textMuted">No detailed reviews yet to calculate the distribution.</Text> : [5, 4, 3, 2, 1].map((star) => {

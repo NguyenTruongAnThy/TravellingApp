@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Switch,
@@ -12,19 +14,51 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  DEFAULT_SECURITY_DATA,
-  SecurityDevice,
-  SecurityHealthData,
-} from '../../services/profileService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { SecurityDevice } from '../../services/profileService';
 
 interface SecurityScreenProps {
   navigation?: any;
 }
 
 export default function SecurityScreen({ navigation }: SecurityScreenProps) {
-  const [securityData, setSecurityData] = useState<SecurityHealthData>(DEFAULT_SECURITY_DATA);
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(securityData.twoFactorEnabled);
+  const { session } = useAuth();
+  const userId = session?.user?.id;
+  const userEmail = session?.user?.email || 'user@wanderstay.com';
+
+  const [userPhone, setUserPhone] = useState<string>('');
+  const [masterPasswordLastUpdated, setMasterPasswordLastUpdated] = useState<string>('Gần đây');
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(true);
+  const [updatingPassword, setUpdatingPassword] = useState<boolean>(false);
+
+  // Detect current operating system / device
+  const currentDeviceName =
+    Platform.OS === 'ios'
+      ? 'Apple iPhone'
+      : Platform.OS === 'android'
+      ? 'Thiết bị Android'
+      : 'Thiết bị di động';
+
+  const [devices, setDevices] = useState<SecurityDevice[]>([
+    {
+      id: 'dev-current',
+      name: currentDeviceName,
+      location: 'Hà Nội, Việt Nam',
+      lastActive: 'Đang hoạt động',
+      isCurrent: true,
+      deviceType: 'phone',
+    },
+    {
+      id: 'dev-chrome',
+      name: 'Chrome trên Windows / Web',
+      location: 'Việt Nam',
+      lastActive: 'Hoạt động 2 giờ trước',
+      isCurrent: false,
+      deviceType: 'laptop',
+    },
+  ]);
 
   // Update Password Modal State
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
@@ -34,145 +68,250 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
 
   // Backup Codes Modal State
   const [backupCodesVisible, setBackupCodesVisible] = useState(false);
-  const dummyBackupCodes = [
-    '8F92-KLA8',
-    '4M29-PQ81',
-    '99X2-WND8',
-    '31BL-4821',
-    '77KA-9912',
-    '23MN-8841',
-    '55TZ-6623',
-    '19PL-7734',
-  ];
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
-  const handleUpdatePassword = () => {
-    if (!currentPassword.trim()) {
-      Alert.alert('Missing Password', 'Please enter your current password.');
+  // Fetch real user phone & stored 2FA / Password update status
+  useEffect(() => {
+    async function loadSecurityData() {
+      if (!userId) return;
+
+      try {
+        const { data } = await supabase
+          .from('users')
+          .select('phone')
+          .eq('id', userId)
+          .single();
+        if (data?.phone) {
+          setUserPhone(data.phone);
+        }
+      } catch (err) {
+        console.log('Error fetching user phone:', err);
+      }
+
+      try {
+        const saved2FA = await AsyncStorage.getItem(`@wanderstay_2fa_${userId}`);
+        if (saved2FA !== null) {
+          setTwoFactorEnabled(saved2FA === 'true');
+        }
+      } catch (err) {
+        console.log('Error loading 2FA setting:', err);
+      }
+
+      try {
+        const savedPassDate = await AsyncStorage.getItem(`@wanderstay_pass_updated_${userId}`);
+        if (savedPassDate) {
+          setMasterPasswordLastUpdated(savedPassDate);
+        }
+      } catch (err) {
+        console.log('Error loading password update date:', err);
+      }
+
+      try {
+        const savedCodes = await AsyncStorage.getItem(`@wanderstay_backup_codes_${userId}`);
+        if (savedCodes) {
+          setBackupCodes(JSON.parse(savedCodes));
+        } else {
+          const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+          const newCodes: string[] = [];
+          for (let i = 0; i < 8; i++) {
+            let p1 = '', p2 = '';
+            for (let j = 0; j < 4; j++) {
+              p1 += chars.charAt(Math.floor(Math.random() * chars.length));
+              p2 += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            newCodes.push(`${p1}-${p2}`);
+          }
+          setBackupCodes(newCodes);
+          await AsyncStorage.setItem(`@wanderstay_backup_codes_${userId}`, JSON.stringify(newCodes));
+        }
+      } catch (err) {}
+    }
+
+    loadSecurityData();
+  }, [userId]);
+
+  // Dynamic Security Health Score calculation
+  const hasPassword = true;
+  const hasEmail = Boolean(session?.user?.email);
+  const hasPhone = Boolean(userPhone && userPhone.trim().length > 0);
+  const has2FA = twoFactorEnabled;
+
+  const score =
+    (hasPassword ? 25 : 0) +
+    (hasEmail ? 25 : 0) +
+    (hasPhone ? 25 : 0) +
+    (has2FA ? 25 : 0);
+  const safeguardsConfigured =
+    (hasPassword ? 1 : 0) +
+    (hasEmail ? 1 : 0) +
+    (hasPhone ? 1 : 0) +
+    (has2FA ? 1 : 0);
+  const totalSafeguards = 4;
+  const status =
+    score >= 90
+      ? 'Tối ưu (Optimal)'
+      : score >= 70
+      ? 'Mạnh (Strong)'
+      : 'Cần xem xét (Needs Review)';
+  const level = score >= 90 ? 'Optimal' : score >= 70 ? 'Strong' : 'Moderate';
+
+  const formattedPhone =
+    userPhone && userPhone.length >= 6
+      ? `${userPhone.slice(0, 3)} ••• ••${userPhone.slice(-3)}`
+      : 'Chưa liên kết SĐT';
+
+  // Handle Real Password Update in Supabase Auth
+  const handleUpdatePassword = async () => {
+    if (!newPassword.trim()) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập mật khẩu mới.');
       return;
     }
-    if (newPassword.length < 8) {
-      Alert.alert('Weak Password', 'New password must be at least 8 characters long.');
+    if (newPassword.length < 6) {
+      Alert.alert('Mật khẩu yếu', 'Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Mismatch', 'New passwords do not match.');
+      Alert.alert('Không trùng khớp', 'Mật khẩu xác nhận không khớp với mật khẩu mới.');
       return;
     }
 
-    setSecurityData({
-      ...securityData,
-      masterPasswordLastUpdated: 'Just now',
-    });
-    setPasswordModalVisible(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    Alert.alert('Password Updated', 'Your Master Password has been changed successfully.');
+    try {
+      setUpdatingPassword(true);
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        Alert.alert('Lỗi cập nhật', error.message);
+        return;
+      }
+
+      const nowText = 'Vừa xong';
+      setMasterPasswordLastUpdated(nowText);
+      if (userId) {
+        await AsyncStorage.setItem(`@wanderstay_pass_updated_${userId}`, nowText);
+      }
+
+      setPasswordModalVisible(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      Alert.alert('Thành công', 'Mật khẩu chính của bạn đã được cập nhật thành công trên tài khoản Supabase.');
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message || 'Không thể cập nhật mật khẩu lúc này.');
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   const handleDisconnectGoogle = () => {
-    Alert.alert('Disconnect Google Account', 'Are you sure you want to unlink your Google login?', [
+    Alert.alert('Ngắt kết nối Google', 'Bạn có chắc chắn muốn hủy liên kết tài khoản Google này?', [
       {
-        text: 'Disconnect',
+        text: 'Hủy liên kết',
         style: 'destructive',
         onPress: () => {
-          Alert.alert('Disconnected', 'Google account has been unlinked.');
+          Alert.alert('Đã ngắt kết nối', 'Tài khoản Google đã được hủy liên kết.');
         },
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: 'Hủy', style: 'cancel' },
     ]);
   };
 
   const handleManageApple = () => {
-    Alert.alert('Apple ID', 'Apple ID Sign In with Hide My Email is currently active.');
+    Alert.alert('Apple ID', 'Đăng nhập Apple ID với tính năng ẩn email đang hoạt động.');
   };
 
-  const handleToggle2FA = (val: boolean) => {
+  const handleToggle2FA = async (val: boolean) => {
     setTwoFactorEnabled(val);
-    const newScore = val ? 92 : 72;
-    const newStatus = val ? 'Strong' : 'Moderate';
-    const newLevel = val ? 'Optimal' : 'Needs Review';
-    const newSafeguards = val ? 4 : 3;
-
-    setSecurityData({
-      ...securityData,
-      score: newScore,
-      status: newStatus,
-      level: newLevel,
-      safeguardsConfigured: newSafeguards,
-      twoFactorEnabled: val,
-    });
+    if (userId) {
+      await AsyncStorage.setItem(`@wanderstay_2fa_${userId}`, val ? 'true' : 'false');
+    }
 
     Alert.alert(
-      val ? '2FA Enabled' : '2FA Disabled',
+      val ? 'Đã bật 2FA' : 'Đã tắt 2FA',
       val
-        ? 'Two-Factor Authentication is active for all logins.'
-        : 'Warning: Disabling 2FA lowers your security health score.'
+        ? 'Xác thực 2 yếu tố đã được kích hoạt. Điểm bảo mật của bạn đạt mức tối đa 100/100!'
+        : 'Cảnh báo: Việc tắt 2FA sẽ làm giảm điểm bảo mật tài khoản xuống còn ' +
+            (score - 25) +
+            '/100.'
     );
   };
 
   const handleLogoutDevice = (device: SecurityDevice) => {
-    Alert.alert('Log Out Device', `Revoke access for ${device.name}?`, [
+    Alert.alert('Đăng xuất thiết bị', `Thu hồi quyền truy cập của ${device.name}?`, [
       {
-        text: 'Log Out',
+        text: 'Đăng xuất',
         style: 'destructive',
         onPress: () => {
-          setSecurityData({
-            ...securityData,
-            devices: securityData.devices.filter((d) => d.id !== device.id),
-          });
-          Alert.alert('Session Terminated', `${device.name} has been logged out.`);
+          setDevices((prev) => prev.filter((d) => d.id !== device.id));
+          Alert.alert('Đã kết thúc phiên', `${device.name} đã được đăng xuất khỏi tài khoản.`);
         },
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: 'Hủy', style: 'cancel' },
     ]);
   };
 
   const handleLogoutAllOther = () => {
     Alert.alert(
-      'Log Out All Other Sessions',
-      'This will disconnect all devices except this iPhone 15 Pro.',
+      'Đăng xuất tất cả phiên khác',
+      `Thao tác này sẽ ngắt kết nối tất cả các thiết bị khác, chỉ giữ lại ${currentDeviceName} này.`,
       [
         {
-          text: 'Log Out Others',
+          text: 'Đăng xuất tất cả',
           style: 'destructive',
           onPress: () => {
-            setSecurityData({
-              ...securityData,
-              devices: securityData.devices.filter((d) => d.isCurrent),
-            });
-            Alert.alert('Success', 'All other devices have been logged out.');
+            setDevices((prev) => prev.filter((d) => d.isCurrent));
+            Alert.alert('Thành công', 'Đã đăng xuất toàn bộ các thiết bị khác.');
           },
         },
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Hủy', style: 'cancel' },
       ]
     );
   };
 
   const handleDownloadData = () => {
-    Alert.alert('Download Account Data', 'A secure download archive will be prepared and sent to your email within 24 hours.', [
-      { text: 'Request Archive', onPress: () => Alert.alert('Request Submitted', 'Archive is being compiled.') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      'Tải xuống dữ liệu tài khoản',
+      'Bản sao lưu dữ liệu an toàn sẽ được tổng hợp và gửi đến email của bạn trong vòng 24 giờ.',
+      [
+        {
+          text: 'Yêu cầu bản sao',
+          onPress: () => Alert.alert('Đã gửi yêu cầu', 'Dữ liệu đang được tổng hợp.'),
+        },
+        { text: 'Hủy', style: 'cancel' },
+      ]
+    );
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Deactivate or Delete Account',
-      'Would you like to temporarily deactivate or permanently delete your WanderStay account?',
+      'Tạm dừng hoặc Xóa tài khoản',
+      'Bạn muốn tạm dừng sử dụng tạm thời hay xóa vĩnh viễn tài khoản WanderStay?',
       [
-        { text: 'Pause Account', onPress: () => Alert.alert('Account Paused', 'Your account is now temporarily paused.') },
-        { text: 'Delete Permanently', style: 'destructive', onPress: () => Alert.alert('Notice', 'Please contact WanderStay support to finalize permanent account deletion.') },
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Tạm dừng',
+          onPress: () => Alert.alert('Đã tạm dừng', 'Tài khoản của bạn đang được tạm khóa.'),
+        },
+        {
+          text: 'Xóa vĩnh viễn',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert(
+              'Thông báo',
+              'Vui lòng liên hệ bộ phận hỗ trợ WanderStay Support để hoàn tất quy trình xóa tài khoản.'
+            ),
+        },
+        { text: 'Hủy', style: 'cancel' },
       ]
     );
   };
 
   const handleMoreOptions = () => {
-    Alert.alert('Security Options', 'Account & Privacy Standards', [
-      { text: 'View Security Audit Log', onPress: () => Alert.alert('Audit Log', 'No suspicious logins detected in the last 90 days.') },
-      { text: 'Security Best Practices', onPress: () => {} },
-      { text: 'Close', style: 'cancel' },
+    Alert.alert('Tùy chọn bảo mật', 'Tiêu chuẩn bảo mật & Quyền riêng tư', [
+      {
+        text: 'Xem nhật ký kiểm tra',
+        onPress: () => Alert.alert('Nhật ký', 'Không phát hiện lượt đăng nhập bất thường nào trong 90 ngày qua.'),
+      },
+      { text: 'Quy chuẩn an toàn', onPress: () => {} },
+      { text: 'Đóng', style: 'cancel' },
     ]);
   };
 
@@ -231,20 +370,20 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                   <View className="px-2 py-0.5 rounded-full bg-[#EAEDFF] flex-row items-center gap-1">
                     <View className="w-1.5 h-1.5 rounded-full bg-[#4D44E3]" />
                     <Text className="text-[11px] font-bold text-[#4D44E3]">
-                      {securityData.level}
+                      {level}
                     </Text>
                   </View>
                 </View>
 
                 <Text className="text-xl font-bold text-[#131B2E] tracking-tight">
-                  Security Status: {securityData.status}
+                  Security Status: {status}
                 </Text>
               </View>
             </View>
 
             <View className="items-end">
               <Text className="text-2xl font-extrabold text-[#4D44E3] tracking-tight">
-                {securityData.score}
+                {score}
               </Text>
               <Text className="text-xs font-semibold text-[#3C494C]">/100</Text>
             </View>
@@ -256,7 +395,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
               colors={['#4D44E3', '#0051D5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={{ width: `${securityData.score}%`, height: '100%', borderRadius: 9999 }}
+              style={{ width: `${score}%`, height: '100%', borderRadius: 9999 }}
             />
           </View>
 
@@ -265,7 +404,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
             <View className="flex-row items-center gap-1.5">
               <Ionicons name="checkmark-circle" size={15} color="#4D44E3" />
               <Text className="text-xs font-semibold text-[#131B2E]">
-                {securityData.safeguardsConfigured} of {securityData.totalSafeguards} critical safeguards configured
+                {safeguardsConfigured} of {totalSafeguards} critical safeguards configured
               </Text>
             </View>
             <Text className="text-xs font-bold text-[#4D44E3]">Protected</Text>
@@ -288,7 +427,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-[#131B2E]">Master Password</Text>
                   <Text className="text-xs text-[#3C494C] mt-0.5">
-                    Last updated {securityData.masterPasswordLastUpdated}
+                    Last updated {masterPasswordLastUpdated}
                   </Text>
                 </View>
               </View>
@@ -312,7 +451,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-[#131B2E]">Google Account</Text>
                   <Text className="text-xs text-[#3C494C] mt-0.5" numberOfLines={1}>
-                    Connected as {securityData.googleConnectedEmail}
+                    Connected as {userEmail}
                   </Text>
                 </View>
               </View>
@@ -383,7 +522,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-[#131B2E]">SMS Text Message</Text>
-                  <Text className="text-xs text-[#3C494C] mt-0.5">{securityData.smsPhone}</Text>
+                  <Text className="text-xs text-[#3C494C] mt-0.5">{formattedPhone}</Text>
                 </View>
               </View>
 
@@ -403,7 +542,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-[#131B2E]">Authenticator App</Text>
                   <Text className="text-xs text-[#3C494C] mt-0.5">
-                    {securityData.authenticatorApp}
+                    Google Authenticator
                   </Text>
                 </View>
               </View>
@@ -429,7 +568,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                     Backup Recovery Codes
                   </Text>
                   <Text className="text-xs text-[#3C494C] mt-0.5">
-                    {securityData.backupCodesRemaining} unused backup codes generated
+                    8 unused backup codes generated
                   </Text>
                 </View>
               </View>
@@ -449,7 +588,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
           </View>
 
           <View className="bg-white rounded-2xl p-4 shadow-sm border border-borderLight/40 mb-3">
-            {securityData.devices.map((device, idx) => (
+            {devices.map((device, idx) => (
               <React.Fragment key={device.id}>
                 {idx > 0 && <View className="h-[1px] bg-[#E2E7FF] my-3" />}
                 <View className="flex-row items-center justify-between">
@@ -583,6 +722,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
               <Pressable
                 className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
                 onPress={() => setPasswordModalVisible(false)}
+                disabled={updatingPassword}
               >
                 <Ionicons name="close" size={18} color="#131B2E" />
               </Pressable>
@@ -590,21 +730,9 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
 
             <View className="gap-3 mb-6">
               <View>
-                <Text className="text-xs font-semibold text-[#6C797D] mb-1">Current Password</Text>
+                <Text className="text-xs font-semibold text-[#6C797D] mb-1">Mật khẩu mới (Tối thiểu 6 ký tự)</Text>
                 <TextInput
-                  placeholder="••••••••••••"
-                  placeholderTextColor="#8A90A6"
-                  secureTextEntry
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  className="h-11 rounded-xl bg-[#F8F7FF] px-4 border border-borderLight text-sm text-[#131B2E]"
-                />
-              </View>
-
-              <View>
-                <Text className="text-xs font-semibold text-[#6C797D] mb-1">New Password</Text>
-                <TextInput
-                  placeholder="At least 8 characters"
+                  placeholder="Nhập ít nhất 6 ký tự"
                   placeholderTextColor="#8A90A6"
                   secureTextEntry
                   value={newPassword}
@@ -614,9 +742,9 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
               </View>
 
               <View>
-                <Text className="text-xs font-semibold text-[#6C797D] mb-1">Confirm New Password</Text>
+                <Text className="text-xs font-semibold text-[#6C797D] mb-1">Xác nhận mật khẩu mới</Text>
                 <TextInput
-                  placeholder="Repeat new password"
+                  placeholder="Nhập lại mật khẩu mới"
                   placeholderTextColor="#8A90A6"
                   secureTextEntry
                   value={confirmPassword}
@@ -627,10 +755,15 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
             </View>
 
             <Pressable
-              className="h-12 rounded-full bg-[#4D44E3] items-center justify-center shadow-md active:opacity-90"
+              className="h-12 rounded-full bg-[#4D44E3] items-center justify-center shadow-md active:opacity-90 flex-row gap-2"
               onPress={handleUpdatePassword}
+              disabled={updatingPassword}
             >
-              <Text className="text-sm font-semibold text-white">Save New Password</Text>
+              {updatingPassword ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text className="text-sm font-semibold text-white">Save New Password</Text>
+              )}
             </Pressable>
           </View>
         </View>
@@ -655,7 +788,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
             </Text>
 
             <View className="flex-row flex-wrap gap-2.5 mb-6">
-              {dummyBackupCodes.map((code, index) => (
+              {backupCodes.map((code, index) => (
                 <View
                   key={index}
                   className="w-[47%] p-2.5 rounded-xl bg-[#F8F7FF] border border-borderLight items-center"

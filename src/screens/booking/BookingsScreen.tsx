@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { getUserBookings, cancelBooking } from '../../services/bookingsService';
+import { convertUsdToVnd } from '../../services/sepayService';
+import SepayQrModal from '../../components/SepayQrModal';
 import type { Booking } from '../../types';
 
 type TabType = 'Upcoming' | 'Completed' | 'Cancelled';
@@ -41,6 +43,10 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
   const [helpModalVisible, setHelpModalVisible] = useState(false);
   const [bluetoothUnlocked, setBluetoothUnlocked] = useState(false);
+
+  // SePay Modal State for Pending Bookings
+  const [sepayModalVisible, setSepayModalVisible] = useState(false);
+  const [pendingBookingForPay, setPendingBookingForPay] = useState<Booking | null>(null);
 
   // Chat state for modal
   const [messages, setMessages] = useState([
@@ -81,7 +87,10 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
   // Tab counts dynamically from database
   const upcomingBookings = bookings.filter((b) => b.status === 'booked');
   const completedBookings = bookings.filter((b) => b.status === 'completed');
-  const cancelledBookings = bookings.filter((b) => b.status === 'cancelled');
+  // Chỉ những đơn đã thanh toán mới lưu và hiển thị trong tab Cancelled
+  const cancelledBookings = bookings.filter(
+    (b) => b.status === 'cancelled' && b.payment_status !== 'pending' && b.payment_status !== 'unpaid'
+  );
 
   const upcomingCount = upcomingBookings.length;
   const completedCount = completedBookings.length;
@@ -112,19 +121,29 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
   };
 
   const handleCancelBooking = (bookingId: string) => {
+    const target = bookings.find((b) => b.id === bookingId);
+    const isPending = target?.payment_status === 'pending' || target?.payment_status === 'unpaid';
+
     Alert.alert(
-      'Cancel Reservation',
-      'Are you sure you want to cancel this booking? Free 100% refund is available if cancelled at least 48 hours prior to check-in (BR05).',
+      isPending ? 'Hủy giao dịch chờ thanh toán' : 'Cancel Reservation',
+      isPending
+        ? 'Bạn có chắc chắn muốn hủy giao dịch chưa thanh toán này không? Đơn phòng sẽ được xóa hoàn toàn và không lưu vào danh sách đã hủy.'
+        : 'Are you sure you want to cancel this booking? Free 100% refund is available if cancelled at least 48 hours prior to check-in (BR05).',
       [
-        { text: 'Keep Booking', style: 'cancel' },
+        { text: isPending ? 'Giữ lại' : 'Keep Booking', style: 'cancel' },
         {
-          text: 'Confirm Cancellation',
+          text: isPending ? 'Hủy & Xóa đơn' : 'Confirm Cancellation',
           style: 'destructive',
           onPress: async () => {
             try {
               const res = await cancelBooking(bookingId, 'Cancelled by guest');
               if (res.success) {
-                Alert.alert('Cancelled', 'Your reservation has been successfully cancelled.');
+                Alert.alert(
+                  'Đã hủy thành công',
+                  isPending
+                    ? 'Giao dịch chưa thanh toán đã được hủy bỏ và xóa hoàn toàn.'
+                    : 'Your reservation has been successfully cancelled.'
+                );
                 loadBookings();
               } else {
                 Alert.alert('Error', 'Could not cancel reservation. Please try again.');
@@ -135,6 +154,22 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
           },
         },
       ]
+    );
+  };
+
+  const handlePayPendingBooking = (b: Booking) => {
+    setActiveBookingForModal(b);
+    setPendingBookingForPay(b);
+    setSepayModalVisible(true);
+  };
+
+  const handleSepaySuccess = (updatedBooking: any) => {
+    setSepayModalVisible(false);
+    setPendingBookingForPay(null);
+    loadBookings();
+    Alert.alert(
+      'Thanh toán thành công! 🎉',
+      `Đơn đặt phòng #${updatedBooking.ref_code} đã được thanh toán thành công.`
     );
   };
 
@@ -313,17 +348,35 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                         {idx === 0 ? 'ACTIVE RESERVATION' : `UPCOMING STAY #${idx + 1}`}
                       </Text>
                       <View className="flex-row items-center gap-1.5">
-                        <View className="bg-[#E2E7FF] px-2.5 py-1 rounded-full flex-row items-center gap-1">
-                          <View className="w-1.5 h-1.5 rounded-full bg-brand" />
-                          <Text className="text-[11px] font-bold text-brand">Confirmed</Text>
-                        </View>
+                        {b.payment_status === 'pending' ? (
+                          <Pressable
+                            onPress={() => handlePayPendingBooking(b)}
+                            className="bg-amber-100 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-amber-300 active:opacity-80"
+                          >
+                            <View className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                            <Text className="text-[11px] font-bold text-amber-800">Chờ thanh toán (Bấm trả ngay)</Text>
+                            <Ionicons name="chevron-forward" size={12} color="#92400E" />
+                          </Pressable>
+                        ) : (
+                          <View className="bg-[#E2E7FF] px-2.5 py-1 rounded-full flex-row items-center gap-1">
+                            <View className="w-1.5 h-1.5 rounded-full bg-brand" />
+                            <Text className="text-[11px] font-bold text-brand">Confirmed</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
 
                     {/* Active Reservation Hero Card */}
                     <View className="bg-white rounded-3xl p-4 border border-borderLight shadow-sm">
                       {/* Place Hero Image */}
-                      <View className="h-44 rounded-2xl overflow-hidden relative justify-between p-3 bg-black/10">
+                      <Pressable
+                        onPress={() => {
+                          if (b.payment_status === 'pending') {
+                            handlePayPendingBooking(b);
+                          }
+                        }}
+                        className="h-44 rounded-2xl overflow-hidden relative justify-between p-3 bg-black/10"
+                      >
                         <Image
                           source={{ uri: heroImg }}
                           className="absolute inset-0 w-full h-full"
@@ -335,11 +388,15 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                         <View className="self-start bg-white/95 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm">
                           <Ionicons name="star" size={13} color="#F59E0B" />
                           <Text className="text-xs font-bold text-textMain">
-                            {place?.rating != null ? place.rating.toFixed(1) : '4.9'}
+                            {place?.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0
+                              ? Number(place.rating).toFixed(1)
+                              : 'New'}
                           </Text>
-                          <Text className="text-[10px] text-[#6C797D]">
-                            ({place?.review_count || 128})
-                          </Text>
+                          {place?.review_count && place.review_count > 0 ? (
+                            <Text className="text-[10px] text-[#6C797D]">
+                              ({place.review_count})
+                            </Text>
+                          ) : null}
                         </View>
 
                         {/* Bottom Title & Location */}
@@ -357,7 +414,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             <Text className="text-xs text-[#E2E7FF]">{placeLocation}</Text>
                           </View>
                         </View>
-                      </View>
+                      </Pressable>
 
                       {/* Booking Info 2-Column Grid */}
                       <View className="bg-[#F8F7FF] rounded-2xl p-3.5 mt-3 flex-row justify-between border border-borderLight/60">
@@ -382,9 +439,24 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             <Text className="text-xs text-[#6C797D]">Booking Reference</Text>
                           </View>
                           <Text className="text-sm font-bold text-brand mt-1">{b.ref_code}</Text>
-                          <Text className="text-xs font-bold text-textMain mt-0.5">
-                            ${Number(b.total).toFixed(0)} <Text className="text-brand font-bold">(Paid)</Text>
-                          </Text>
+                          <View className="flex-row items-center gap-1 mt-0.5">
+                            <Text className="text-xs font-bold text-textMain">
+                              ${Number(b.total).toFixed(0)}
+                            </Text>
+                            {b.payment_status === 'pending' ? (
+                              <Text className="text-[11px] font-bold text-amber-600">(Chờ thanh toán)</Text>
+                            ) : (
+                              <Text className="text-[11px] font-bold text-emerald-600">(Đã thanh toán)</Text>
+                            )}
+                          </View>
+                          {b.promo_code ? (
+                            <View className="flex-row items-center gap-1 mt-0.5">
+                              <Ionicons name="pricetag" size={10} color="#FF6B00" />
+                              <Text className="text-[10px] font-bold text-[#FF6B00]">
+                                {b.promo_code} (-${Number(b.discount_amount || 0).toFixed(0)})
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
                       </View>
 
@@ -406,11 +478,15 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
 
                       {/* Action Buttons */}
                       <View className="mt-4 gap-2.5">
-                        {/* Primary Button: View Details & Check-in */}
+                        {/* Primary Button */}
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel="View Details and Check-in"
+                          accessibilityLabel={b.payment_status === 'pending' ? 'Thanh toán ngay' : 'View Details and Check-in'}
                           onPress={() => {
+                            if (b.payment_status === 'pending') {
+                              handlePayPendingBooking(b);
+                              return;
+                            }
                             if (navigation?.navigate) {
                               navigation.navigate('SmartKey', { booking: b });
                             } else {
@@ -418,11 +494,21 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                               setSmartKeyModalVisible(true);
                             }
                           }}
-                          className="bg-brand rounded-full py-3.5 items-center justify-center shadow-md shadow-brand/30 flex-row gap-2"
+                          className={`${
+                            b.payment_status === 'pending'
+                              ? 'bg-[#FF6B00] shadow-[#FF6B00]/30'
+                              : 'bg-brand shadow-brand/30'
+                          } rounded-full py-3.5 items-center justify-center shadow-md flex-row gap-2 active:opacity-90`}
                         >
-                          <Ionicons name="key-outline" size={16} color="#FFF" />
+                          <Ionicons
+                            name={b.payment_status === 'pending' ? 'qr-code-outline' : 'key-outline'}
+                            size={16}
+                            color="#FFF"
+                          />
                           <Text className="text-sm font-bold text-white">
-                            View Details & Check-in
+                            {b.payment_status === 'pending'
+                              ? 'Thanh toán ngay (Quét VietQR)'
+                              : 'View Details & Check-in'}
                           </Text>
                         </Pressable>
 
@@ -543,7 +629,9 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                           <View className="flex-row items-center gap-0.5 ml-1">
                             <Ionicons name="star" size={11} color="#F59E0B" />
                             <Text className="text-xs font-bold text-textMain">
-                              {place?.rating != null ? place.rating.toFixed(1) : '5.0'}
+                              {place?.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0
+                                ? Number(place.rating).toFixed(1)
+                                : 'New'}
                             </Text>
                           </View>
                         </View>
@@ -551,6 +639,14 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                         <Text className="text-xs text-[#3C494C] font-medium mt-1">
                           {b.check_in} – {b.check_out} · {b.nights} nights
                         </Text>
+                        {b.promo_code ? (
+                          <View className="flex-row items-center gap-1 mt-0.5">
+                            <Ionicons name="pricetag" size={10} color="#FF6B00" />
+                            <Text className="text-[10px] font-bold text-[#FF6B00]">
+                              {b.promo_code} (-${Number(b.discount_amount || 0).toFixed(0)})
+                            </Text>
+                          </View>
+                        ) : null}
                       </View>
 
                       <View className="flex-row items-center justify-between pt-2 border-t border-borderLight/60">
@@ -602,6 +698,14 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                       <Text className="text-[10px] font-bold text-red-600">Cancelled</Text>
                     </View>
                   </View>
+                  {b.cancel_reason ? (
+                    <View className="mt-2.5 px-3 py-1.5 rounded-xl bg-red-50/70 border border-red-100 flex-row items-center">
+                      <Ionicons name="information-circle-outline" size={14} color="#DC2626" />
+                      <Text className="ml-1.5 text-xs text-red-700 flex-1" numberOfLines={2}>
+                        Lý do: {b.cancel_reason}
+                      </Text>
+                    </View>
+                  ) : null}
                   <View className="mt-3 pt-3 border-t border-borderLight flex-row justify-between items-center">
                     <Text className="text-xs text-textMuted">
                       {b.check_in} – {b.check_out} · ${Number(b.total).toFixed(0)}
@@ -868,6 +972,21 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
           </ScrollView>
         </View>
       </Modal>
+
+      {/* SePay VietQR Modal for pending bookings */}
+      {pendingBookingForPay && (
+        <SepayQrModal
+          visible={sepayModalVisible}
+          onClose={() => {
+            setSepayModalVisible(false);
+            setPendingBookingForPay(null);
+          }}
+          booking={pendingBookingForPay}
+          dueAmountUsd={Number(pendingBookingForPay.deposit_amount || pendingBookingForPay.total)}
+          dueAmountVnd={convertUsdToVnd(Number(pendingBookingForPay.deposit_amount || pendingBookingForPay.total))}
+          onPaymentSuccess={handleSepaySuccess}
+        />
+      )}
     </View>
   );
 }

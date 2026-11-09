@@ -5,6 +5,7 @@ export interface Place {
   category?: string | null;
   place_type?: string | null;
   price_per_night: number;
+  original_price?: number | null;
   rooms?: number;
   beds?: number;
   guests_capacity?: number;
@@ -61,16 +62,35 @@ export interface Booking {
   guests_adults?: number;
   guests_children?: number;
   price_per_night: number;
+  original_price?: number | null;
   kayak_fee?: number;
   parking_fee?: number;
   total: number;
   payment_method?: 'pay_in_full' | 'pay_a_part_now';
   deposit_amount?: number | null;
   payment_status?: string;
+  promo_code?: string | null;
+  discount_amount?: number;
   status: 'booked' | 'cancelled' | 'completed';
   pin_code?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   created_at?: string;
   places?: Place | null;
+}
+
+export interface Promotion {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order_amount?: number;
+  max_discount_amount?: number | null;
+  valid_until?: string | null;
+  usage_limit?: number;
+  used_count?: number;
+  is_active: boolean;
+  created_at?: string;
 }

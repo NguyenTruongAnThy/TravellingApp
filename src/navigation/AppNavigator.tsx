@@ -73,12 +73,13 @@ function BookingTab() {
   return <BookingsScreen />;
 }
 
-function InboxTab() {
+function SupportTab() {
   const { session } = useAuth();
   if (!session) {
-    return <GuardedScreen title="Inbox" />;
+    return <GuardedScreen title="Support" />;
   }
-  return <InboxListScreen />;
+  // Tự động nhảy trực tiếp vào chat với WanderStay Support 24/7
+  return <TravelAssistantScreen />;
 }
 
 function MainTabs() {
@@ -88,6 +89,7 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: '#4F46E5',
         tabBarInactiveTintColor: '#8A90A6',
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tab.Screen
@@ -115,11 +117,11 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Inbox"
-        component={InboxTab}
+        name="Support"
+        component={SupportTab}
         options={{
-          tabBarLabel: 'Inbox',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline" size={size} color={color} />,
+          tabBarLabel: 'Support',
+          tabBarIcon: ({ color, size }) => <Ionicons name="headset-outline" size={size} color={color} />,
         }}
       />
       <Tab.Screen

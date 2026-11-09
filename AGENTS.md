@@ -152,8 +152,7 @@ d:\TravellingApp\
 ├── package.json                       # Khai báo thư viện phụ thuộc
 ├── assets/                            # Ảnh tĩnh, logo, icons, splash
 ├── supabase/
-│   ├── schema.sql                     # Khởi tạo 7 bảng dữ liệu, RLS, Indexes, Triggers
-│   └── seed.sql                       # Seed dữ liệu mẫu (Balian Treehouse, Kuta, Ubud)
+│   └── schema.sql                     # Khởi tạo 9 bảng dữ liệu, RLS, Indexes, Triggers
 └── src/
     ├── types.ts                       # Định nghĩa TypeScript interfaces toàn hệ thống
     ├── lib/
@@ -170,6 +169,8 @@ d:\TravellingApp\
     │   ├── AuthCard.tsx               # Khung thẻ màn xác thực
     │   ├── AuthHeader.tsx             # Tiêu đề & thanh điều hướng đăng nhập/ký
     │   ├── PlaceCard.tsx              # Thẻ chỗ ở trang Explore & My lists
+    │   ├── BestSellersCarousel.tsx    # Dải trượt ngang Top chỗ ở bán chạy nhất (Best Sellers)
+    │   ├── RelatedPlacesSection.tsx   # Dải trượt ngang gợi ý chỗ nghỉ tương tự trong chi tiết phòng
     │   ├── SocialButton.tsx           # Nút đăng nhập Apple, Google, Facebook
     │   ├── PriceDetails.tsx           # Bảng kê minh bạch các khoản phí
     │   └── EmptyState.tsx             # Giao diện hiển thị trạng thái rỗng
@@ -249,7 +250,7 @@ Dữ liệu gồm 7 bảng nghiệp vụ chính tại [`supabase/schema.sql`](fi
 1. **`users`**:
    - `id UUID PRIMARY KEY`, `email TEXT NOT NULL UNIQUE`, `phone TEXT`, `name TEXT`, `role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin'))`, `avatar_url TEXT`, `created_at TIMESTAMPTZ`.
 2. **`places`**:
-   - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `title TEXT NOT NULL`, `location TEXT NOT NULL`, `category TEXT`, `place_type TEXT`, `price_per_night NUMERIC(10,2) CHECK (price_per_night BETWEEN 10 AND 250)`, `rooms INT DEFAULT 1`, `beds INT DEFAULT 1`, `guests_capacity INT DEFAULT 1`, `amenities TEXT[] DEFAULT '{}'`, `images TEXT[] DEFAULT '{}'`, `description TEXT`, `check_in_time TEXT DEFAULT '14:00'`, `check_out_time TEXT DEFAULT '12:00'`, `rating NUMERIC(3,1) DEFAULT 0`, `review_count INT DEFAULT 0`, `is_visible BOOLEAN DEFAULT TRUE`, `admin_id UUID REFERENCES users(id)`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`.
+   - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `title TEXT NOT NULL`, `location TEXT NOT NULL`, `category TEXT`, `place_type TEXT`, `price_per_night NUMERIC(10,2) CHECK (price_per_night BETWEEN 10 AND 250)`, `rooms INT DEFAULT 1`, `beds INT DEFAULT 1`, `guests_capacity INT DEFAULT 1`, `amenities TEXT[] DEFAULT '{}'`, `images TEXT[] DEFAULT '{}'`, `description TEXT`, `check_in_time TEXT DEFAULT '14:00'`, `check_out_time TEXT DEFAULT '12:00'`, `rating NUMERIC(3,1) DEFAULT 0`, `review_count INT DEFAULT 0`, `is_visible BOOLEAN DEFAULT TRUE`, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`.
 3. **`bookings`**:
    - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `ref_code TEXT UNIQUE NOT NULL`, `user_id UUID REFERENCES users(id)`, `place_id UUID REFERENCES places(id)`, `check_in DATE NOT NULL`, `check_out DATE NOT NULL`, `nights INT NOT NULL`, `guests_adults INT DEFAULT 1`, `guests_children INT DEFAULT 0`, `price_per_night NUMERIC(10,2) NOT NULL`, `kayak_fee NUMERIC(10,2) DEFAULT 0`, `parking_fee NUMERIC(10,2) DEFAULT 0`, `total NUMERIC(10,2) NOT NULL`, `payment_method TEXT CHECK (payment_method IN ('pay_in_full', 'pay_a_part_now'))`, `deposit_amount NUMERIC(10,2)`, `payment_status TEXT DEFAULT 'simulated'`, `status TEXT DEFAULT 'booked' CHECK (status IN ('booked', 'cancelled', 'completed'))`, `cancelled_at TIMESTAMPTZ`, `cancel_reason TEXT`, `created_at TIMESTAMPTZ`.
 4. **`payment_receipts`**:

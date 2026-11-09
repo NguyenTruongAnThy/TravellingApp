@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, getProfileCounts, saveProfile, type ProfileCounts } from '../../services/profileService';
 import AppButton from '../../components/AppButton';
@@ -20,6 +21,7 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
   const [counts, setCounts] = useState<ProfileCounts>({ trips: 0, reviews: 0, wishlists: 0 });
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [savedName, setSavedName] = useState('');
   const [savedPhone, setSavedPhone] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -33,10 +35,12 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
       const [profile, profileCounts] = await Promise.all([getProfile(userId), getProfileCounts(userId)]);
       const profileName = profile.data?.name || '';
       const profilePhone = profile.data?.phone || '';
+      const profileAvatar = profile.data?.avatar_url || '';
       setName(profileName);
       setPhone(profilePhone);
       setSavedName(profileName);
       setSavedPhone(profilePhone);
+      setAvatarUrl(profileAvatar);
       setCounts(profileCounts);
     } catch (err) {
       setErrorMessage('Could not load your profile. Please try again.');
@@ -45,9 +49,11 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
     }
   }, [userId]);
 
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const nameError = !name.trim() ? 'Please enter your full name.' : '';
   const isValid = !nameError;
@@ -59,7 +65,7 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
     if (!isValid) return;
     setSaving(true);
     try {
-      await saveProfile(userId, sessionEmail, name, phone);
+      await saveProfile(userId, sessionEmail, name, phone, avatarUrl);
       setSavedName(name);
       setSavedPhone(phone);
       setIsEditing(false);
@@ -108,9 +114,25 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
 
       {/* Figma Profile: 1 the trang duy nhat gom avatar/ten/email/Verified + hang so lieu co gach doc */}
       <View className="mt-6 rounded-3xl bg-white border border-borderLight p-5 items-center">
-        <View className="w-20 h-20 rounded-full bg-brand items-center justify-center">
-          <Text className="text-3xl font-bold text-white">{initial}</Text>
-        </View>
+        <Pressable
+          className="relative active:opacity-90"
+          onPress={() => navigation?.navigate && navigation.navigate('PersonalInfo')}
+        >
+          <View className="w-20 h-20 rounded-full bg-brand items-center justify-center overflow-hidden border border-borderLight shadow-sm">
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            ) : (
+              <Text className="text-3xl font-bold text-white">{initial}</Text>
+            )}
+          </View>
+          <View className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-brand items-center justify-center border-2 border-white shadow-sm">
+            <Ionicons name="camera" size={12} color="#FFFFFF" />
+          </View>
+        </Pressable>
         <Text className="mt-3 text-xl font-bold text-textMain">{savedName || 'No name set'}</Text>
         <Text className="mt-1 text-sm text-textMuted">{sessionEmail}</Text>
         <View className="mt-3 px-3 py-1 rounded-full bg-brand">
@@ -196,14 +218,6 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
           onPress={() => navigation?.navigate && navigation.navigate('Security')}
         >
           <Text className="text-base text-textMain">Login & Security</Text>
-          <Text className="text-base text-textMuted">›</Text>
-        </Pressable>
-        <Pressable
-          className="flex-row items-center justify-between py-4"
-          style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}
-          onPress={() => navigation?.navigate && navigation.navigate('PaymentsWallet')}
-        >
-          <Text className="text-base text-textMain">Payments & Payouts</Text>
           <Text className="text-base text-textMuted">›</Text>
         </Pressable>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>

@@ -15,19 +15,18 @@ UC015–UC017 của Admin chỉ nằm trong tài liệu, không có màn Admin t
 2. Chạy `npm ci`.
 3. Chạy `npx expo start -c`.
 
-## Dữ liệu mẫu
+## Dữ liệu và Cấu trúc Database
 
-Chỉ seed bảng `places` trước, gồm Balian, Kuta, Ubud, bằng file
-`supabase/seed.sql` chạy trong Supabase SQL Editor.
-Các bảng còn lại để trống, dữ liệu chỉ tạo ra khi đăng ký, đặt phòng,
-thanh toán, bấm yêu thích, viết đánh giá hay nhắn tin trong app.
+Toàn bộ cấu trúc 9 bảng dữ liệu, chỉ mục (indexes), RLS policies và database trigger được định nghĩa trong `supabase/schema.sql`.
+Dữ liệu chỗ ở và người dùng được quản lý trực tiếp trên Supabase Table Editor.
+Các bảng giao dịch (`bookings`, `payment_receipts`, `favorites`, `reviews`, `messages`, `collections`, `collection_items`) được sinh ra tự động trong quá trình sử dụng ứng dụng.
 
 ## Quy tắc đã chốt
 
-- Pay a part now: cọc 30% tổng tiền, một tỷ lệ duy nhất toàn hệ thống,
-  deposit_amount = round(total * 0.30, 2), phần còn lại là
+- Pay a part now: cọc 50% tổng tiền, một tỷ lệ duy nhất toàn hệ thống,
+  deposit_amount = round(total * 0.50, 2), phần còn lại là
   total - deposit_amount, trả khi nhận phòng theo mô phỏng.
-- Hủy: trước check-in từ 24 giờ trở lên thì miễn phí, trong vòng 24 giờ
+- Hủy: trước check-in từ 48 giờ trở lên thì miễn phí, trong vòng 48 giờ
   trước check-in thì mất 1 đêm bằng price_per_night, thời điểm check-in
   tính theo ngày check_in lúc 14:00. Không thêm cột cancellation_fee.
 - places.rating và review_count chỉ do trigger trong Postgres tự tính lại

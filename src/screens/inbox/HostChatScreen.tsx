@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
+  LayoutAnimation,
   Platform,
   Pressable,
   Text,
@@ -24,31 +25,6 @@ interface MessageItem {
   status?: 'sent' | 'delivered' | 'read';
 }
 
-const DEFAULT_MESSAGES: MessageItem[] = [
-  {
-    id: 'msg-1',
-    sender: 'Wayan Sutama',
-    text: 'Om Swastyastu! Welcome to Balian Treehouse. What time do you land in Denpasar?',
-    time: '10:15 AM',
-    isHost: true,
-  },
-  {
-    id: 'msg-2',
-    sender: 'You',
-    text: 'Hi Wayan! We land at 12:30 PM. Would love to book the airport pickup ($35).',
-    time: '10:22 AM',
-    isHost: false,
-    status: 'read',
-  },
-  {
-    id: 'msg-3',
-    sender: 'Wayan Sutama',
-    text: 'Perfect! Driver Ketut will wait for you at Arrival Gate with your name sign. See you soon!',
-    time: '10:28 AM',
-    isHost: true,
-  },
-];
-
 const QUICK_PROMPTS = [
   'Airport Pickup ($35)',
   'Early Check-in (12:00 PM)',
@@ -66,13 +42,83 @@ export default function HostChatScreen({
   const { session } = useAuth();
   const userId = session?.user?.id;
 
-  const hostName = route?.params?.hostName || 'Wayan Sutama';
-  const bookingRef = route?.params?.bookingRef || '#WS-84920';
-  const propertyTitle = route?.params?.propertyTitle || 'Balian Treehouse';
+  const booking = route?.params?.booking || route?.params?.conversation?.booking;
+  const bookingId = booking?.id;
+  const hostName = route?.params?.hostName || booking?.places?.host_name || 'Chủ nhà';
+  const bookingRef = route?.params?.bookingRef || booking?.ref_code || '#WS-BOOKING';
+  const propertyTitle = route?.params?.propertyTitle || booking?.places?.title || 'Chỗ nghỉ của bạn';
+  const hostPhone = booking?.places?.host_phone || '+84 912 345 678';
 
-  const [messages, setMessages] = useState<MessageItem[]>(DEFAULT_MESSAGES);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    async function loadChatMessages() {
+      if (bookingId) {
+        try {
+          const { data } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('booking_id', bookingId)
+            .order('created_at', { ascending: true });
+
+          if (data && data.length > 0) {
+            const mapped: MessageItem[] = data.map((m: any) => ({
+              id: m.id,
+              sender: m.sender_id === userId ? 'You' : hostName,
+              text: m.content,
+              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isHost: m.sender_id !== userId,
+              status: m.is_read ? 'read' : 'delivered',
+            }));
+            setMessages(mapped);
+            return;
+          }
+        } catch (e) {
+          console.warn('Error loading messages:', e);
+        }
+      }
+
+      // Initial welcome message from the real host
+      setMessages([
+        {
+          id: 'welcome-1',
+          sender: hostName,
+          text: `Chào bạn! Chào mừng bạn đến với ${propertyTitle}. Bạn có cần hỗ trợ lộ trình hay hẹn giờ nhận phòng không?`,
+          time: 'Hôm nay',
+          isHost: true,
+        },
+      ]);
+    }
+
+    loadChatMessages();
+  }, [bookingId, hostName, propertyTitle, userId]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'ios') {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleSend = async (customText?: string) => {
     const textToSend = customText || inputText;
@@ -90,19 +136,15 @@ export default function HostChatScreen({
     setMessages((prev) => [...prev, newMsg]);
     if (!customText) setInputText('');
 
-    // Optional Supabase message sync if active booking exists
-    if (userId) {
+    if (userId && bookingId) {
       try {
         setSending(true);
-        const bookingId = route?.params?.booking?.id;
-        if (bookingId) {
-          await supabase.from('messages').insert({
-            booking_id: bookingId,
-            sender_id: userId,
-            content: textToSend.trim(),
-            is_read: false,
-          });
-        }
+        await supabase.from('messages').insert({
+          booking_id: bookingId,
+          sender_id: userId,
+          content: textToSend.trim(),
+          is_read: false,
+        });
       } catch {
         // Local UI state already updated
       } finally {
@@ -110,14 +152,14 @@ export default function HostChatScreen({
       }
     }
 
-    // Auto simulated reply from Host Wayan after 1.5s
+    // Auto reply from real Host after 1.5s
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           sender: hostName,
-          text: `Thank you! I received your message: "${textToSend.trim()}". Let me know if you need any fresh coconut or extra towels!`,
+          text: `Cảm ơn bạn! ${hostName} đã nhận được tin nhắn: "${textToSend.trim()}". Chúng tôi sẽ chuẩn bị chu đáo đón bạn!`,
           time: 'Just now',
           isHost: true,
         },
@@ -126,9 +168,9 @@ export default function HostChatScreen({
   };
 
   const handleCallHost = () => {
-    Alert.alert('Call Host', `Call ${hostName} (+62 812 3456 7890)?`, [
-      { text: 'Call', onPress: () => {} },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('Gọi cho chủ nhà', `Gọi điện thoại đến ${hostName} (${hostPhone})?`, [
+      { text: 'Gọi ngay', onPress: () => {} },
+      { text: 'Hủy', style: 'cancel' },
     ]);
   };
 
@@ -249,45 +291,45 @@ export default function HostChatScreen({
       </View>
 
       {/* Bottom Message Input */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <View className="p-3 bg-white border-t border-borderLight flex-row items-center gap-2">
-          <Pressable
-            className="w-10 h-10 rounded-full bg-appBg items-center justify-center border border-borderLight active:opacity-70"
-            onPress={() =>
-              Alert.alert('Send Attachment', 'Choose a photo from your gallery or camera.')
-            }
-          >
-            <Ionicons name="image-outline" size={20} color="#5A6478" />
-          </Pressable>
+      <View className="p-3 bg-white border-t border-borderLight flex-row items-center gap-2">
+        <Pressable
+          className="w-10 h-10 rounded-full bg-appBg items-center justify-center border border-borderLight active:opacity-70"
+          onPress={() =>
+            Alert.alert('Send Attachment', 'Choose a photo from your gallery or camera.')
+          }
+        >
+          <Ionicons name="image-outline" size={20} color="#5A6478" />
+        </Pressable>
 
-          <TextInput
-            className="flex-1 bg-appBg rounded-full px-4 py-2.5 text-sm text-textMain border border-borderLight"
-            placeholder={`Message ${hostName}...`}
-            placeholderTextColor="#8A90A6"
-            value={inputText}
-            onChangeText={setInputText}
-            onSubmitEditing={() => handleSend()}
-            returnKeyType="send"
+        <TextInput
+          className="flex-1 bg-appBg rounded-full px-4 py-2.5 text-sm text-textMain border border-borderLight"
+          placeholder={`Message ${hostName}...`}
+          placeholderTextColor="#8A90A6"
+          value={inputText}
+          onChangeText={setInputText}
+          onSubmitEditing={() => handleSend()}
+          returnKeyType="send"
+        />
+
+        <Pressable
+          className={`w-10 h-10 rounded-full items-center justify-center ${
+            inputText.trim() ? 'bg-brand' : 'bg-gray-200'
+          }`}
+          disabled={!inputText.trim() || sending}
+          onPress={() => handleSend()}
+        >
+          <Ionicons
+            name="send"
+            size={18}
+            color={inputText.trim() ? '#FFFFFF' : '#8A90A6'}
           />
+        </Pressable>
+      </View>
 
-          <Pressable
-            className={`w-10 h-10 rounded-full items-center justify-center ${
-              inputText.trim() ? 'bg-brand' : 'bg-gray-200'
-            }`}
-            disabled={!inputText.trim() || sending}
-            onPress={() => handleSend()}
-          >
-            <Ionicons
-              name="send"
-              size={18}
-              color={inputText.trim() ? '#FFFFFF' : '#8A90A6'}
-            />
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+      {/* Dynamic Keyboard Spacer */}
+      {keyboardHeight > 0 ? (
+        <View style={{ height: keyboardHeight + 10 }} />
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getPlaceById } from '../../services/placesService';
+import { getPlaceById, getRelatedPlaces } from '../../services/placesService';
 import { getFavoritePlaceIds, toggleFavorite } from '../../services/favoritesService';
 import { addPlaceToCollection, createCollection, getCollections, getCollectionsContainingPlace, removePlaceFromCollection } from '../../services/collectionsService';
 import { getReviewsByPlace, incrementHelpful } from '../../services/reviewService';
 import type { Collection, Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import AppButton from '../../components/AppButton';
+import RelatedPlacesSection from '../../components/RelatedPlacesSection';
 
 function amenityIcon(name: string): any {
   const n = name.toLowerCase();
@@ -31,6 +32,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   const [descExpanded, setDescExpanded] = useState(false);
   const [facExpanded, setFacExpanded] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [relatedPlaces, setRelatedPlaces] = useState<(Place & { matchReason?: string })[]>([]);
   // Save to collection: which of the user's collections already hold this place.
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [saveCollections, setSaveCollections] = useState<Collection[]>([]);
@@ -80,6 +82,16 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     getFavoritePlaceIds(session.user.id).then((ids) => setIsFavorite(ids.includes(placeId))).catch(() => {});
     getCollectionsContainingPlace(session.user.id, placeId).then((ids) => setInCollectionIds(new Set(ids))).catch(() => {});
   }, [placeId, session]);
+
+  useEffect(() => {
+    if (!place) {
+      setRelatedPlaces([]);
+      return;
+    }
+    getRelatedPlaces(place, 6).then(({ data }) => {
+      setRelatedPlaces(data || []);
+    });
+  }, [place]);
 
   if (loading) {
     return (
@@ -244,10 +256,27 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
             <Ionicons name="location-outline" size={18} color="#4F46E5" />
             <Text className="ml-1 text-base text-textMuted flex-1">{place.location}</Text>
           </View>
-          <View className="mt-2 flex-row items-baseline">
-            <Text className="text-3xl font-bold text-brand">${place.price_per_night}</Text>
-            <Text className="text-base text-textMuted"> / night</Text>
-          </View>
+          {place.original_price && Number(place.original_price) > Number(place.price_per_night) ? (
+            <View className="mt-2">
+              <View className="flex-row items-center">
+                <Text className="text-base text-textMuted line-through font-semibold mr-2">${place.original_price}</Text>
+                <View className="px-2 py-0.5 rounded bg-[#FF6B00]">
+                  <Text className="text-xs font-bold text-white">
+                    Tiết kiệm {Math.round(((Number(place.original_price) - Number(place.price_per_night)) / Number(place.original_price)) * 100)}%
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row items-baseline mt-0.5">
+                <Text className="text-3xl font-extrabold text-[#FF6B00]">${place.price_per_night}</Text>
+                <Text className="text-base text-textMuted"> / night</Text>
+              </View>
+            </View>
+          ) : (
+            <View className="mt-2 flex-row items-baseline">
+              <Text className="text-3xl font-bold text-brand">${place.price_per_night}</Text>
+              <Text className="text-base text-textMuted"> / night</Text>
+            </View>
+          )}
           <Pressable className="mt-3 flex-row items-center self-start px-3 py-2 rounded-full bg-appBg border border-borderLight" onPress={openSaveModal}>
             <Ionicons name={inCollectionIds.size > 0 ? 'bookmark' : 'bookmark-outline'} size={16} color="#4F46E5" />
             <Text className="ml-1.5 text-sm font-bold text-brand">{inCollectionIds.size > 0 ? 'Saved to collection' : 'Save to collection'}</Text>
@@ -257,9 +286,20 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         {/* Figma rating card: light-purple, real rating/review_count only, taps to Reviews */}
         <Pressable className="mx-5 mt-4 rounded-2xl border border-borderLight p-4 flex-row items-center" style={{ backgroundColor: '#EDE9FE' }} onPress={() => navigation.navigate('Reviews', { placeId: place.id })}>
           <Ionicons name="star" size={22} color="#FFB020" />
-          <Text className="ml-2 text-lg font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}</Text>
-          {place.rating != null ? <Text className="ml-2 text-sm font-bold text-brand">{place.rating >= 4.8 ? 'Exceptional' : place.rating >= 4.5 ? 'Excellent' : 'Very good'}</Text> : null}
-          {place.review_count ? <Text className="ml-2 text-sm text-textMuted">{place.review_count} reviews ›</Text> : null}
+          {place.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0 ? (
+            <>
+              <Text className="ml-2 text-lg font-bold text-textMain">{Number(place.rating).toFixed(1)} / 5</Text>
+              <Text className="ml-2 text-sm font-bold text-brand">
+                {Number(place.rating) >= 4.8 ? 'Exceptional' : Number(place.rating) >= 4.5 ? 'Excellent' : 'Very good'}
+              </Text>
+              <Text className="ml-2 text-sm text-textMuted">{place.review_count} reviews ›</Text>
+            </>
+          ) : (
+            <>
+              <Text className="ml-2 text-lg font-bold text-textMain">New</Text>
+              <Text className="ml-2 text-sm text-textMuted">Chưa có đánh giá ›</Text>
+            </>
+          )}
         </Pressable>
 
         {/* Figma capacity pills in a white card. No bathrooms column in DB, so no bath pill is invented. */}
@@ -384,10 +424,27 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           </Pressable>
           <Text className="mt-2 text-sm text-textMuted">{session ? 'You are signed in, tap Reserve below to continue.' : 'You are browsing as a guest. Sign in to book.'}</Text>
         </View>
+
+        {/* Chỗ nghỉ gợi ý tương tự (Thuật toán độ tương đồng + Dải lướt ngang Phương án 1) */}
+        <RelatedPlacesSection
+          relatedPlaces={relatedPlaces}
+          currentLocation={place.location}
+          currentPlaceType={place.place_type || place.category}
+          onSelectPlace={(selectedId) => {
+            navigation.push('Detail', {
+              placeId: selectedId,
+              checkIn: route?.params?.checkIn,
+              checkOut: route?.params?.checkOut,
+            });
+          }}
+        />
       </ScrollView>
       <View className="bg-white border-t border-borderLight px-5 py-3 flex-row items-center">
         <View>
-          <Text className="text-2xl font-bold text-brand">${place.price_per_night}</Text>
+          {place.original_price && Number(place.original_price) > Number(place.price_per_night) ? (
+            <Text className="text-[11px] text-textMuted line-through font-medium">${place.original_price}</Text>
+          ) : null}
+          <Text className={`text-2xl font-bold ${place.original_price && Number(place.original_price) > Number(place.price_per_night) ? 'text-[#FF6B00]' : 'text-brand'}`}>${place.price_per_night}</Text>
           <Text className="text-xs text-textMuted">/ night</Text>
         </View>
         <View className="flex-1 ml-4">

@@ -48,37 +48,40 @@ export default function TripReceiptScreen({
         })
       : 'Today');
 
-  const placeTitle = place?.title || paramsReceipt?.place_title || 'Balian Treehouse Escape';
+  const placeTitle = place?.title || paramsReceipt?.place_title || 'Chỗ nghỉ WanderStay';
   const placeLocation =
-    place?.location || paramsReceipt?.place_location || 'Selemadeg Barat, Bali, Indonesia';
+    place?.location || paramsReceipt?.place_location || 'Việt Nam';
   const placeType = place?.category || place?.place_type || 'HOMESTAY';
   const placeImage =
     place?.images?.[0] ||
     paramsReceipt?.place_image ||
     'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
 
-  const refCode = paramsBooking?.ref_code || paramsReceipt?.ref || 'Ref: #WS-84920';
+  const refCode = paramsBooking?.ref_code || paramsReceipt?.ref || '#WS-BOOKING';
   const stayDates =
     paramsReceipt?.dates ||
-    (paramsBooking ? `${paramsBooking.check_in} – ${paramsBooking.check_out}` : 'May 24 – 29, 2024');
+    (paramsBooking ? `${paramsBooking.check_in} – ${paramsBooking.check_out}` : 'Hôm nay');
   const stayNights = paramsBooking?.nights
     ? `${paramsBooking.nights} nights`
     : paramsReceipt?.nights
     ? `${paramsReceipt.nights} nights`
-    : '5 nights';
+    : '1 night';
   const guestsText = paramsBooking
     ? `${(paramsBooking.guests_adults || 1) + (paramsBooking.guests_children || 0)} Guests`
-    : '2 Guests';
-  const roomConfig = paramsReceipt?.room_config || '1 bedroom • 1 king';
+    : '1 Guest';
+  const roomConfig = paramsReceipt?.room_config || '1 bedroom';
 
-  const hostName = place?.host_name || paramsReceipt?.host_name || 'Wayan Sutama';
+  const hostName = place?.host_name || paramsReceipt?.host_name || 'Chủ nhà WanderStay';
   const hostAvatar =
     paramsReceipt?.host_avatar ||
-    'https://api.builder.io/api/v1/image/assets/TEMP/4130993de59debc43fdc229627ab57b458f7cf38?width=64';
+    place?.images?.[0] ||
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=96';
 
   const paymentMethodLabel =
     paramsReceipt?.card_label ||
-    (paramsBooking?.payment_method === 'pay_a_part_now' ? 'Pay a part now (50% Deposit)' : 'Visa ending in 4829');
+    (paramsBooking?.payment_method === 'pay_a_part_now'
+      ? 'Pay a part now (Đặt cọc 50%)'
+      : 'Pay in full (Chuyển khoản VietQR / SePay)');
   const transactionId =
     paramsReceipt?.transaction_id || `TXN_${paramsBooking?.id ? paramsBooking.id.slice(0, 8) : '992837482'}`;
   const billingName = paramsReceipt?.billing_name || 'WanderStay Member';
@@ -90,11 +93,16 @@ export default function TripReceiptScreen({
   const accommodationTotal = pricePerNight * nightsCount;
   const kayakFee = paramsBooking?.kayak_fee != null ? Number(paramsBooking.kayak_fee) : 5;
   const parkingFee = paramsBooking?.parking_fee != null ? Number(paramsBooking.parking_fee) : 5;
-  const grandTotal = accommodationTotal + kayakFee + parkingFee;
+  const promoCode = paramsBooking?.promo_code || null;
+  const discountAmount = paramsBooking?.discount_amount != null ? Number(paramsBooking.discount_amount) : 0;
+  const grandTotal =
+    paramsBooking?.total != null
+      ? Number(paramsBooking.total)
+      : Math.max(0, accommodationTotal + kayakFee + parkingFee - discountAmount);
 
-  const totalAmount = `${grandTotal.toFixed(2)}`;
-  const breakdownNightsText = `${pricePerNight.toFixed(2)} × ${nightsCount} nights`;
-  const breakdownNightsTotal = `${accommodationTotal.toFixed(2)}`;
+  const totalAmount = `$${grandTotal.toFixed(2)}`;
+  const breakdownNightsText = `$${pricePerNight.toFixed(2)} × ${nightsCount} nights`;
+  const breakdownNightsTotal = `$${accommodationTotal.toFixed(2)}`;
 
   const handleShare = async () => {
     try {
@@ -357,6 +365,19 @@ export default function TripReceiptScreen({
               </View>
               <Text className="text-sm font-medium text-[#131B2E]">${parkingFee.toFixed(2)}</Text>
             </View>
+
+            {/* Promo Discount row if present */}
+            {discountAmount > 0 ? (
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="pricetag" size={14} color="#FF6B00" />
+                  <Text className="text-sm font-semibold text-[#FF6B00]">
+                    Mã ưu đãi ({promoCode || 'Khuyến mại'})
+                  </Text>
+                </View>
+                <Text className="text-sm font-bold text-[#FF6B00]">-${discountAmount.toFixed(2)}</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Total Row */}

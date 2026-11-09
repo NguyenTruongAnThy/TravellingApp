@@ -24,21 +24,21 @@ export interface UserPersonalInfo {
 }
 
 export const DEFAULT_PERSONAL_INFO: UserPersonalInfo = {
-  legalName: 'Alex Morgan',
-  preferredName: 'Alex',
+  legalName: '',
+  preferredName: '',
   gender: 'Prefer not to say',
-  dob: 'May 14, 1992',
-  email: 'alex.morgan@example.com',
-  phone: '+1 (555) 234-5678',
-  emergencyContactName: 'Sarah Morgan',
-  emergencyContactRelation: 'Sister',
-  emergencyContactPhone: '+1 (555) 876-5432',
-  address: '742 Evergreen Terrace, Springfield, OR 97477, United States',
-  nationality: 'United States',
+  dob: '',
+  email: '',
+  phone: '',
+  emergencyContactName: '',
+  emergencyContactRelation: '',
+  emergencyContactPhone: '',
+  address: '',
+  nationality: 'Vietnam',
   avatar:
-    'https://api.builder.io/api/v1/image/assets/TEMP/3dee90d991ac09d4bdf61b1c226089b93db99a99?width=192',
-  isVerified: true,
-  idApprovalDate: 'April 12, 2024',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+  isVerified: false,
+  idApprovalDate: 'Chưa xác minh',
 };
 
 export async function getProfileCounts(userId: string): Promise<ProfileCounts> {
@@ -66,7 +66,7 @@ export async function getProfileCounts(userId: string): Promise<ProfileCounts> {
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('users')
-    .select('name, phone, email')
+    .select('name, phone, email, avatar_url')
     .eq('id', userId)
     .single();
   if (error) return { data: null, error };
@@ -77,12 +77,101 @@ export async function saveProfile(
   userId: string,
   email: string,
   name: string,
-  phone: string
+  phone: string,
+  avatarUrl?: string
 ) {
+  const payload: any = { id: userId, email, name: name.trim(), phone: phone.trim() || null };
+  if (avatarUrl) {
+    payload.avatar_url = avatarUrl;
+  }
   const { error } = await supabase
     .from('users')
-    .upsert({ id: userId, email, name: name.trim(), phone: phone.trim() || null });
+    .upsert(payload);
   if (error) throw error;
+}
+
+export async function getUserPersonalInfo(userId: string): Promise<UserPersonalInfo> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    return {
+      legalName: '',
+      preferredName: '',
+      gender: 'Prefer not to say',
+      dob: '',
+      email: '',
+      phone: '',
+      emergencyContactName: '',
+      emergencyContactRelation: '',
+      emergencyContactPhone: '',
+      address: '',
+      nationality: 'Vietnam',
+      avatar:
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+      isVerified: false,
+      idApprovalDate: 'April 12, 2024',
+    };
+  }
+
+  const isVerified = data.gov_id_status === 'approved' || data.gov_id_status === 'active';
+  const approvalDate = data.created_at
+    ? new Date(data.created_at).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'April 12, 2024';
+
+  return {
+    legalName: data.name || '',
+    preferredName: data.preferred_name || (data.name ? data.name.split(' ')[0] : ''),
+    gender: data.gender || 'Prefer not to say',
+    dob: data.date_of_birth || '',
+    email: data.email || '',
+    phone: data.phone || '',
+    emergencyContactName: data.emergency_contact_name || '',
+    emergencyContactRelation: data.emergency_contact_relation || 'Family',
+    emergencyContactPhone: data.emergency_contact_phone || '',
+    address: data.address || '',
+    nationality: data.nationality || 'Vietnam',
+    avatar:
+      data.avatar_url ||
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    isVerified,
+    idApprovalDate: approvalDate,
+  };
+}
+
+export async function updateUserPersonalInfo(
+  userId: string,
+  info: Partial<UserPersonalInfo>
+): Promise<void> {
+  const updatePayload: Record<string, any> = {};
+
+  if (info.legalName !== undefined) updatePayload.name = info.legalName.trim();
+  if (info.preferredName !== undefined) updatePayload.preferred_name = info.preferredName.trim();
+  if (info.gender !== undefined) updatePayload.gender = info.gender.trim();
+  if (info.dob !== undefined) updatePayload.date_of_birth = info.dob.trim();
+  if (info.email !== undefined) updatePayload.email = info.email.trim();
+  if (info.phone !== undefined) updatePayload.phone = info.phone.trim();
+  if (info.emergencyContactName !== undefined)
+    updatePayload.emergency_contact_name = info.emergencyContactName.trim();
+  if (info.emergencyContactRelation !== undefined)
+    updatePayload.emergency_contact_relation = info.emergencyContactRelation.trim();
+  if (info.emergencyContactPhone !== undefined)
+    updatePayload.emergency_contact_phone = info.emergencyContactPhone.trim();
+  if (info.address !== undefined) updatePayload.address = info.address.trim();
+  if (info.nationality !== undefined) updatePayload.nationality = info.nationality.trim();
+  if (info.avatar !== undefined) updatePayload.avatar_url = info.avatar.trim();
+
+  const { error } = await supabase.from('users').update(updatePayload).eq('id', userId);
+  if (error) {
+    throw error;
+  }
 }
 
 export interface PaymentCardItem {

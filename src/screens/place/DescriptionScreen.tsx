@@ -52,7 +52,14 @@ export default function DescriptionScreen({ route, navigation }: { route: any; n
           <Ionicons name="location-outline" size={18} color="#4F46E5" />
           <Text className="ml-1 text-base text-textMuted flex-1">{place.location}</Text>
         </View>
-        <View className="mt-2 flex-row items-center"><Ionicons name="star" size={16} color="#FFB020" /><Text className="ml-1 text-base font-bold text-textMain">{place.rating != null ? place.rating.toFixed(1) : 'New'}{place.rating != null ? ' / 5' : ''}{place.review_count ? ` (${place.review_count} reviews)` : ''}</Text></View>
+        <View className="mt-2 flex-row items-center">
+          <Ionicons name="star" size={16} color="#FFB020" />
+          <Text className="ml-1 text-base font-bold text-textMain">
+            {place.rating != null && Number(place.rating) > 0 && place.review_count && place.review_count > 0
+              ? `${Number(place.rating).toFixed(1)} / 5 (${place.review_count} reviews)`
+              : 'New · Chưa có đánh giá'}
+          </Text>
+        </View>
       </View>
       <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
         <Text className="text-base font-bold text-textMain">About this place</Text>

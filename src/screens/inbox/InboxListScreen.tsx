@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import {
   ConversationItem,
   DEFAULT_CONVERSATIONS,
+  getConversations,
   markConversationAsRead,
 } from '../../services/inboxService';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +36,21 @@ export default function InboxListScreen({ navigation: propNavigation }: { naviga
   const [composeModalVisible, setComposeModalVisible] = useState(false);
   const [composeRecipient, setComposeRecipient] = useState('');
   const [composeMessage, setComposeMessage] = useState('');
+
+  useEffect(() => {
+    async function loadConv() {
+      const data = await getConversations(userId);
+      setConversations(data);
+    }
+    loadConv();
+  }, [userId]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    const data = await getConversations(userId);
+    setConversations(data);
+    setRefreshing(false);
+  };
 
   // Counts for filter pills
   const allCount = conversations.length;
@@ -60,12 +76,7 @@ export default function InboxListScreen({ navigation: propNavigation }: { naviga
     return true;
   });
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 700);
-  };
+
 
   const handleSelectConversation = (item: ConversationItem) => {
     // Mark as read immediately per BR08

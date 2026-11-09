@@ -12,90 +12,69 @@ export interface ConversationItem {
   lastMessageTime: string;
   unreadCount: number;
   bookingRef?: string;
+  booking?: any;
 }
 
 export const DEFAULT_CONVERSATIONS: ConversationItem[] = [
   {
-    id: 'conv-wayan-84920',
-    name: 'Wayan Sutama',
-    avatar:
-      'https://api.builder.io/api/v1/image/assets/TEMP/3609d0e5bb55d47906b2d08687cf8c498c359da1?width=96',
-    isOnline: true,
-    isVerified: true,
-    type: 'host',
-    propertyTag: 'Bali • May 24–29',
-    lastMessage: 'Looking forward to hosting you!…',
-    lastMessageTime: '10:24 AM',
-    unreadCount: 1,
-    bookingRef: '#WS-84920',
-  },
-  {
-    id: 'conv-elena-chamonix',
-    name: 'Elena Rostova',
-    avatar:
-      'https://api.builder.io/api/v1/image/assets/TEMP/0cdd2cebd5fac008b68a60dc2311915314f834b3?width=96',
-    isOnline: false,
-    isVerified: false,
-    type: 'host',
-    propertyTag: 'Alpine Chalet • Chamonix',
-    lastMessage: 'Thank you for the wonderful review!',
-    lastMessageTime: 'Yesterday',
-    unreadCount: 0,
-    bookingRef: '#WS-71204',
-  },
-  {
     id: 'conv-support-travel',
     name: 'WanderStay Support',
     avatar:
-      'https://api.builder.io/api/v1/image/assets/TEMP/66ed4209be3963958431159f49510a846430e5bd?width=96',
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=96',
     isOnline: true,
     isVerified: true,
     type: 'support',
-    propertyTag: 'WS-84920 Confirmed',
-    lastMessage: 'Your reservation WS-84920 has…',
-    lastMessageTime: 'May 18',
-    unreadCount: 1,
-    bookingRef: '#WS-84920',
-  },
-  {
-    id: 'conv-marcus-oslo',
-    name: 'Marcus Vance',
-    avatar:
-      'https://api.builder.io/api/v1/image/assets/TEMP/a594c5562e35a6a31764f39f39c42353f58e6c85?width=96',
-    isOnline: false,
-    isVerified: false,
-    type: 'host',
-    propertyTag: 'Scandinavian Loft • Oslo',
-    lastMessage: 'Key lockbox code is 4821. Have a…',
-    lastMessageTime: 'Mar 12',
+    propertyTag: 'Hỗ trợ 24/7',
+    lastMessage: 'Trợ lý du lịch ảo và chuyên viên sẵn sàng hỗ trợ bạn...',
+    lastMessageTime: 'Vừa xong',
     unreadCount: 0,
-    bookingRef: '#WS-62180',
   },
 ];
 
 /**
- * Fetch conversations with unread counts and tags
+ * Fetch real conversations with unread counts and tags from Supabase bookings
  */
 export async function getConversations(userId?: string): Promise<ConversationItem[]> {
+  const defaultList = [...DEFAULT_CONVERSATIONS];
+  if (!userId) {
+    return defaultList;
+  }
+
   try {
-    if (!userId) {
-      return DEFAULT_CONVERSATIONS;
+    const { data: bookings, error } = await supabase
+      .from('bookings')
+      .select('id, ref_code, check_in, check_out, places(title, host_name, images, location)')
+      .eq('user_id', userId)
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false });
+
+    if (error || !bookings || bookings.length === 0) {
+      return defaultList;
     }
 
-    // Attempt to query Supabase messages table if exists
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const hostConversations: ConversationItem[] = bookings.map((b: any) => {
+      const place = b.places;
+      return {
+        id: `conv-${b.id}`,
+        name: place?.host_name || 'Chủ nhà',
+        avatar:
+          place?.images?.[0] ||
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=96',
+        isOnline: true,
+        isVerified: true,
+        type: 'host' as const,
+        propertyTag: `${place?.title || 'Chỗ nghỉ'} • ${b.ref_code}`,
+        lastMessage: `Chào bạn! Rất mong được đón tiếp bạn tại ${place?.title || 'chỗ nghỉ'}.`,
+        lastMessageTime: 'Hôm nay',
+        unreadCount: 0,
+        bookingRef: b.ref_code,
+        booking: b,
+      };
+    });
 
-    if (error || !data || data.length === 0) {
-      return DEFAULT_CONVERSATIONS;
-    }
-
-    return DEFAULT_CONVERSATIONS;
+    return [...defaultList, ...hostConversations];
   } catch {
-    return DEFAULT_CONVERSATIONS;
+    return defaultList;
   }
 }
 
