@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 export interface SplashScreenProps {
   navigation?: any;
   onFinish?: () => void;
+  isReady?: boolean;
 }
 
 export function WanderStayLogo({
@@ -33,11 +34,37 @@ export function WanderStayLogo({
   );
 }
 
-export default function SplashScreen({ navigation, onFinish }: SplashScreenProps) {
+export default function SplashScreen({
+  navigation,
+  onFinish,
+  isReady = true,
+}: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const timerFinishedRef = useRef(false);
+  const completedRef = useRef(false);
+
+  const complete = () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      if (onFinish) {
+        onFinish();
+      } else if (navigation?.replace) {
+        navigation.replace('MainTabs');
+      } else if (navigation?.navigate) {
+        navigation.navigate('MainTabs');
+      }
+    });
+  };
 
   useEffect(() => {
+    // 1. Entrance animation (fade in + scale spring)
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -52,20 +79,23 @@ export default function SplashScreen({ navigation, onFinish }: SplashScreenProps
       }),
     ]).start();
 
-    if (navigation || onFinish) {
-      const timer = setTimeout(() => {
-        if (onFinish) {
-          onFinish();
-        } else if (navigation?.replace) {
-          navigation.replace('MainTabs');
-        } else if (navigation?.navigate) {
-          navigation.navigate('MainTabs');
-        }
-      }, 1200);
+    // 2. Minimum brand splash display duration (1300ms)
+    const timer = setTimeout(() => {
+      timerFinishedRef.current = true;
+      if (isReady) {
+        complete();
+      }
+    }, 1300);
 
-      return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // When auth session is resolved and minimum timer completed
+  useEffect(() => {
+    if (isReady && timerFinishedRef.current) {
+      complete();
     }
-  }, [fadeAnim, scaleAnim, navigation, onFinish]);
+  }, [isReady]);
 
   return (
     <View className="flex-1 bg-white items-center justify-center">

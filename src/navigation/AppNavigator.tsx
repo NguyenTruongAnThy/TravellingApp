@@ -1,10 +1,12 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import SearchScreen from '../screens/search/SearchScreen';
@@ -141,39 +143,45 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { loading } = useAuth();
+  const [splashFinished, setSplashFinished] = useState(false);
+
+  // Hiển thị màn hình khởi động Logo Loading theo chuẩn thiết kế STT 1
+  if (loading || !splashFinished) {
+    return (
+      <SplashScreen
+        isReady={!loading}
+        onFinish={() => setSplashFinished(true)}
+      />
+    );
+  }
 
   return (
     <NavigationContainer>
-      {loading ? (
-        <View className="flex-1 bg-appBg items-center justify-center">
-          <ActivityIndicator size="large" color="#4F46E5" />
-        </View>
-      ) : (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="Detail" component={DetailScreen} />
-          <Stack.Screen name="Description" component={DescriptionScreen} />
-          <Stack.Screen name="Facilities" component={FacilitiesScreen} />
-          <Stack.Screen name="Reviews" component={ReviewsScreen} />
-          <Stack.Screen name="Map" component={MapScreen} />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Detail" component={DetailScreen} />
+        <Stack.Screen name="Description" component={DescriptionScreen} />
+        <Stack.Screen name="Facilities" component={FacilitiesScreen} />
+        <Stack.Screen name="Reviews" component={ReviewsScreen} />
+        <Stack.Screen name="Map" component={MapScreen} />
 
-          {/* Extended Stack Screens from Feature Branches */}
-          <Stack.Screen name="ConfirmAndPay" component={ConfirmAndPayScreen} />
-          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
-          <Stack.Screen name="Bookings" component={BookingsScreen} />
-          <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
-          <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
-          <Stack.Screen name="Directions" component={DirectionsScreen} />
-          <Stack.Screen name="InboxList" component={InboxListScreen} />
-          <Stack.Screen name="HostChat" component={HostChatScreen} />
-          <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
-          <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
-          <Stack.Screen name="Security" component={SecurityScreen} />
-          <Stack.Screen name="PaymentsWallet" component={PaymentsWalletScreen} />
-        </Stack.Navigator>
-      )}
+        {/* Extended Stack Screens from Feature Branches */}
+        <Stack.Screen name="ConfirmAndPay" component={ConfirmAndPayScreen} />
+        <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+        <Stack.Screen name="Bookings" component={BookingsScreen} />
+        <Stack.Screen name="TripReceipt" component={TripReceiptScreen} />
+        <Stack.Screen name="SmartKey" component={SmartKeyScreen} />
+        <Stack.Screen name="Directions" component={DirectionsScreen} />
+        <Stack.Screen name="InboxList" component={InboxListScreen} />
+        <Stack.Screen name="HostChat" component={HostChatScreen} />
+        <Stack.Screen name="TravelAssistant" component={TravelAssistantScreen} />
+        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
+        <Stack.Screen name="Security" component={SecurityScreen} />
+        <Stack.Screen name="PaymentsWallet" component={PaymentsWalletScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
