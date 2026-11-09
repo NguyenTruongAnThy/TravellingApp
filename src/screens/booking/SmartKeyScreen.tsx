@@ -130,17 +130,29 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
     );
   };
 
-  const handleDownloadOfflineGuide = async () => {
-    try {
-      setDownloadingGuide(true);
-      const res = await exportSmartKeyGuidePDF(data, true);
-      setDownloadingGuide(false);
-      if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
-        Alert.alert('Thông báo', res.error);
-      }
-    } catch {
-      setDownloadingGuide(false);
-    }
+  const handleDownloadOfflineGuide = () => {
+    Alert.alert(
+      'Xuất Cẩm nang nhận phòng (PDF) 📄',
+      '💡 Hướng dẫn lưu file trên Android:\n\n1. Ở màn hình tiếp theo, bấm vào "Chọn máy in ▼" ở trên cùng.\n2. Chọn "Lưu dưới dạng PDF" (Save as PDF).\n3. Bấm nút tròn để chọn thư mục lưu (Downloads / Tệp).',
+      [
+        {
+          text: 'Tiếp tục xuất PDF',
+          onPress: async () => {
+            try {
+              setDownloadingGuide(true);
+              const res = await exportSmartKeyGuidePDF(data, true);
+              setDownloadingGuide(false);
+              if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
+                Alert.alert('Thông báo', res.error);
+              }
+            } catch {
+              setDownloadingGuide(false);
+            }
+          },
+        },
+        { text: 'Đóng', style: 'cancel' },
+      ]
+    );
   };
 
   return (

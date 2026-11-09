@@ -146,25 +146,37 @@ export default function TravelAssistantScreen({
     ]);
   };
 
-  const handleDownloadInvoice = async () => {
-    try {
-      setDownloadingInvoice(true);
-      const res = await exportVatInvoicePDF(
-        route?.params?.booking || {
-          ref_code: '#WS-84920',
-          total: 110,
-          nights: 5,
-          places: { title: 'Balian Treehouse Retreat' },
+  const handleDownloadInvoice = () => {
+    Alert.alert(
+      'Xuất Hóa đơn điện tử VAT (PDF) 📄',
+      '💡 Hướng dẫn lưu file trên Android:\n\n1. Ở màn hình tiếp theo, bấm vào "Chọn máy in ▼" ở trên cùng.\n2. Chọn "Lưu dưới dạng PDF" (Save as PDF).\n3. Bấm nút tròn để chọn thư mục lưu (Downloads / Tệp).',
+      [
+        {
+          text: 'Tiếp tục xuất PDF',
+          onPress: async () => {
+            try {
+              setDownloadingInvoice(true);
+              const res = await exportVatInvoicePDF(
+                route?.params?.booking || {
+                  ref_code: '#WS-84920',
+                  total: 110,
+                  nights: 5,
+                  places: { title: 'Balian Treehouse Retreat' },
+                },
+                i18n.language === 'vi'
+              );
+              setDownloadingInvoice(false);
+              if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
+                Alert.alert('Thông báo', res.error);
+              }
+            } catch {
+              setDownloadingInvoice(false);
+            }
+          },
         },
-        i18n.language === 'vi'
-      );
-      setDownloadingInvoice(false);
-      if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
-        Alert.alert('Thông báo', res.error);
-      }
-    } catch {
-      setDownloadingInvoice(false);
-    }
+        { text: 'Đóng', style: 'cancel' },
+      ]
+    );
   };
 
   const handleHandoverAgent = () => {

@@ -136,35 +136,49 @@ export default function TripReceiptScreen({
     ]);
   };
 
-  const handleDownloadPDF = async () => {
-    try {
-      setDownloading(true);
-      const res = await exportTripReceiptPDF(
-        paramsBooking || paramsReceipt || {
-          ref_code: refCode,
-          place_title: placeTitle,
-          place_location: placeLocation,
-          total: grandTotal,
-          check_in: paramsBooking?.check_in,
-          check_out: paramsBooking?.check_out,
-          nights: nightsNum,
-          price_per_night: pricePerNight,
-          kayak_fee: kayakFee,
-          parking_fee: parkingFee,
-          status,
+  const handleDownloadPDF = () => {
+    Alert.alert(
+      i18n.language === 'vi' ? 'Xuất & Lưu file PDF 📄' : 'Export & Save PDF 📄',
+      i18n.language === 'vi'
+        ? '💡 Hướng dẫn lưu file trên Android:\n\n1. Ở màn hình tiếp theo, bấm vào "Chọn máy in ▼" ở trên cùng.\n2. Chọn "Lưu dưới dạng PDF" (Save as PDF).\n3. Bấm nút tròn ở góc để chọn thư mục lưu (Downloads / Tệp).'
+        : '💡 How to save PDF on Android:\n\n1. On the next screen, tap "Select printer ▼" at the top.\n2. Choose "Save as PDF".\n3. Tap the circle button to choose your download folder.',
+      [
+        {
+          text: i18n.language === 'vi' ? 'Tiếp tục xuất PDF' : 'Continue',
+          onPress: async () => {
+            try {
+              setDownloading(true);
+              const res = await exportTripReceiptPDF(
+                paramsBooking || paramsReceipt || {
+                  ref_code: refCode,
+                  place_title: placeTitle,
+                  place_location: placeLocation,
+                  total: grandTotal,
+                  check_in: paramsBooking?.check_in,
+                  check_out: paramsBooking?.check_out,
+                  nights: nightsNum,
+                  price_per_night: pricePerNight,
+                  kayak_fee: kayakFee,
+                  parking_fee: parkingFee,
+                  status,
+                },
+                i18n.language === 'vi'
+              );
+              setDownloading(false);
+              if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
+                Alert.alert(
+                  i18n.language === 'vi' ? 'Thông báo' : 'Notice',
+                  res.error
+                );
+              }
+            } catch {
+              setDownloading(false);
+            }
+          },
         },
-        i18n.language === 'vi'
-      );
-      setDownloading(false);
-      if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
-        Alert.alert(
-          i18n.language === 'vi' ? 'Thông báo' : 'Notice',
-          res.error
-        );
-      }
-    } catch {
-      setDownloading(false);
-    }
+        { text: i18n.language === 'vi' ? 'Đóng' : 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const handleEmailReceipt = () => {
