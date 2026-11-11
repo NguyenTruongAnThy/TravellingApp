@@ -29,11 +29,11 @@ export async function checkBookingConflict(
   placeId: string,
   checkIn: string,
   checkOut: string
-): Promise<{ hasConflict: boolean; conflictingBooking?: any; error: unknown }> {
+): Promise<{ hasConflict: boolean; error: unknown }> {
   try {
     const { data, error } = await supabase
       .from('bookings')
-      .select('id, ref_code, check_in, check_out, status')
+      .select('id, check_in, check_out, status')
       .eq('place_id', placeId)
       .neq('status', 'cancelled')
       .lt('check_in', checkOut)
@@ -43,7 +43,6 @@ export async function checkBookingConflict(
     const hasConflict = Array.isArray(data) && data.length > 0;
     return {
       hasConflict,
-      conflictingBooking: hasConflict ? data[0] : null,
       error: null,
     };
   } catch (err) {
@@ -157,6 +156,36 @@ export async function getUserBookings(
       .select('*, places(*)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+
+    if (error || !data) return { data: (data as any) || [], error };
+
+    // Auto-complete: đơn 'booked' mà ngày check-out đã qua thì chuyển
+    // thành 'completed' (UC012/UC013). Ghi ngược lên DB để reviewService
+    // (check status='completed') và các màn khác thấy đúng trạng thái.
+    // So theo ngày (không so giờ): trong ngày check-out vẫn là Upcoming.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiredIds = (data as Booking[])
+      .filter(
+        (b) =>
+          b.status === 'booked' &&
+          b.check_out &&
+          new Date(`${b.check_out}T00:00:00`) < today
+      )
+      .map((b) => b.id);
+
+    if (expiredIds.length > 0) {
+      const { error: updateErr } = await supabase
+        .from('bookings')
+        .update({ status: 'completed' })
+        .in('id', expiredIds)
+        .eq('status', 'booked'); // idempotent: chỉ đổi đơn vẫn còn 'booked'
+      if (!updateErr) {
+        for (const b of data as Booking[]) {
+          if (expiredIds.includes(b.id)) b.status = 'completed';
+        }
+      }
+    }
 
     return { data: (data as any) || [], error };
   } catch (err) {

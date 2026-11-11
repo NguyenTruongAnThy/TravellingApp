@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { Linking, Pressable, Text, View } from 'react-native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+  useNavigation,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +13,8 @@ import { useAuth } from '../context/AuthContext';
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import SearchScreen from '../screens/search/SearchScreen';
 import DetailScreen from '../screens/place/DetailScreen';
 import DescriptionScreen from '../screens/place/DescriptionScreen';
@@ -34,19 +40,45 @@ import AppButton from '../components/AppButton';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Deep link đặt lại mật khẩu: wanderstay://reset-password?code=... (PKCE)
+// hoặc wanderstay://reset-password#access_token=...&refresh_token=... (implicit).
+// Không dùng linking config của React Navigation mà bắt link bằng tay để
+// lấy được token trong phần hash của URL (linking config không truyền hash).
+const navigationRef = createNavigationContainerRef<any>();
+
+function parseRecoveryTokens(url: string): {
+  code?: string;
+  accessToken?: string;
+  refreshToken?: string;
+} | null {
+  if (!url.startsWith('wanderstay://reset-password')) return null;
+  // Luồng PKCE (mặc định của supabase-js v2): code nằm trong query (?code=...).
+  const query = url.split('?')[1]?.split('#')[0] ?? '';
+  const code = new URLSearchParams(query).get('code');
+  if (code) return { code };
+  // Luồng implicit (cũ): token nằm trong phần hash của URL.
+  const hash = url.split('#')[1] ?? '';
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken || !refreshToken) return null;
+  return { accessToken, refreshToken };
+}
+
 function GuardedScreen({ title }: { title: string }) {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   return (
     <View className="flex-1 bg-appBg items-center justify-center px-6">
-      <Text className="text-2xl font-bold text-textMain text-center">You need to sign in</Text>
+      <Text className="text-2xl font-bold text-textMain text-center">{t('auth.needSignInTitle')}</Text>
       <Text className="mt-2 text-base text-textMuted text-center">
-        Sign in to view your {title}. Guests can still browse and search in the Search tab.
+        {t('auth.needSignInDesc', { title })}
       </Text>
       <View className="mt-6 w-full">
-        <AppButton title="Sign in" onPress={() => navigation.navigate('Login')} />
+        <AppButton title={t('auth.signIn')} onPress={() => navigation.navigate('Login')} />
       </View>
       <Pressable className="mt-4 items-center" onPress={() => navigation.navigate('Search')}>
-        <Text className="text-base font-bold text-brand">Back to Search</Text>
+        <Text className="text-base font-bold text-brand">{t('auth.backToSearch')}</Text>
       </Pressable>
     </View>
   );
@@ -54,32 +86,36 @@ function GuardedScreen({ title }: { title: string }) {
 
 function ProfileTab() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   if (!session) {
-    return <GuardedScreen title="Profile" />;
+    return <GuardedScreen title={t('tabs.profile')} />;
   }
   return <ProfileScreen />;
 }
 
 function MyListsTab() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   if (!session) {
-    return <GuardedScreen title="Favorites" />;
+    return <GuardedScreen title={t('tabs.favorites')} />;
   }
   return <MyListsScreen />;
 }
 
-function BookingTab() {
+function BookingTab({ navigation }: any) {
   const { session } = useAuth();
+  const { t } = useTranslation();
   if (!session) {
-    return <GuardedScreen title="Bookings" />;
+    return <GuardedScreen title={t('tabs.bookings')} />;
   }
-  return <BookingsScreen />;
+  return <BookingsScreen navigation={navigation} />;
 }
 
 function SupportTab() {
   const { session } = useAuth();
+  const { t } = useTranslation();
   if (!session) {
-    return <GuardedScreen title="Support" />;
+    return <GuardedScreen title={t('tabs.support')} />;
   }
   // Tự động nhảy trực tiếp vào chat với WanderStay Support 24/7
   return <TravelAssistantScreen />;
@@ -144,6 +180,39 @@ function MainTabs() {
 export default function AppNavigator() {
   const [splashFinished, setSplashFinished] = useState(false);
 
+  const pendingRecoveryRef = useRef<{
+    code?: string;
+    accessToken?: string;
+    refreshToken?: string;
+  } | null>(null);
+
+  const flushPendingRecovery = () => {
+    if (pendingRecoveryRef.current && navigationRef.isReady()) {
+      navigationRef.navigate('ResetPassword', pendingRecoveryRef.current);
+      pendingRecoveryRef.current = null;
+    }
+  };
+
+  // Bắt deep link đặt lại mật khẩu (khi app đang chạy hoặc vừa mở từ link).
+  useEffect(() => {
+    const handleUrl = ({ url }: { url: string }) => {
+      const tokens = parseRecoveryTokens(url);
+      if (!tokens) return;
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('ResetPassword', tokens);
+      } else {
+        pendingRecoveryRef.current = tokens;
+      }
+    };
+    const subscription = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url) handleUrl({ url });
+      })
+      .catch(() => {});
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     // Safety net: tuyệt đối không đứng màn hình splash quá 2.5s
     const safetyTimer = setTimeout(() => {
@@ -162,12 +231,14 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingRecovery}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
         <Stack.Screen name="Description" component={DescriptionScreen} />
         <Stack.Screen name="Facilities" component={FacilitiesScreen} />

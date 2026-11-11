@@ -21,7 +21,7 @@ export default function RelatedPlacesSection({
   if (!relatedPlaces || relatedPlaces.length === 0) return null;
 
   const areaName =
-    currentLocation?.split(',')[0]?.trim() || currentLocation || 'khu vực này';
+    currentLocation?.split(',')[0]?.trim() || currentLocation || t('relatedPlaces.defaultArea');
 
   return (
     <View className="mx-5 mt-4 mb-2 rounded-3xl bg-white border border-borderLight p-5">
@@ -36,13 +36,11 @@ export default function RelatedPlacesSection({
               <Ionicons name="sparkles" size={15} color="#4F46E5" />
             </View>
             <Text className="text-base font-bold text-textMain">
-              {i18n.language === 'vi' ? 'Chỗ Nghỉ Tương Tự' : 'Similar Stays'}
+              {t('placeDetail.similarStays')}
             </Text>
           </View>
           <Text className="mt-0.5 text-xs text-textMuted ml-9">
-            {i18n.language === 'vi'
-              ? `Gợi ý cùng tại ${areaName} ${currentPlaceType ? `& kiểu ${currentPlaceType}` : ''}`
-              : `Recommended stays in ${areaName}`}
+            {t('placeDetail.similarStaysSub', { area: areaName, type: currentPlaceType ? ` & kiểu ${currentPlaceType}` : '' })}
           </Text>
         </View>
 
@@ -51,7 +49,7 @@ export default function RelatedPlacesSection({
           style={{ backgroundColor: '#F3F4F6' }}
         >
           <Text className="text-[11px] font-bold text-textMuted">
-            {relatedPlaces.length} {i18n.language === 'vi' ? 'gợi ý' : 'stays'}
+            {t('placeDetail.relatedCount', { count: relatedPlaces.length })}
           </Text>
         </View>
       </View>
@@ -70,7 +68,7 @@ export default function RelatedPlacesSection({
               : 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=600&q=80';
 
           const destination =
-            item.location?.split(',')[0]?.trim() || item.location || 'Điểm đến';
+            item.location?.split(',')[0]?.trim() || item.location || t('common.destination');
 
           const originalPrice = item.original_price ? Number(item.original_price) : null;
           const currentPrice = Number(item.price_per_night);
@@ -139,7 +137,7 @@ export default function RelatedPlacesSection({
                   <Text className="ml-1 text-[10px] font-bold text-textMain">
                     {item.rating != null && Number(item.rating) > 0
                       ? Number(item.rating).toFixed(1)
-                      : 'New'}
+                      : t('common.newBadge')}
                   </Text>
                 </View>
 
@@ -198,7 +196,7 @@ export default function RelatedPlacesSection({
 
                   <View className="flex-row items-center">
                     <Text className="text-[10px] font-bold text-brand">
-                      {i18n.language === 'vi' ? 'Xem phòng ›' : 'View stay ›'}
+                      {t('placeDetail.viewStay')}
                     </Text>
                   </View>
                 </View>

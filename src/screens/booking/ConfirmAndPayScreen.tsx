@@ -64,21 +64,15 @@ export default function ConfirmAndPayScreen() {
 
   // Proactive date conflict state
   const [hasDateConflict, setHasDateConflict] = useState<boolean>(false);
-  const [conflictRefCode, setConflictRefCode] = useState<string>('');
 
   // Automatically check conflict whenever place or dates change
   useEffect(() => {
     let isMounted = true;
     async function checkConflict() {
       if (!place?.id || !checkIn || !checkOut) return;
-      const { hasConflict, conflictingBooking } = await checkBookingConflict(
-        place.id,
-        checkIn,
-        checkOut
-      );
+      const { hasConflict } = await checkBookingConflict(place.id, checkIn, checkOut);
       if (isMounted) {
         setHasDateConflict(hasConflict);
-        setConflictRefCode(conflictingBooking?.ref_code || '');
       }
     }
     checkConflict();
@@ -145,14 +139,14 @@ export default function ConfirmAndPayScreen() {
     if (!promoCodeInput.trim()) return;
     setPromoValidating(true);
     setPromoMessage('');
-    const res = await validatePromoCode(promoCodeInput, subtotal);
+    const res = await validatePromoCode(promoCodeInput, subtotal, place?.location);
     setPromoValidating(false);
     if (res.valid && res.discountAmount > 0) {
       setAppliedPromo(res.promotion);
       setDiscountAmount(res.discountAmount);
-      setPromoMessage(`Áp dụng thành công mã ${promoCodeInput.toUpperCase()}! Giảm $${res.discountAmount.toFixed(2)}`);
+      setPromoMessage(t('checkout.promoApplied', { code: promoCodeInput.toUpperCase(), amount: res.discountAmount.toFixed(2) }));
     } else {
-      setPromoMessage(res.message || 'Mã ưu đãi không hợp lệ.');
+      setPromoMessage(res.message || t('checkout.promoInvalid'));
       setDiscountAmount(0);
       setAppliedPromo(null);
     }
@@ -199,7 +193,7 @@ export default function ConfirmAndPayScreen() {
       });
 
       if (!res.success || !res.booking) {
-        Alert.alert('Không thể đặt phòng', res.error || 'Vui lòng thử lại sau.');
+        Alert.alert(t('checkout.bookingFailedTitle'), res.error || t('checkout.tryAgainLater'));
         setSubmitting(false);
         return;
       }
@@ -207,11 +201,11 @@ export default function ConfirmAndPayScreen() {
       // Success -> Navigate directly to "màn hình đơn hàng" (Tab Bookings)
       navigation.navigate('MainTabs', { screen: 'Booking' });
       Alert.alert(
-        'Đặt phòng thành công! 🎉',
-        `Đơn đặt phòng #${res.booking.ref_code} của bạn đã được xác nhận và hiển thị trong danh sách chuyến đi.`
+        t('checkout.bookingSuccessTitle'),
+        t('checkout.bookingSuccessDesc', { ref: res.booking.ref_code })
       );
     } catch (err: any) {
-      Alert.alert('Lỗi đặt phòng', err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+      Alert.alert(t('checkout.bookingErrorTitle'), err?.message || t('checkout.bookingErrorDesc'));
     } finally {
       setSubmitting(false);
     }
@@ -221,19 +215,19 @@ export default function ConfirmAndPayScreen() {
     setShowSepayModal(false);
     navigation.navigate('MainTabs', { screen: 'Booking' });
     Alert.alert(
-      'Thanh toán SePay thành công! 🎉',
-      `Đơn đặt phòng #${booking.ref_code} của bạn đã được xác nhận tự động qua BIDV và hiển thị trong danh sách chuyến đi.`
+      t('checkout.sepaySuccessTitle'),
+      t('checkout.sepaySuccessDesc', { ref: booking.ref_code })
     );
   };
 
   const handleCloseSepayModal = () => {
     Alert.alert(
-      'Đóng phiên thanh toán VietQR?',
-      'Bạn có muốn đóng màn hình thanh toán VietQR không? Giao dịch chưa hoàn tất.',
+      t('checkout.closePaymentTitle'),
+      t('checkout.closePaymentDesc'),
       [
-        { text: 'Quét tiếp', style: 'cancel' },
+        { text: t('checkout.keepScanning'), style: 'cancel' },
         {
-          text: 'Đóng',
+          text: t('common.close'),
           onPress: () => {
             setShowSepayModal(false);
           },
@@ -250,8 +244,8 @@ export default function ConfirmAndPayScreen() {
 
     if (totalGuests > maxCapacity) {
       Alert.alert(
-        'Vượt quá sức chứa',
-        `Chỗ ở này chỉ chứa tối đa ${maxCapacity} khách. Vui lòng giảm số lượng khách.`
+        t('checkout.overCapacityTitle'),
+        t('checkout.overCapacityDesc', { max: maxCapacity })
       );
       return;
     }
@@ -259,27 +253,20 @@ export default function ConfirmAndPayScreen() {
     // 1. KIỂM TRA TRÙNG NGÀY NGAY LẬP TỨC KHI BẤM NÚT THANH TOÁN (BR04 / UC010)
     setSubmitting(true);
     try {
-      const { hasConflict, conflictingBooking } = await checkBookingConflict(
-        place.id,
-        checkIn,
-        checkOut
-      );
+      const { hasConflict } = await checkBookingConflict(place.id, checkIn, checkOut);
 
       if (hasConflict) {
         setSubmitting(false);
         setHasDateConflict(true);
-        setConflictRefCode(conflictingBooking?.ref_code || '');
         Alert.alert(
-          'Ngày đã có người đặt! ⚠️',
-          `Khoảng thời gian từ ${checkIn} đến ${checkOut} đã được khách khác đặt trước${
-            conflictingBooking?.ref_code ? ` (Mã đơn: ${conflictingBooking.ref_code})` : ''
-          }. Vui lòng bấm "Đổi ngày trên lịch" để chọn ngày còn trống.`,
+          t('checkout.dateConflictTitle'),
+          t('checkout.dateConflictDesc'),
           [
             {
-              text: 'Đổi ngày trên lịch',
+              text: t('checkout.changeDates'),
               onPress: () => setShowDatePicker(true),
             },
-            { text: 'Đóng', style: 'cancel' },
+            { text: t('common.close'), style: 'cancel' },
           ]
         );
         return;
@@ -314,7 +301,7 @@ export default function ConfirmAndPayScreen() {
         setSubmitting(false);
 
         if (!res.success || !res.booking) {
-          Alert.alert('Không thể tạo đơn đặt phòng', res.error || 'Vui lòng thử lại sau.');
+          Alert.alert(t('checkout.createBookingFailedTitle'), res.error || t('checkout.tryAgainLater'));
           return;
         }
 
@@ -322,7 +309,7 @@ export default function ConfirmAndPayScreen() {
         setShowSepayModal(true);
       } catch (err: any) {
         setSubmitting(false);
-        Alert.alert('Lỗi đặt phòng', err?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+        Alert.alert(t('checkout.bookingErrorTitle'), err?.message || t('checkout.bookingErrorDesc'));
       }
       return;
     }
@@ -334,12 +321,12 @@ export default function ConfirmAndPayScreen() {
   if (!place) {
     return (
       <SafeAreaView className="flex-1 bg-appBg items-center justify-center px-6">
-        <Text className="text-base text-textMuted">Không tìm thấy thông tin phòng.</Text>
+        <Text className="text-base text-textMuted">{t('checkout.propertyNotFound')}</Text>
         <Pressable
           onPress={() => navigation.goBack()}
           className="mt-4 bg-brand px-6 py-2.5 rounded-full"
         >
-          <Text className="text-sm font-bold text-white">Quay lại</Text>
+          <Text className="text-sm font-bold text-white">{t('checkout.goBack')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -361,7 +348,7 @@ export default function ConfirmAndPayScreen() {
           <Ionicons name="chevron-back" size={20} color="#131B2E" />
         </Pressable>
         <Text className="flex-1 text-center text-lg font-bold text-textMain mr-10">
-          Confirm and pay
+          {t('checkout.confirmAndPay')}
         </Text>
       </View>
 
@@ -410,20 +397,20 @@ export default function ConfirmAndPayScreen() {
 
         {/* Section: Your trip details */}
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-4">
-          <Text className="text-base font-bold text-textMain">Your trip</Text>
+          <Text className="text-base font-bold text-textMain">{t('checkout.yourTrip')}</Text>
 
           {/* Dates Row - Modern Interactive Stay Dates Card */}
           <View className="pb-3 border-b border-borderLight/60">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-xs font-bold text-textMuted uppercase tracking-wider">
-                Lịch lưu trú
+                {t('checkout.staySchedule')}
               </Text>
               <Pressable
                 onPress={() => setShowDatePicker(true)}
                 className="flex-row items-center gap-1 bg-brand/10 px-2.5 py-1 rounded-full active:opacity-70"
               >
                 <Ionicons name="calendar-outline" size={13} color="#4F46E5" />
-                <Text className="text-xs font-bold text-brand">Đổi ngày trên lịch</Text>
+                <Text className="text-xs font-bold text-brand">{t('checkout.changeDates')}</Text>
               </Pressable>
             </View>
 
@@ -446,14 +433,16 @@ export default function ConfirmAndPayScreen() {
                     </Text>
                   </View>
                   <Text className="text-[11px] text-textMuted mt-0.5">
-                    {checkIn} đến {checkOut}
+                    {checkIn} – {checkOut}
                   </Text>
                 </View>
               </View>
 
               <View className="flex-row items-center gap-2 pl-2">
                 <View className="bg-brand px-2.5 py-1 rounded-full shadow-sm">
-                  <Text className="text-xs font-bold text-white">{nights} đêm</Text>
+                  <Text className="text-xs font-bold text-white">
+                    {t('checkout.nightsCount', { count: nights })}
+                  </Text>
                 </View>
                 {/* Stepper for quick fine-tuning */}
                 <View className="flex-row items-center gap-1 bg-white rounded-full border border-borderLight p-0.5">
@@ -482,17 +471,17 @@ export default function ConfirmAndPayScreen() {
                 <Ionicons name="alert-circle" size={18} color="#DC2626" />
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-red-700">
-                    Khoảng ngày này đã có khách đặt! {conflictRefCode ? `(${conflictRefCode})` : ''}
+                    {t('checkout.dateConflictTitle')}
                   </Text>
                   <Text className="text-[11px] text-red-600 mt-0.5">
-                    Vui lòng bấm "Đổi ngày trên lịch" để chọn ngày còn trống.
+                    {t('checkout.dateConflictDesc')}
                   </Text>
                 </View>
                 <Pressable
                   onPress={() => setShowDatePicker(true)}
                   className="bg-red-600 px-3 py-1.5 rounded-full shadow-sm active:opacity-80"
                 >
-                  <Text className="text-[11px] font-bold text-white">Đổi ngày</Text>
+                  <Text className="text-[11px] font-bold text-white">{t('checkout.changeDateBtn')}</Text>
                 </Pressable>
               </View>
             )}
@@ -501,9 +490,9 @@ export default function ConfirmAndPayScreen() {
           {/* Guests Row */}
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-xs font-semibold text-textMuted">Guests</Text>
+              <Text className="text-xs font-semibold text-textMuted">{t('checkout.guests')}</Text>
               <Text className="text-sm font-bold text-textMain mt-0.5">
-                {totalGuests} khách (tối đa {maxCapacity})
+                {t('checkout.guestsCapacity', { count: totalGuests, max: maxCapacity })}
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
@@ -522,7 +511,7 @@ export default function ConfirmAndPayScreen() {
                   if (totalGuests < maxCapacity) {
                     setAdults(adults + 1);
                   } else {
-                    Alert.alert('Tối đa', `Chỗ ở chỉ nhận tối đa ${maxCapacity} khách.`);
+                    Alert.alert(t('common.error'), `${t('checkout.guests')} max ${maxCapacity}`);
                   }
                 }}
                 className="w-8 h-8 rounded-full border border-brand bg-white items-center justify-center"
@@ -535,7 +524,7 @@ export default function ConfirmAndPayScreen() {
 
         {/* Section: Payment options (BR06) */}
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-3.5">
-          <Text className="text-base font-bold text-textMain">Choose how to pay</Text>
+          <Text className="text-base font-bold text-textMain">{t('checkout.choosePayment')}</Text>
 
           {/* Radio 1: Pay in full */}
           <Pressable
@@ -547,9 +536,12 @@ export default function ConfirmAndPayScreen() {
             }`}
           >
             <View className="flex-1 pr-3">
-              <Text className="text-sm font-bold text-textMain">Pay in full</Text>
+              <Text className="text-sm font-bold text-textMain">{t('checkout.payInFull')}</Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Trả 100%: ${finalTotal.toFixed(2)} (~ {convertUsdToVnd(finalTotal).toLocaleString('vi-VN')} VND).
+                {t('checkout.payInFullDesc', {
+                  amount: finalTotal.toFixed(2),
+                  amountVnd: convertUsdToVnd(finalTotal).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')
+                })}
               </Text>
             </View>
             <View
@@ -574,10 +566,14 @@ export default function ConfirmAndPayScreen() {
           >
             <View className="flex-1 pr-3">
               <Text className="text-sm font-bold text-textMain">
-                Pay a part now (${depositAmount.toFixed(2)})
+                {t('checkout.payPartNow', { deposit: depositAmount.toFixed(2) })}
               </Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Đặt cọc trước 50%: ${depositAmount.toFixed(2)} (~ {convertUsdToVnd(depositAmount).toLocaleString('vi-VN')} VND), còn lại ${remainingAmount.toFixed(2)} thanh toán khi nhận phòng.
+                {t('checkout.payPartNowDesc', {
+                  deposit: depositAmount.toFixed(2),
+                  depositVnd: convertUsdToVnd(depositAmount).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US'),
+                  remaining: remainingAmount.toFixed(2)
+                })}
               </Text>
             </View>
             <View
@@ -594,7 +590,7 @@ export default function ConfirmAndPayScreen() {
 
         {/* Section: Payment Method Selection */}
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-3">
-          <Text className="text-base font-bold text-textMain">Payment method</Text>
+          <Text className="text-base font-bold text-textMain">{t('checkout.paymentMethod')}</Text>
 
           {/* SePay VietQR (BIDV) Option */}
           <Pressable
@@ -609,9 +605,9 @@ export default function ConfirmAndPayScreen() {
               </View>
               <View>
                 <View className="flex-row items-center gap-1.5">
-                  <Text className="text-xs font-bold text-textMain">Chuyển khoản VietQR (SePay)</Text>
+                  <Text className="text-xs font-bold text-textMain">{t('checkout.vietQr')}</Text>
                   <View className="bg-emerald-100 px-1.5 py-0.2 rounded">
-                    <Text className="text-[9px] font-bold text-emerald-700">Tự động</Text>
+                    <Text className="text-[9px] font-bold text-emerald-700">{t('checkout.vietQrAuto')}</Text>
                   </View>
                 </View>
               </View>
@@ -635,7 +631,7 @@ export default function ConfirmAndPayScreen() {
                 <Ionicons name="card-outline" size={18} color="#2563EB" />
               </View>
               <View>
-                <Text className="text-xs font-bold text-textMain">Visa / Mastercard (Mô phỏng)</Text>
+                <Text className="text-xs font-bold text-textMain">{t('checkout.simulatedCard')}</Text>
                 <Text className="text-[11px] text-textMuted">•••• 4829</Text>
               </View>
             </View>
@@ -652,11 +648,11 @@ export default function ConfirmAndPayScreen() {
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <Ionicons name="pricetag-outline" size={18} color="#FF6B00" />
-              <Text className="text-base font-bold text-textMain">Mã ưu đãi / Khuyến mại</Text>
+              <Text className="text-base font-bold text-textMain">{t('checkout.promoSection')}</Text>
             </View>
             {appliedPromo ? (
               <Pressable onPress={handleRemovePromo}>
-                <Text className="text-xs font-bold text-red-500">Gỡ bỏ</Text>
+                <Text className="text-xs font-bold text-red-500">{t('checkout.remove')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -667,7 +663,7 @@ export default function ConfirmAndPayScreen() {
                 <View className="flex-row items-center gap-1.5">
                   <Text className="text-xs font-bold text-[#FF6B00]">{appliedPromo.code}</Text>
                   <View className="bg-[#FF6B00] px-1.5 py-0.2 rounded">
-                    <Text className="text-[9px] font-bold text-white">Đã áp dụng</Text>
+                    <Text className="text-[9px] font-bold text-white">{t('checkout.applied')}</Text>
                   </View>
                 </View>
                 <Text className="text-[11px] text-[#C2410C] mt-0.5" numberOfLines={1}>{appliedPromo.title}</Text>
@@ -678,7 +674,7 @@ export default function ConfirmAndPayScreen() {
             <View className="flex-row items-center gap-2">
               <TextInput
                 className="flex-1 px-3.5 py-2.5 rounded-xl border border-borderLight bg-appBg text-xs font-bold text-textMain"
-                placeholder="Nhập mã (VD: WANDER10, BALI50, WELCOME20)"
+                placeholder={t('checkout.promoPlaceholder')}
                 placeholderTextColor="#8A90A6"
                 autoCapitalize="characters"
                 value={promoCodeInput}
@@ -692,7 +688,7 @@ export default function ConfirmAndPayScreen() {
                 {promoValidating ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text className="text-xs font-bold text-white">Áp dụng</Text>
+                  <Text className="text-xs font-bold text-white">{t('checkout.apply')}</Text>
                 )}
               </Pressable>
             </View>
@@ -707,11 +703,11 @@ export default function ConfirmAndPayScreen() {
 
         {/* Section: Price Details (BR01 Transparent Pricing) */}
         <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm mb-5 gap-3">
-          <Text className="text-base font-bold text-textMain">Price details</Text>
+          <Text className="text-base font-bold text-textMain">{t('checkout.priceDetails')}</Text>
 
           <View className="flex-row justify-between items-center py-1">
             <Text className="text-xs text-textMuted">
-              ${pricePerNight} x {nights} đêm
+              ${pricePerNight} x {nights} {t('common.night')}
             </Text>
             <Text className="text-xs font-bold text-textMain">
               ${pricing.accommodationTotal.toFixed(2)}
@@ -719,12 +715,12 @@ export default function ConfirmAndPayScreen() {
           </View>
 
           <View className="flex-row justify-between items-center py-1">
-            <Text className="text-xs text-textMuted">Kayak Rental fee</Text>
+            <Text className="text-xs text-textMuted">{t('checkout.kayakFee')}</Text>
             <Text className="text-xs font-bold text-textMain">${kayakFee.toFixed(2)}</Text>
           </View>
 
           <View className="flex-row justify-between items-center py-1">
-            <Text className="text-xs text-textMuted">Street Parking fee</Text>
+            <Text className="text-xs text-textMuted">{t('checkout.parkingFee')}</Text>
             <Text className="text-xs font-bold text-textMain">${parkingFee.toFixed(2)}</Text>
           </View>
 
@@ -732,7 +728,7 @@ export default function ConfirmAndPayScreen() {
             <View className="flex-row justify-between items-center py-1">
               <View className="flex-row items-center gap-1.5">
                 <Ionicons name="pricetag" size={13} color="#FF6B00" />
-                <Text className="text-xs font-bold text-[#FF6B00]">Ưu đãi ({appliedPromo?.code})</Text>
+                <Text className="text-xs font-bold text-[#FF6B00]">{t('checkout.discount')} ({appliedPromo?.code})</Text>
               </View>
               <Text className="text-xs font-extrabold text-[#FF6B00]">-${discountAmount.toFixed(2)}</Text>
             </View>
@@ -740,9 +736,9 @@ export default function ConfirmAndPayScreen() {
 
           <View className="flex-row justify-between items-center pt-3 border-t border-borderLight">
             <View>
-              <Text className="text-sm font-bold text-textMain">Tổng chi phí (USD)</Text>
+              <Text className="text-sm font-bold text-textMain">{t('checkout.totalCostUsd')}</Text>
               <Text className="text-[11px] text-textMuted">
-                ~ {convertUsdToVnd(finalTotal).toLocaleString('vi-VN')} VND
+                ~ {convertUsdToVnd(finalTotal).toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} VND
               </Text>
             </View>
             <Text className="text-base font-black text-brand">${finalTotal.toFixed(2)}</Text>
@@ -751,9 +747,9 @@ export default function ConfirmAndPayScreen() {
           {paymentMethod === 'pay_a_part_now' && (
             <View className="flex-row justify-between items-center pt-2 border-t border-dashed border-borderLight">
               <View>
-                <Text className="text-xs font-bold text-brand">Cần thanh toán hôm nay (50%)</Text>
+                <Text className="text-xs font-bold text-brand">{t('checkout.dueToday')}</Text>
                 <Text className="text-[11px] text-brand/80">
-                  ~ {dueAmountVnd.toLocaleString('vi-VN')} VND
+                  ~ {dueAmountVnd.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} VND
                 </Text>
               </View>
               <Text className="text-sm font-black text-brand">
@@ -764,9 +760,9 @@ export default function ConfirmAndPayScreen() {
 
           {selectedCard === 'sepay' && (
             <View className="mt-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex-row justify-between items-center">
-              <Text className="text-[11px] font-medium text-emerald-800">Số tiền chuyển khoản:</Text>
+              <Text className="text-[11px] font-medium text-emerald-800">{t('checkout.transferAmountLabel')}</Text>
               <Text className="text-xs font-bold text-[#006B68]">
-                {dueAmountVnd.toLocaleString('vi-VN')} VND (${dueAmountUsd.toFixed(2)})
+                {dueAmountVnd.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} VND (${dueAmountUsd.toFixed(2)})
               </Text>
             </View>
           )}
@@ -774,9 +770,9 @@ export default function ConfirmAndPayScreen() {
 
         {/* Section: Cancellation Policy (BR05) */}
         <View className="bg-[#F8F7FF] rounded-2xl p-4 border border-borderLight/80 mb-5 gap-1.5">
-          <Text className="text-xs font-bold text-textMain">Cancellation policy (BR05)</Text>
+          <Text className="text-xs font-bold text-textMain">{t('checkout.cancellationPolicyTitle')}</Text>
           <Text className="text-xs text-textMuted leading-5">
-            Miễn phí hủy phòng trước 48 giờ. Hủy trong vòng 48 giờ sẽ phạt 1 đêm (${pricePerNight}).
+            {t('checkout.cancellationPolicyDesc', { price: pricePerNight })}
           </Text>
         </View>
       </ScrollView>
@@ -785,21 +781,21 @@ export default function ConfirmAndPayScreen() {
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-borderLight px-5 py-4 flex-row items-center justify-between shadow-lg">
         <View>
           <Text className="text-[11px] text-textMuted font-medium uppercase">
-            {paymentMethod === 'pay_a_part_now' ? 'Due today (50%)' : 'Total'}
+            {paymentMethod === 'pay_a_part_now' ? t('checkout.dueTodayShort') : t('checkout.totalShort')}
           </Text>
           <Text className="text-xl font-black text-brand">
             ${dueAmountUsd.toFixed(2)}
           </Text>
           <Text className="text-[10px] text-textMuted">
-            ~ {dueAmountVnd.toLocaleString('vi-VN')} VND
+            ~ {dueAmountVnd.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} VND
           </Text>
         </View>
 
         <Pressable
           onPress={handleConfirmPay}
-          disabled={submitting}
+          disabled={submitting || hasDateConflict}
           className={`px-6 py-3.5 rounded-full flex-row items-center gap-2 ${
-            submitting ? 'bg-brand/60' : 'bg-brand shadow-md shadow-brand/30'
+            submitting || hasDateConflict ? 'bg-brand/60' : 'bg-brand shadow-md shadow-brand/30'
           }`}
         >
           {submitting ? (
@@ -808,7 +804,7 @@ export default function ConfirmAndPayScreen() {
             <>
               <Ionicons name="lock-closed" size={15} color="#FFF" />
               <Text className="text-sm font-bold text-white">
-                Thanh toán ngay
+                {t('checkout.payNow')}
               </Text>
             </>
           )}

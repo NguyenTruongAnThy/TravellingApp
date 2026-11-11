@@ -46,58 +46,18 @@ function FilterSectionTitle({ icon, title }: { icon: any; title: string }) {
 
 const FilterDivider = () => (<View className="mt-6" style={{ height: 1, backgroundColor: '#E6E3F5' }} />);
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: '1',
-    title: 'Chào mừng bạn đến với WanderStay! 🎉',
-    message: 'Khám phá hàng ngàn chỗ nghỉ dưỡng độc đáo với chìa khóa số thông minh (Keyless Smart Key) và hướng dẫn lộ trình chi tiết.',
-    time: 'Vừa xong',
-    icon: 'sparkles',
-    iconColor: '#4F46E5',
-    bgColor: '#EEF2FF',
-  },
-  {
-    id: '2',
-    title: 'Ưu đãi dành cho thành viên mới 🎁',
-    message: 'Nhập mã WANDER10 tại bước thanh toán để được giảm ngay 10% cho kỳ nghỉ đầu tiên của bạn.',
-    time: '2 giờ trước',
-    icon: 'pricetag',
-    iconColor: '#FF6B00',
-    bgColor: '#FFF7ED',
-  },
-  {
-    id: '3',
-    title: 'Thanh toán VietQR tự động qua SePay 💳',
-    message: 'Giờ đây bạn có thể quét mã VietQR ngân hàng BIDV để tự động xác nhận đơn phòng 24/7 tức thì.',
-    time: '5 giờ trước',
-    icon: 'qr-code',
-    iconColor: '#059669',
-    bgColor: '#ECFDF5',
-  },
-  {
-    id: '4',
-    title: 'Nhắc nhở nhận phòng thông minh 🔑',
-    message: 'Mã PIN mở khóa cửa sẽ tự động kích hoạt vào lúc 14:00 ngày nhận phòng và hết hạn lúc 12:00 ngày trả phòng.',
-    time: '1 ngày trước',
-    icon: 'key',
-    iconColor: '#7C3AED',
-    bgColor: '#F5F3FF',
-  },
-  {
-    id: '5',
-    title: 'Bảo mật tài khoản 2 lớp (2FA) 🛡️',
-    message: 'Kiểm tra điểm sức khỏe bảo mật và kích hoạt xác thực 2 bước trong mục Hồ sơ để bảo vệ an toàn thông tin.',
-    time: '2 ngày trước',
-    icon: 'shield-checkmark',
-    iconColor: '#2563EB',
-    bgColor: '#EFF6FF',
-  },
-];
 
 export default function SearchScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
   const { t, i18n } = useTranslation();
   const hookNavigation = useNavigation<any>();
   const navigation = propNavigation || hookNavigation;
+  const notifications = [
+    { id: '1', title: t('notifications.welcomeTitle'), message: t('notifications.welcomeMessage'), time: t('notifications.justNow'), icon: 'sparkles', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
+    { id: '2', title: t('notifications.promoTitle'), message: t('notifications.promoMessage'), time: t('notifications.twoHoursAgo'), icon: 'pricetag', iconColor: '#FF6B00', bgColor: '#FFF7ED' },
+    { id: '3', title: t('notifications.sepayTitle'), message: t('notifications.sepayMessage'), time: t('notifications.fiveHoursAgo'), icon: 'qr-code', iconColor: '#059669', bgColor: '#ECFDF5' },
+    { id: '4', title: t('notifications.pinTitle'), message: t('notifications.pinMessage'), time: t('notifications.oneDayAgo'), icon: 'key', iconColor: '#7C3AED', bgColor: '#F5F3FF' },
+    { id: '5', title: t('notifications.securityTitle'), message: t('notifications.securityMessage'), time: t('notifications.twoDaysAgo'), icon: 'shield-checkmark', iconColor: '#2563EB', bgColor: '#EFF6FF' },
+  ];
   const { session } = useAuth();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -314,7 +274,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
         })}
       </ScrollView>
 
-      {activeFilterCount > 0 ? (<View className="px-5 pb-3 flex-row items-center"><Pressable onPress={() => { clearFilters(); setQuery(''); setPlaceType('All'); }}><Text className="text-sm font-bold text-brand">Clear filters</Text></Pressable></View>) : null}
+      {activeFilterCount > 0 ? (<View className="px-5 pb-3 flex-row items-center"><Pressable onPress={() => { clearFilters(); setQuery(''); setPlaceType('All'); }}><Text className="text-sm font-bold text-brand">{t('search.clearFilters')}</Text></Pressable></View>) : null}
       {/* Figma where: bottom sheet, khong phai trang rieng */}
       <Modal visible={showWhere} transparent animationType="slide" onRequestClose={() => setShowWhere(false)}>
         <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowWhere(false)}>
@@ -322,16 +282,16 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
             <View className="items-center pt-3"><View className="w-10 h-1 rounded-full bg-borderLight" /></View>
             <ScrollView>
               <View className="p-5">
-                <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">Where to?</Text><Pressable onPress={() => setShowWhere(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
+                <View className="flex-row items-center justify-between"><Text className="text-lg font-bold text-textMain">{t('search.whereTo')}</Text><Pressable onPress={() => setShowWhere(false)}><Ionicons name="close" size={22} color="#131B2E" /></Pressable></View>
                 <View className="mt-3 flex-row items-center rounded-full border border-borderLight bg-appBg px-4">
                   <Ionicons name="search-outline" size={18} color="#5A6478" />
-                  <TextInput className="flex-1 py-3 text-base text-textMain ml-2" placeholder="Search destinations" value={query} onChangeText={setQuery} autoCapitalize="none" onSubmitEditing={() => { if (whereSuggestions.length === 0) return; setShowWhere(false); setShowSchedule(true); }} returnKeyType="search" />
+                  <TextInput className="flex-1 py-3 text-base text-textMain ml-2" placeholder={t('search.searchDestinationsPlaceholder')} value={query} onChangeText={setQuery} autoCapitalize="none" onSubmitEditing={() => { if (whereSuggestions.length === 0) return; setShowWhere(false); setShowSchedule(true); }} returnKeyType="search" />
                   {query ? (<Pressable onPress={() => setQuery('')}><Ionicons name="close-circle-outline" size={20} color="#5A6478" /></Pressable>) : null}
                 </View>
-                <Text className="mt-4 text-base font-bold text-textMain">{query ? 'Suggestions' : 'Popular places'}</Text>
-                <Text className="mt-1 text-sm text-textMuted">{query ? 'Type to filter, tap a suggestion to pick that stay.' : 'Tap a stay to pick it, no need to remember the exact name.'}</Text>
+                <Text className="mt-4 text-base font-bold text-textMain">{query ? (i18n.language === 'vi' ? 'Gợi ý tìm kiếm' : 'Suggestions') : t('search.popularDestinations')}</Text>
+                <Text className="mt-1 text-sm text-textMuted">{query ? t('search.typeToFilterHint') : t('search.tapToPickHint')}</Text>
                 {whereSuggestions.length === 0 ? (
-                  <Text className="mt-3 text-base text-textMuted">No such place. Try searching for destinations like Bãi Cháy, Đà Lạt, Phú Quốc, Sa Pa, or Bali (Balian, Ubud, Kuta)...</Text>
+                  <Text className="mt-3 text-base text-textMuted">{t('search.noSuchPlace')}</Text>
                 ) : whereSuggestions.map((pl) => (<Pressable key={pl.id} className="flex-row items-center py-3" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }} onPress={() => { setQuery(pl.title); setShowWhere(false); setShowSchedule(true); }}><Ionicons name="search-outline" size={18} color="#5A6478" /><View className="ml-3 flex-1"><Text className="text-base font-bold text-textMain">{pl.title}</Text><Text className="text-sm text-textMuted">{pl.location}</Text></View></Pressable>))}
               </View>
             </ScrollView>
@@ -511,11 +471,11 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
       {loading ? (
         <View className="flex-1 items-center justify-center px-6 py-16">
           <ActivityIndicator size="large" color="#4F46E5" />
-          <Text className="mt-3 text-sm text-textMuted">Loading stays...</Text>
+          <Text className="mt-3 text-sm text-textMuted">{i18n.language === 'vi' ? 'Đang tải danh sách chỗ nghỉ...' : 'Loading stays...'}</Text>
         </View>
       ) : errorMessage ? (
         <View className="flex-1 items-center justify-center px-6 py-16">
-          <Text className="text-lg font-bold text-textMain text-center">Could not load data</Text>
+          <Text className="text-lg font-bold text-textMain text-center">{i18n.language === 'vi' ? 'Không thể tải dữ liệu' : 'Could not load data'}</Text>
           <Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text>
           <View className="mt-6 w-full max-w-xs">
             <AppButton title="Try again" onPress={() => loadPlaces()} />
@@ -628,7 +588,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                 <View>
                   <View className="pt-3 pb-2 flex-row items-center justify-between">
                     <Pressable className={`px-3 py-2 rounded-full border ${safePage <= 1 ? 'border-borderLight' : 'border-brand'}`} disabled={safePage <= 1} onPress={() => goToPage(safePage - 1)}>
-                      <Text className={`text-sm font-bold ${safePage <= 1 ? 'text-textMuted' : 'text-brand'}`}>‹ Prev</Text>
+                      <Text className={`text-sm font-bold ${safePage <= 1 ? 'text-textMuted' : 'text-brand'}`}>{t('search.prevPage')}</Text>
                     </Pressable>
                     <View className="flex-row items-center">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
@@ -638,10 +598,10 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                       ))}
                     </View>
                     <Pressable className={`px-3 py-2 rounded-full border ${safePage >= totalPages ? 'border-borderLight' : 'border-brand'}`} disabled={safePage >= totalPages} onPress={() => goToPage(safePage + 1)}>
-                      <Text className={`text-sm font-bold ${safePage >= totalPages ? 'text-textMuted' : 'text-brand'}`}>Next ›</Text>
+                      <Text className={`text-sm font-bold ${safePage >= totalPages ? 'text-textMuted' : 'text-brand'}`}>{t('search.nextPage')}</Text>
                     </Pressable>
                   </View>
-                  <Text className="pb-2 text-center text-xs text-textMuted">Page {safePage} of {totalPages} • {filteredPlaces.length} matching stays</Text>
+                  <Text className="pb-2 text-center text-xs text-textMuted">{t('search.pageOf', { page: safePage, total: totalPages, count: filteredPlaces.length })}</Text>
                 </View>
               }
             />
@@ -676,9 +636,9 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
                 <View className="w-8 h-8 rounded-full bg-brand/10 items-center justify-center">
                   <Ionicons name="notifications" size={17} color="#4F46E5" />
                 </View>
-                <Text className="text-lg font-bold text-textMain">Thông báo</Text>
+                <Text className="text-lg font-bold text-textMain">{t('search.notificationsTitle')}</Text>
                 <View className="bg-red-500 px-2 py-0.5 rounded-full ml-1">
-                  <Text className="text-[10px] font-bold text-white">Mới</Text>
+                  <Text className="text-[10px] font-bold text-white">{t('common.newBadge')}</Text>
                 </View>
               </View>
 
@@ -692,7 +652,7 @@ export default function SearchScreen({ navigation: propNavigation }: { navigatio
 
             {/* Notifications List */}
             <ScrollView className="p-4" showsVerticalScrollIndicator={false}>
-              {MOCK_NOTIFICATIONS.map((item) => (
+              {notifications.map((item) => (
                 <View
                   key={item.id}
                   className="bg-appBg rounded-2xl p-3.5 mb-3 border border-borderLight/80 flex-row items-start gap-3"

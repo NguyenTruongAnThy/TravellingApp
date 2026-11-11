@@ -63,13 +63,16 @@ const addDaysToString = (dateStr: string, days: number): string => {
   }
 };
 
-const formatDisplayDate = (dateStr: string): string => {
-  if (!dateStr) return 'Chọn ngày';
+const formatDisplayDate = (dateStr: string, lang: string): string => {
+  if (!dateStr) return lang === 'vi' ? 'Chọn ngày' : 'Select date';
   try {
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const weekdays =
+      lang === 'vi'
+        ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+        : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dw = weekdays[dt.getDay()];
     return `${dw}, ${parts[2]}/${parts[1]}/${parts[0]}`;
   } catch {
@@ -207,8 +210,8 @@ export default function StayDatePickerModal({
     const isBooked = bookedRanges.some((r) => dateStr >= r.check_in && dateStr < r.check_out);
     if (isBooked) {
       Alert.alert(
-        'Ngày đã có người đặt! ⚠️',
-        `Ngày ${formatDisplayDate(dateStr)} đã có khách đặt chỗ này. Vui lòng chọn ngày còn trống khác.`
+        t('checkout.dateConflictTitle'),
+        t('checkout.dateBookedDesc', { date: formatDisplayDate(dateStr, i18n.language) })
       );
       return;
     }
@@ -299,9 +302,9 @@ export default function StayDatePickerModal({
           {/* Modal Header */}
           <View className="px-5 py-3 flex-row items-center justify-between border-b border-borderLight/60">
             <View>
-              <Text className="text-lg font-bold text-textMain">Chọn ngày lưu trú</Text>
+              <Text className="text-lg font-bold text-textMain">{t('stayDatePicker.title')}</Text>
               <Text className="text-xs text-textMuted mt-0.5">
-                Quy chuẩn nhận phòng 14:00 • Trả phòng 12:00 (BR03)
+                {t('stayDatePicker.subtitle')}
               </Text>
             </View>
             <Pressable
@@ -325,11 +328,11 @@ export default function StayDatePickerModal({
                 }`}
               >
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-[11px] font-bold text-brand uppercase">Nhận phòng</Text>
-                  <Text className="text-[10px] text-textMuted">Từ 14:00</Text>
+                  <Text className="text-[11px] font-bold text-brand uppercase">{t('stayDatePicker.checkIn')}</Text>
+                  <Text className="text-[10px] text-textMuted">{t('stayDatePicker.fromTime')}</Text>
                 </View>
                 <Text className="text-sm font-bold text-textMain mt-1">
-                  {formatDisplayDate(tempCheckIn)}
+                  {formatDisplayDate(tempCheckIn, i18n.language)}
                 </Text>
               </Pressable>
 
@@ -338,7 +341,7 @@ export default function StayDatePickerModal({
                 <Ionicons name="arrow-forward" size={16} color="#4F46E5" />
                 <View className="bg-brand/10 px-2 py-0.5 rounded-full mt-1">
                   <Text className="text-[10px] font-bold text-brand">
-                    {nights > 0 ? `${nights} đêm` : '—'}
+                    {nights > 0 ? t('stayDatePicker.nights', { nights }) : '—'}
                   </Text>
                 </View>
               </View>
@@ -353,22 +356,22 @@ export default function StayDatePickerModal({
                 }`}
               >
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-[11px] font-bold text-brand uppercase">Trả phòng</Text>
-                  <Text className="text-[10px] text-textMuted">Trước 12:00</Text>
+                  <Text className="text-[11px] font-bold text-brand uppercase">{t('stayDatePicker.checkOut')}</Text>
+                  <Text className="text-[10px] text-textMuted">{t('stayDatePicker.beforeTime')}</Text>
                 </View>
                 <Text
                   className={`text-sm font-bold mt-1 ${
                     tempCheckOut ? 'text-textMain' : 'text-textMuted italic'
                   }`}
                 >
-                  {tempCheckOut ? formatDisplayDate(tempCheckOut) : 'Chọn ngày'}
+                  {tempCheckOut ? formatDisplayDate(tempCheckOut, i18n.language) : t('stayDatePicker.selectDate')}
                 </Text>
               </Pressable>
             </View>
 
             {/* Quick Chips (Preset options from Booking / Agoda) */}
             <View className="mb-3">
-              <Text className="text-xs font-semibold text-textMuted mb-2">Chọn nhanh:</Text>
+              <Text className="text-xs font-semibold text-textMuted mb-2">{t('stayDatePicker.quickPick')}</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -561,17 +564,17 @@ export default function StayDatePickerModal({
                         </Text>
                         {isStart && (
                           <Text style={{ color: '#FFFFFF', fontSize: 7, fontWeight: '700' }}>
-                            Nhận
+                            {t('stayDatePicker.dayCheckIn')}
                           </Text>
                         )}
                         {isEnd && (
                           <Text style={{ color: '#FFFFFF', fontSize: 7, fontWeight: '700' }}>
-                            Trả
+                            {t('stayDatePicker.dayCheckOut')}
                           </Text>
                         )}
                         {isBooked && !isStart && !isEnd && (
                           <Text style={{ color: '#EF4444', fontSize: 7, fontWeight: '700' }}>
-                            Kín
+                            {t('stayDatePicker.dayBooked')}
                           </Text>
                         )}
                       </Pressable>
@@ -608,14 +611,19 @@ export default function StayDatePickerModal({
                 }`}
               >
                 {rangeConflict
-                  ? `Trùng lịch! Khoảng ngày này đã có khách đặt trước (${rangeConflict.check_in} đến ${rangeConflict.check_out}). Vui lòng chọn ngày khác.`
+                  ? t('stayDatePicker.rangeConflict', {
+                      from: rangeConflict.check_in,
+                      to: rangeConflict.check_out,
+                    })
                   : !tempCheckIn
-                  ? 'Vui lòng chạm chọn ngày nhận phòng trên lịch.'
+                  ? t('stayDatePicker.selectCheckIn')
                   : !tempCheckOut
-                  ? 'Tuyệt vời! Bây giờ hãy chạm chọn ngày trả phòng.'
-                  : `Đã chọn: ${nights} đêm (${formatDisplayDate(tempCheckIn)} ➔ ${formatDisplayDate(
-                      tempCheckOut
-                    )}).`}
+                  ? t('stayDatePicker.selectCheckOut')
+                  : t('stayDatePicker.selectedNights', {
+                      nights,
+                      from: formatDisplayDate(tempCheckIn, i18n.language),
+                      to: formatDisplayDate(tempCheckOut, i18n.language),
+                    })}
               </Text>
             </View>
           </ScrollView>
@@ -626,7 +634,7 @@ export default function StayDatePickerModal({
               onPress={handleReset}
               className="px-4 py-3 rounded-full border border-borderLight bg-appBg items-center"
             >
-              <Text className="text-xs font-bold text-textMain">Đặt lại</Text>
+              <Text className="text-xs font-bold text-textMain">{t('stayDatePicker.reset')}</Text>
             </Pressable>
 
             <Pressable
@@ -638,7 +646,7 @@ export default function StayDatePickerModal({
             >
               <Ionicons name="calendar-outline" size={16} color="#FFF" />
               <Text className="text-sm font-bold text-white">
-                {canApply ? `Áp dụng ngày (${nights} đêm)` : 'Chọn ngày hợp lệ'}
+                {canApply ? t('stayDatePicker.applyDates', { nights }) : t('stayDatePicker.selectValidDates')}
               </Text>
             </Pressable>
           </View>

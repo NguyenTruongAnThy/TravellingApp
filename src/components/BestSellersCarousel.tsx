@@ -56,7 +56,7 @@ export default function BestSellersCarousel({
         >
           <Ionicons name="trophy" size={11} color="#D97706" />
           <Text className="ml-1 text-[11px] font-extrabold text-[#B45309]">
-            Top {bestSellers.length} Hot
+            {t('bestSellers.topHot', { count: bestSellers.length })}
           </Text>
         </View>
       </View>
@@ -77,7 +77,7 @@ export default function BestSellersCarousel({
               : 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80';
 
           const destination =
-            item.location?.split(',')[0]?.trim() || item.location || 'Điểm đến';
+            item.location?.split(',')[0]?.trim() || item.location || t('common.destination');
 
           // Tính toán giảm giá nếu có
           const originalPrice = item.original_price ? Number(item.original_price) : null;
@@ -190,8 +190,8 @@ export default function BestSellersCarousel({
                       className="flex-row items-center px-2.5 py-0.5"
                       style={{
                         backgroundColor: '#FF6B00',
-                        borderTopLeftRadius: 6,
-                        borderBottomLeftRadius: 6,
+                        borderTopLeftRadius: 12,
+                        borderBottomLeftRadius: 12,
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.25,
@@ -203,19 +203,6 @@ export default function BestSellersCarousel({
                         {t('common.saveDiscount')} {discountPercent}%
                       </Text>
                     </View>
-                    <View
-                      style={{
-                        position: 'absolute',
-                        right: 0,
-                        bottom: -5,
-                        width: 0,
-                        height: 0,
-                        borderTopWidth: 5,
-                        borderTopColor: '#C2410C',
-                        borderRightWidth: 5,
-                        borderRightColor: 'transparent',
-                      }}
-                    />
                   </View>
                 ) : null}
 
@@ -232,7 +219,7 @@ export default function BestSellersCarousel({
                 >
                   <Ionicons name="checkmark-circle" size={12} color="#10B981" />
                   <Text className="ml-1 text-[10px] font-bold text-white">
-                    {item.review_count} khách đã ở
+                    {t('bestSellers.stayedGuests', { count: item.review_count })}
                   </Text>
                 </View>
               </View>

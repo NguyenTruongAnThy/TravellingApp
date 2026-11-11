@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { getFavoritePlaces, toggleFavorite } from '../../services/favoritesService';
 import {
@@ -17,6 +18,7 @@ import AppButton from '../../components/AppButton';
 import PlaceCard from '../../components/PlaceCard';
 
 export default function MyListsScreen({ navigation: propNavigation }: { navigation?: any } = {}) {
+  const { t, i18n } = useTranslation();
   const hookNavigation = useNavigation<any>();
   const navigation = propNavigation || hookNavigation;
   const { session } = useAuth();
@@ -231,7 +233,7 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
         >
           <Ionicons name="arrow-back" size={20} color="#131B2E" />
         </Pressable>
-        <Text className="flex-1 text-center text-lg font-bold text-textMain">My Lists</Text>
+        <Text className="flex-1 text-center text-lg font-bold text-textMain">{t('favorites.title')}</Text>
         <Pressable className="w-9 h-9 rounded-full bg-white items-center justify-center border border-borderLight" onPress={openNewModal}>
           <Ionicons name="ellipsis-horizontal" size={20} color="#131B2E" />
         </Pressable>
@@ -244,7 +246,7 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
         {/* Content header: 'Places you liked' + real count + share */}
         <View className="mx-5 mt-4 flex-row items-start justify-between">
           <View className="flex-1 mr-3">
-            <Text className="text-2xl font-bold text-textMain">Places you liked</Text>
+            <Text className="text-2xl font-bold text-textMain">{i18n.language === 'vi' ? 'Chỗ nghỉ bạn đã thích' : 'Places you liked'}</Text>
             <Text className="mt-1 text-sm text-textMuted">{subtitle}</Text>
           </View>
           <Pressable className="w-10 h-10 rounded-full bg-white border border-borderLight items-center justify-center" onPress={handleShare}>
@@ -256,7 +258,7 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
         {selectedCollection ? (
           <Pressable className="mx-5 mt-3 self-start flex-row items-center px-3 py-2 rounded-full bg-brand" onPress={clearCollection}>
             <Ionicons name="bookmark" size={15} color="#FFFFFF" />
-            <Text className="ml-1.5 text-sm font-bold text-white">Collection: {selectedCollection.name}</Text>
+            <Text className="ml-1.5 text-sm font-bold text-white">{i18n.language === 'vi' ? 'Bộ sưu tập' : 'Collection'}: {selectedCollection.name}</Text>
             <Ionicons name="close" size={16} color="#FFFFFF" />
           </Pressable>
         ) : null}
@@ -267,7 +269,7 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
             onPress={() => setTypeFilter('all')}
             className={`mr-2 px-4 py-2 rounded-full border flex-row items-center ${typeFilter === 'all' ? 'bg-brand border-brand' : 'bg-white border-borderLight'}`}
           >
-            <Text className={`text-sm font-bold ${typeFilter === 'all' ? 'text-white' : 'text-textMain'}`}>All stays</Text>
+            <Text className={`text-sm font-bold ${typeFilter === 'all' ? 'text-white' : 'text-textMain'}`}>{t('search.allStays')}</Text>
             <View className={`ml-1.5 px-1.5 py-0.5 rounded-full ${typeFilter === 'all' ? 'bg-white' : 'bg-appBg'}`}>
               <Text className={`text-xs font-bold ${typeFilter === 'all' ? 'text-brand' : 'text-textMuted'}`}>{favoritePlaces.length}</Text>
             </View>
@@ -294,21 +296,29 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
           <View className="items-center justify-center px-6 py-10">
             {selectedCollectionId ? (
               <>
-                <Text className="text-lg font-bold text-textMain text-center">No stays in this collection yet</Text>
-                <Text className="mt-2 text-sm text-textMuted text-center">Add stays from their Detail page.</Text>
+                <Text className="text-lg font-bold text-textMain text-center">
+                  {i18n.language === 'vi' ? 'Chưa có chỗ nghỉ nào trong bộ sưu tập này' : 'No stays in this collection yet'}
+                </Text>
+                <Text className="mt-2 text-sm text-textMuted text-center">
+                  {i18n.language === 'vi' ? 'Lưu chỗ nghỉ từ trang chi tiết.' : 'Add stays from their Detail page.'}
+                </Text>
               </>
             ) : typeFilter !== 'all' ? (
               <>
-                <Text className="text-lg font-bold text-textMain text-center">No {typeFilter} stays saved yet</Text>
-                <Text className="mt-2 text-sm text-textMuted text-center">Try another type, or save more stays.</Text>
+                <Text className="text-lg font-bold text-textMain text-center">
+                  {i18n.language === 'vi' ? `Chưa có chỗ nghỉ kiểu ${typeFilter} nào` : `No ${typeFilter} stays saved yet`}
+                </Text>
+                <Text className="mt-2 text-sm text-textMuted text-center">
+                  {i18n.language === 'vi' ? 'Hãy khám phá và lưu thêm chỗ nghỉ.' : 'Try another type, or save more stays.'}
+                </Text>
               </>
             ) : (
               <>
-                <Text className="text-lg font-bold text-textMain text-center">No favorite stays yet</Text>
-                <Text className="mt-2 text-sm text-textMuted text-center">Tap the white heart on a stay photo to save it here.</Text>
+                <Text className="text-lg font-bold text-textMain text-center">{t('favorites.noFavoritesTitle')}</Text>
+                <Text className="mt-2 text-sm text-textMuted text-center">{t('favorites.noFavoritesDesc')}</Text>
               </>
             )}
-            <View className="mt-6 w-full"><AppButton title="Find a stay" onPress={() => navigation.navigate('Search')} /></View>
+            <View className="mt-6 w-full"><AppButton title={t('favorites.exploreStays')} onPress={() => navigation.navigate('Search')} /></View>
           </View>
         ) : (
           <View className="mx-5 mt-4">
@@ -392,11 +402,13 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
       <Modal visible={newModalVisible} animationType="slide" transparent onRequestClose={() => setNewModalVisible(false)}>
         <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(19,27,46,0.5)' }} onPress={() => setNewModalVisible(false)}>
           <Pressable className="bg-white rounded-t-3xl p-5" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-textMain">New collection</Text>
-            <Text className="mt-1 text-sm text-textMuted">Group your favourite stays together.</Text>
+            <Text className="text-lg font-bold text-textMain">{t('favorites.newCollection')}</Text>
+            <Text className="mt-1 text-sm text-textMuted">
+              {i18n.language === 'vi' ? 'Nhóm các chỗ nghỉ yêu thích cho chuyến đi của bạn.' : 'Group your favourite stays together.'}
+            </Text>
             <TextInput
               className="mt-4 px-4 py-3 rounded-2xl border border-borderLight bg-appBg text-base text-textMain"
-              placeholder="Collection name"
+              placeholder={t('favorites.enterCollectionName')}
               placeholderTextColor="#8A90A6"
               value={newName}
               onChangeText={(text) => { setNewName(text); setNewError(''); }}
@@ -406,10 +418,10 @@ export default function MyListsScreen({ navigation: propNavigation }: { navigati
             {newError ? <Text className="mt-2 text-sm text-red-500">{newError}</Text> : null}
             <View className="mt-4 flex-row">
               <Pressable className="flex-1 mr-2 py-3 rounded-full border border-brand items-center" onPress={() => setNewModalVisible(false)}>
-                <Text className="text-base font-bold text-brand">Cancel</Text>
+                <Text className="text-base font-bold text-brand">{t('common.cancel')}</Text>
               </Pressable>
               <Pressable className="flex-1 ml-2 py-3 rounded-full bg-brand items-center" onPress={handleCreateCollection} disabled={creating}>
-                <Text className="text-base font-bold text-white">{creating ? 'Creating...' : 'Create'}</Text>
+                <Text className="text-base font-bold text-white">{creating ? (i18n.language === 'vi' ? 'Đang tạo...' : 'Creating...') : t('favorites.create')}</Text>
               </Pressable>
             </View>
           </Pressable>

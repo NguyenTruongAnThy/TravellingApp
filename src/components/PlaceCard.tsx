@@ -29,6 +29,10 @@ export default function PlaceCard({
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0;
 
+  // Badge "Guest favourite": chi hien khi rating >= 4.8 VA review_count >= 5
+  const isGuestFavourite =
+    place.rating != null && Number(place.rating) >= 4.8 && (place.review_count ?? 0) >= 5;
+
   return (
     <View className="bg-cardBg rounded-3xl overflow-hidden mb-4 border border-borderLight">
       <View>
@@ -68,8 +72,8 @@ export default function PlaceCard({
               className="flex-row items-center px-3 py-1"
               style={{
                 backgroundColor: '#FF6B00',
-                borderTopLeftRadius: 6,
-                borderBottomLeftRadius: 6,
+                borderTopLeftRadius: 12,
+                borderBottomLeftRadius: 12,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.25,
@@ -81,20 +85,6 @@ export default function PlaceCard({
                 {t('common.saveDiscount')} {discountPercent}%
               </Text>
             </View>
-            {/* Vạt gập 3D ruy băng ở mép phải dưới */}
-            <View
-              style={{
-                position: 'absolute',
-                right: 0,
-                bottom: -6,
-                width: 0,
-                height: 0,
-                borderTopWidth: 6,
-                borderTopColor: '#C2410C',
-                borderRightWidth: 6,
-                borderRightColor: 'transparent',
-              }}
-            />
           </View>
         ) : null}
 
@@ -159,6 +149,13 @@ export default function PlaceCard({
             ) : null}
           </View>
         </View>
+
+        {isGuestFavourite ? (
+          <View className="mt-2 flex-row items-center self-start px-2.5 py-1 rounded-full bg-[#FFB020]">
+            <Ionicons name="star" size={12} color="#131B2E" />
+            <Text className="ml-1 text-[11px] font-bold text-[#131B2E]">{t('common.guestFavourite')}</Text>
+          </View>
+        ) : null}
 
         <View className="flex-row items-center mt-1">
           <Ionicons name="location-outline" size={14} color="#FFB020" />

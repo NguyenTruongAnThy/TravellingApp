@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Promotion } from '../types';
+import i18n from '../i18n';
 
 export interface PromoValidationResult {
   valid: boolean;
@@ -35,10 +36,14 @@ export async function getActivePromotions(): Promise<Promotion[]> {
  * Kiểm tra tính hợp lệ của mã khuyến mại và tính số tiền được giảm
  * @param inputCode Mã người dùng nhập vào
  * @param subtotal Tổng tiền trước khi giảm (giá phòng + tiện ích)
+ * @param placeLocation Vị trí chỗ đang đặt (vd 'Denpasar, Bali') — dùng để
+ * kiểm tra phạm vi áp dụng của mã (cột promotions.applicable_location).
+ * Mã không set phạm vi (null/rỗng) thì áp cho mọi nơi như trước.
  */
 export async function validatePromoCode(
   inputCode: string,
-  subtotal: number
+  subtotal: number,
+  placeLocation?: string
 ): Promise<PromoValidationResult> {
   const code = inputCode.trim().toUpperCase();
   if (!code) {
@@ -83,6 +88,24 @@ export async function validatePromoCode(
         message: `Đơn đặt phòng tối thiểu $${minOrder} để áp dụng mã này`,
         discountAmount: 0,
       };
+    }
+
+    // Kiểm tra phạm vi áp dụng: mã có applicable_location (vd 'Bali') thì
+    // chỉ dùng cho chỗ ở có location chứa chuỗi đó (không phân biệt hoa
+    // thường). Mã không set phạm vi (null/rỗng) áp cho mọi nơi như trước.
+    // Location chỗ ở có dạng 'Tên, Vùng' (vd 'Denpasar, Bali',
+    // 'Bali, Indonesia') nên substring khớp; chỗ ngoài Bali
+    // (vd 'Oregon, USA', 'Đà Lạt, Việt Nam') không chứa chuỗi này.
+    const scope = (promo.applicable_location || '').trim();
+    if (scope) {
+      const loc = (placeLocation || '').toLowerCase();
+      if (!loc || !loc.includes(scope.toLowerCase())) {
+        return {
+          valid: false,
+          message: i18n.t('checkout.promoScopeMismatch', { location: scope }),
+          discountAmount: 0,
+        };
+      }
     }
 
     // Tính toán số tiền được giảm

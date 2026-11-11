@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 
@@ -25,12 +26,6 @@ interface MessageItem {
   status?: 'sent' | 'delivered' | 'read';
 }
 
-const QUICK_PROMPTS = [
-  'Airport Pickup ($35)',
-  'Early Check-in (12:00 PM)',
-  'Luggage Dropoff',
-  'Wifi Details',
-];
 
 export default function HostChatScreen({
   navigation,
@@ -39,8 +34,16 @@ export default function HostChatScreen({
   navigation?: any;
   route?: any;
 }) {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const userId = session?.user?.id;
+
+  const quickPrompts = [
+    t('hostChat.quickAirport'),
+    t('hostChat.quickEarlyCheckIn'),
+    t('hostChat.quickLuggage'),
+    t('hostChat.quickWifi'),
+  ];
 
   const booking = route?.params?.booking || route?.params?.conversation?.booking;
   const bookingId = booking?.id;
@@ -86,8 +89,8 @@ export default function HostChatScreen({
         {
           id: 'welcome-1',
           sender: hostName,
-          text: `Chào bạn! Chào mừng bạn đến với ${propertyTitle}. Bạn có cần hỗ trợ lộ trình hay hẹn giờ nhận phòng không?`,
-          time: 'Hôm nay',
+          text: t('hostChat.welcomeMessage', { property: propertyTitle }),
+          time: t('hostChat.today'),
           isHost: true,
         },
       ]);
@@ -128,7 +131,7 @@ export default function HostChatScreen({
       id: Date.now().toString(),
       sender: 'You',
       text: textToSend.trim(),
-      time: 'Just now',
+      time: t('hostChat.justNow'),
       isHost: false,
       status: 'sent',
     };
@@ -159,8 +162,8 @@ export default function HostChatScreen({
         {
           id: (Date.now() + 1).toString(),
           sender: hostName,
-          text: `Cảm ơn bạn! ${hostName} đã nhận được tin nhắn: "${textToSend.trim()}". Chúng tôi sẽ chuẩn bị chu đáo đón bạn!`,
-          time: 'Just now',
+          text: t('hostChat.autoReply', { name: hostName, msg: textToSend.trim() }),
+          time: t('hostChat.justNow'),
           isHost: true,
         },
       ]);
@@ -168,9 +171,9 @@ export default function HostChatScreen({
   };
 
   const handleCallHost = () => {
-    Alert.alert('Gọi cho chủ nhà', `Gọi điện thoại đến ${hostName} (${hostPhone})?`, [
-      { text: 'Gọi ngay', onPress: () => {} },
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert(t('hostChat.callHost'), t('hostChat.callHostConfirm', { name: hostName, phone: hostPhone }), [
+      { text: t('hostChat.callNow'), onPress: () => {} },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -231,7 +234,7 @@ export default function HostChatScreen({
             <View className="flex-row items-center gap-1.5">
               <Text className="text-sm font-bold text-textMain">{hostName}</Text>
               <View className="bg-brand/10 px-1.5 py-0.5 rounded-full">
-                <Text className="text-[9px] font-bold text-brand">Host</Text>
+                <Text className="text-[9px] font-bold text-brand">{t('hostChat.hostBadge')}</Text>
               </View>
             </View>
             <Text className="text-xs text-textMuted">
@@ -253,7 +256,7 @@ export default function HostChatScreen({
         <View className="flex-row items-center gap-2">
           <Ionicons name="shield-checkmark" size={15} color="#4F46E5" />
           <Text className="text-xs font-semibold text-brand">
-            Reservation {bookingRef} · Confirmed
+            {t('hostChat.reservationConfirmed', { ref: bookingRef })}
           </Text>
         </View>
         <Pressable
@@ -277,7 +280,7 @@ export default function HostChatScreen({
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={QUICK_PROMPTS}
+          data={quickPrompts}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <Pressable
@@ -295,7 +298,7 @@ export default function HostChatScreen({
         <Pressable
           className="w-10 h-10 rounded-full bg-appBg items-center justify-center border border-borderLight active:opacity-70"
           onPress={() =>
-            Alert.alert('Send Attachment', 'Choose a photo from your gallery or camera.')
+            Alert.alert(t('hostChat.attachTitle'), t('hostChat.attachDesc'))
           }
         >
           <Ionicons name="image-outline" size={20} color="#5A6478" />
@@ -303,7 +306,7 @@ export default function HostChatScreen({
 
         <TextInput
           className="flex-1 bg-appBg rounded-full px-4 py-2.5 text-sm text-textMain border border-borderLight"
-          placeholder={`Message ${hostName}...`}
+          placeholder={t('hostChat.inputPlaceholder', { name: hostName })}
           placeholderTextColor="#8A90A6"
           value={inputText}
           onChangeText={setInputText}

@@ -117,22 +117,28 @@ export default function TripReceiptScreen({
   };
 
   const handleMoreOptions = () => {
-    Alert.alert(t('receipt.title'), `Receipt ${receiptNumber}`, [
+    Alert.alert(t('receipt.title'), `${t('receipt.receiptNumber')} ${receiptNumber}`, [
       {
-        text: 'Copy Receipt Number',
-        onPress: () => Alert.alert('Copied', `${receiptNumber} copied to clipboard.`),
+        text: i18n.language === 'vi' ? 'Sao chép mã biên nhận' : 'Copy Receipt Number',
+        onPress: () => Alert.alert(
+          i18n.language === 'vi' ? 'Đã sao chép' : 'Copied',
+          i18n.language === 'vi' ? `Mã biên nhận ${receiptNumber} đã được sao chép.` : `${receiptNumber} copied to clipboard.`
+        ),
       },
       {
-        text: t('receipt.contactSupport', 'Liên hệ hỗ trợ'),
+        text: i18n.language === 'vi' ? 'Liên hệ hỗ trợ 24/7' : 'Contact 24/7 Support',
         onPress: () => {
           if (navigation?.navigate) {
             navigation.navigate('TravelAssistant');
           } else {
-            Alert.alert('Support', '24/7 Virtual Assistant is ready to help.');
+            Alert.alert(
+              i18n.language === 'vi' ? 'Hỗ trợ' : 'Support',
+              i18n.language === 'vi' ? 'Trợ lý ảo du lịch 24/7 sẵn sàng hỗ trợ bạn.' : '24/7 Virtual Assistant is ready to help.'
+            );
           }
         },
       },
-      { text: t('receipt.close', 'Đóng'), style: 'cancel' },
+      { text: i18n.language === 'vi' ? 'Đóng' : 'Close', style: 'cancel' },
     ]);
   };
 

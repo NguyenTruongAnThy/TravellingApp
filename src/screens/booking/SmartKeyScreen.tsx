@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { getSmartKeyDetails, SmartKeyInfo } from '../../services/smartKeyService';
 import { exportSmartKeyGuidePDF } from '../../services/pdfService';
 
@@ -25,6 +26,7 @@ interface SmartKeyScreenProps {
 }
 
 export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProps) {
+  const { t, i18n } = useTranslation();
   const data: SmartKeyInfo = getSmartKeyDetails(route?.params?.booking);
 
   const [unlocking, setUnlocking] = useState(false);
@@ -35,7 +37,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
   const handleShare = async () => {
     try {
       await Share.share({
-        title: `Check-in & Smart Key - ${data.placeTitle}`,
+        title: `${t('smartKey.title')} - ${data.placeTitle}`,
         message: `WanderStay Check-In Details for ${data.placeTitle} (${data.refCode})\n` +
           `Door PIN: ${data.pinCode}\n` +
           `WiFi: ${data.wifiSSID} | Password: ${data.wifiPassword}\n` +
@@ -48,38 +50,38 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
   };
 
   const handleMoreOptions = () => {
-    Alert.alert('Smart Key Options', `Booking ${data.refCode}`, [
+    Alert.alert(t('smartKey.options'), `${t('bookings.bookingRef')} ${data.refCode}`, [
       {
-        text: 'Copy Door PIN',
-        onPress: () => Alert.alert('Copied', `Door PIN ${data.pinCode} copied to clipboard.`),
+        text: t('smartKey.copyPin'),
+        onPress: () => Alert.alert(t('smartKey.copied'), t('smartKey.pinCopiedDesc', { pin: data.pinCode })),
       },
       {
-        text: 'Copy WiFi Credentials',
+        text: t('smartKey.copyWifi'),
         onPress: () =>
           Alert.alert(
-            'Copied',
-            `WiFi: ${data.wifiSSID}\nPassword: ${data.wifiPassword} copied to clipboard.`
+            t('smartKey.copied'),
+            t('smartKey.wifiCopiedDesc')
           ),
       },
       {
-        text: `Liên hệ chủ nhà ${data.hostName}`,
+        text: t('smartKey.contactHost', { name: data.hostName }),
         onPress: handleMessageHost,
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const handleCopyPIN = () => {
-    Alert.alert('PIN Copied', `Keypad code ${data.pinCode} copied to clipboard.`);
+    Alert.alert(t('smartKey.copied'), t('smartKey.pinCopiedDesc', { pin: data.pinCode }));
   };
 
   const handleCopyWiFi = (type: 'SSID' | 'Password', value: string) => {
-    Alert.alert('Copied', `${type}: "${value}" copied to clipboard.`);
+    Alert.alert(t('smartKey.copied'), `${type}: "${value}"`);
   };
 
   const handleBluetoothUnlock = () => {
     if (unlocked) {
-      Alert.alert('Unlocked', 'Main Bamboo Gate is already unlocked.');
+      Alert.alert(t('smartKey.unlocked'), t('smartKey.alreadyUnlocked'));
       return;
     }
 
@@ -88,8 +90,8 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
       setUnlocking(false);
       setUnlocked(true);
       Alert.alert(
-        'Door Unlocked! 🔓',
-        'Smart lock verified via Bluetooth LE. The Main Bamboo Gate latch is now open for 30 seconds.',
+        t('smartKey.doorUnlocked'),
+        t('smartKey.doorUnlockedDesc'),
         [
           {
             text: 'OK',
@@ -105,11 +107,11 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
 
   const handleCallHost = () => {
     Alert.alert(
-      'Call Host',
-      `Would you like to call ${data.hostName} at ${data.hostPhone || '+62 812 3456 7890'}?`,
+      t('smartKey.callHost'),
+      t('smartKey.callHostDesc', { name: data.hostName, phone: data.hostPhone || '+62 812 3456 7890' }),
       [
-        { text: 'Call Now', onPress: () => {} },
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('smartKey.callNow'), onPress: () => {} },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
@@ -118,39 +120,39 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
     if (navigation?.navigate) {
       navigation.navigate('HostChat', { booking: route?.params?.booking });
     } else {
-      Alert.alert('Message Host', `Open chat session with ${data.hostName}.`);
+      Alert.alert(t('bookings.messageHost'), `Open chat session with ${data.hostName}.`);
     }
   };
 
   const handleOpenMaps = () => {
     Alert.alert(
-      'Open in Maps',
+      t('smartKey.openMaps'),
       `Launching navigation to ${data.placeTitle} at ${data.address}...`,
-      [{ text: 'Open' }, { text: 'Cancel', style: 'cancel' }]
+      [{ text: 'OK' }, { text: t('common.cancel'), style: 'cancel' }]
     );
   };
 
   const handleDownloadOfflineGuide = () => {
     Alert.alert(
-      'Xuất Cẩm nang nhận phòng (PDF) 📄',
-      '💡 Hướng dẫn lưu file trên Android:\n\n1. Ở màn hình tiếp theo, bấm vào "Chọn máy in ▼" ở trên cùng.\n2. Chọn "Lưu dưới dạng PDF" (Save as PDF).\n3. Bấm nút tròn để chọn thư mục lưu (Downloads / Tệp).',
+      t('smartKey.exportGuide'),
+      t('smartKey.exportGuideHint'),
       [
         {
-          text: 'Tiếp tục xuất PDF',
+          text: t('smartKey.continueExport'),
           onPress: async () => {
             try {
               setDownloadingGuide(true);
-              const res = await exportSmartKeyGuidePDF(data, true);
+              const res = await exportSmartKeyGuidePDF(data, i18n.language === 'vi');
               setDownloadingGuide(false);
               if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
-                Alert.alert('Thông báo', res.error);
+                Alert.alert(t('common.error'), res.error);
               }
             } catch {
               setDownloadingGuide(false);
             }
           },
         },
-        { text: 'Đóng', style: 'cancel' },
+        { text: t('common.close'), style: 'cancel' },
       ]
     );
   };
@@ -170,7 +172,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
           >
             <Ionicons name="chevron-back" size={20} color="#131B2E" />
           </Pressable>
-          <Text className="text-lg font-bold text-textMain ml-1">Check In Details</Text>
+          <Text className="text-lg font-bold text-textMain ml-1">{t('smartKey.checkInDetails')}</Text>
         </View>
 
         <View className="flex-row items-center gap-2">
@@ -201,13 +203,13 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
           <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-[#E2E7FF]">
             <View className="w-2 h-2 rounded-full bg-[#006877]" />
             <Text className="text-[11px] font-bold text-[#131B2E] tracking-wider uppercase">
-              BOOKING {data.refCode}
+              {t('bookings.bookingRef')} {data.refCode}
             </Text>
           </View>
 
           <View className="flex-row items-center gap-1 px-3 py-1 rounded-full bg-[#A2EEFF]">
             <Ionicons name="time-outline" size={12} color="#001F25" />
-            <Text className="text-[11px] font-bold text-[#001F25]">In 5 Days</Text>
+            <Text className="text-[11px] font-bold text-[#001F25]">{t('smartKey.inDays', { days: 5 })}</Text>
           </View>
         </View>
 
@@ -255,7 +257,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
             <View className="flex-1 pr-2">
               <View className="flex-row items-center gap-1 mb-0.5">
                 <Ionicons name="log-in-outline" size={13} color="#3C494C" />
-                <Text className="text-[11px] font-bold text-[#3C494C] uppercase">CHECK-IN</Text>
+                <Text className="text-[11px] font-bold text-[#3C494C] uppercase">{t('smartKey.checkIn')}</Text>
               </View>
               <Text className="text-sm font-semibold text-[#131B2E]">{data.checkInDate}</Text>
               <Text className="text-xs text-[#3C494C] mt-0.5">{data.checkInTime}</Text>
@@ -267,7 +269,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
             <View className="flex-1 pl-2">
               <View className="flex-row items-center gap-1 mb-0.5">
                 <Ionicons name="log-out-outline" size={13} color="#3C494C" />
-                <Text className="text-[11px] font-bold text-[#3C494C] uppercase">CHECK-OUT</Text>
+                <Text className="text-[11px] font-bold text-[#3C494C] uppercase">{t('smartKey.checkOut')}</Text>
               </View>
               <Text className="text-sm font-semibold text-[#131B2E]">{data.checkOutDate}</Text>
               <Text className="text-xs text-[#3C494C] mt-0.5">{data.checkOutTime}</Text>
@@ -286,13 +288,13 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
               <View className="w-8 h-8 rounded-full bg-[#00BDD6]/20 items-center justify-center">
                 <Ionicons name="key" size={15} color="#006877" />
               </View>
-              <Text className="text-sm font-semibold text-[#131B2E]">Keyless Smart Access</Text>
+              <Text className="text-sm font-semibold text-[#131B2E]">{t('smartKey.keylessAccess')}</Text>
             </View>
 
             <View className="flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAEDFF]">
               <View className={`w-1.5 h-1.5 rounded-full ${unlocked ? 'bg-emerald-500' : 'bg-[#006877]'}`} />
               <Text className="text-[11px] font-bold text-[#3C494C]">
-                {unlocked ? 'Unlocked' : 'Sync Ready'}
+                {unlocked ? t('smartKey.unlocked') : t('smartKey.syncReady')}
               </Text>
             </View>
           </View>
@@ -300,7 +302,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
           {/* PIN Display Section */}
           <View className="bg-[#F2F3FF] rounded-lg p-4 items-center mb-3">
             <Text className="text-[11px] font-bold text-[#3C494C] tracking-widest uppercase mb-2">
-              ENTRY DOOR PIN CODE
+              {t('smartKey.doorPin')}
             </Text>
 
             {/* 5 Distinct PIN Blocks */}
@@ -324,7 +326,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
               onPress={handleCopyPIN}
             >
               <Ionicons name="copy-outline" size={13} color="#131B2E" />
-              <Text className="text-[11px] font-bold text-[#131B2E]">Copy Keypad PIN</Text>
+              <Text className="text-[11px] font-bold text-[#131B2E]">{t('smartKey.copyPin')}</Text>
             </Pressable>
           </View>
 
@@ -558,7 +560,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
               <>
                 <Ionicons name="download-outline" size={18} color="#131B2E" />
                 <Text className="text-sm font-semibold text-[#131B2E]">
-                  Download Offline Guide (PDF)
+                  {t('smartKey.offlineGuide')}
                 </Text>
               </>
             )}
@@ -570,7 +572,7 @@ export default function SmartKeyScreen({ navigation, route }: SmartKeyScreenProp
           >
             <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
             <Text className="text-sm font-semibold text-white">
-              Message Host {data.hostName}
+              {t('smartKey.contactHost', { name: data.hostName })}
             </Text>
           </Pressable>
         </View>

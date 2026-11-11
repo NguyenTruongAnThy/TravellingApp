@@ -43,15 +43,6 @@ export interface ChatMessage {
   executedTools?: string[];
 }
 
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: 'msg-1',
-    sender: 'bot',
-    senderName: 'WanderStay AI',
-    time: '11:00 AM',
-    text: 'Xin chào! 👋 Tôi là WanderStay AI Assistant — Trợ lý du lịch ảo 24/7. Tôi có thể tra cứu chuyến đi thật của bạn, hướng dẫn nhận phòng Smart Key, tính phí hủy phòng theo luật BR05 hoặc xuất hóa đơn VAT. Bạn cần hỗ trợ gì hôm nay?',
-  },
-];
 
 interface TravelAssistantScreenProps {
   navigation?: any;
@@ -72,7 +63,15 @@ export default function TravelAssistantScreen({
   const userId = session?.user?.id;
   const userName = session?.user?.user_metadata?.name || 'Bạn';
 
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'msg-1',
+      sender: 'bot',
+      senderName: 'WanderStay AI',
+      time: '11:00 AM',
+      text: t('support.welcomeMessage'),
+    },
+  ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
@@ -120,8 +119,7 @@ export default function TravelAssistantScreen({
     try {
       await Share.share({
         title: 'WanderStay AI Support',
-        message:
-          'WanderStay AI 24/7 Support Session\nTrợ lý du lịch ảo hỗ trợ đặt phòng và lưu trú thông minh.',
+        message: t('support.shareMessage'),
       });
     } catch {
       // Dismissed
@@ -129,30 +127,30 @@ export default function TravelAssistantScreen({
   };
 
   const handleMoreOptions = () => {
-    Alert.alert('Tùy chọn Hỗ trợ', 'Phiên hỗ trợ AI 24/7', [
+    Alert.alert(t('support.moreOptionsTitle'), t('support.moreOptionsDesc'), [
       {
-        text: 'Tải Hóa đơn VAT (PDF)',
+        text: t('support.downloadVatInvoice'),
         onPress: handleDownloadInvoice,
       },
       {
-        text: 'Chuyển sang Chuyên viên Live Agent',
+        text: t('support.switchToAgent'),
         onPress: handleHandoverAgent,
       },
       {
-        text: 'Chia sẻ phiên hỗ trợ',
+        text: t('support.shareSession'),
         onPress: handleShare,
       },
-      { text: 'Đóng', style: 'cancel' },
+      { text: t('common.close'), style: 'cancel' },
     ]);
   };
 
   const handleDownloadInvoice = () => {
     Alert.alert(
-      'Xuất Hóa đơn điện tử VAT (PDF) 📄',
-      '💡 Hướng dẫn lưu file trên Android:\n\n1. Ở màn hình tiếp theo, bấm vào "Chọn máy in ▼" ở trên cùng.\n2. Chọn "Lưu dưới dạng PDF" (Save as PDF).\n3. Bấm nút tròn để chọn thư mục lưu (Downloads / Tệp).',
+      t('support.vatGuideTitle'),
+      t('support.vatGuideBody'),
       [
         {
-          text: 'Tiếp tục xuất PDF',
+          text: t('support.continueExport'),
           onPress: async () => {
             try {
               setDownloadingInvoice(true);
@@ -167,14 +165,14 @@ export default function TravelAssistantScreen({
               );
               setDownloadingInvoice(false);
               if (!res.success && res.error && !res.error.includes('canceled') && !res.error.includes('dismissed')) {
-                Alert.alert('Thông báo', res.error);
+                Alert.alert(t('common.notice'), res.error);
               }
             } catch {
               setDownloadingInvoice(false);
             }
           },
         },
-        { text: 'Đóng', style: 'cancel' },
+        { text: t('common.close'), style: 'cancel' },
       ]
     );
   };
@@ -186,9 +184,9 @@ export default function TravelAssistantScreen({
       const agentMsg: ChatMessage = {
         id: `msg-${Date.now()}`,
         sender: 'agent',
-        senderName: 'Trợ lý CSKH 24/7',
+        senderName: t('support.agentName'),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: `Chào ${userName}! Tôi là chuyên viên hỗ trợ trực tiếp của WanderStay. Tôi đã tiếp nhận phiên hỗ trợ và sẵn sàng giải đáp thắc mắc của bạn ngay bây giờ!`,
+        text: t('support.agentGreeting', { name: userName }),
       };
       setMessages((prev) => [...prev, agentMsg]);
       scrollToBottom();
@@ -198,12 +196,18 @@ export default function TravelAssistantScreen({
   // Xử lý HỦY PHÒNG THẬT từ Action Card của AI
   const handleConfirmCancelBooking = (bookingData: any) => {
     Alert.alert(
-      'Xác nhận hủy đặt phòng?',
-      `Bạn có chắc chắn muốn hủy đơn ${bookingData.refCode} tại ${bookingData.placeTitle}?\n\n• Phí hủy: $${bookingData.cancellationFee}\n• Số tiền hoàn lại: $${bookingData.refundAmount}\n• Quy định: ${bookingData.policy}`,
+      t('support.cancelConfirmTitle'),
+      t('support.cancelConfirmDesc', {
+        ref: bookingData.refCode,
+        place: bookingData.placeTitle,
+        fee: bookingData.cancellationFee,
+        refund: bookingData.refundAmount,
+        policy: bookingData.policy,
+      }),
       [
-        { text: 'Suy nghĩ lại', style: 'cancel' },
+        { text: t('support.thinkAgain'), style: 'cancel' },
         {
-          text: 'Xác nhận hủy phòng',
+          text: t('support.confirmCancel'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -215,8 +219,8 @@ export default function TravelAssistantScreen({
 
               if (success) {
                 Alert.alert(
-                  'Hủy phòng thành công',
-                  `Đơn ${bookingData.refCode} đã được hủy. Số tiền hoàn lại $${bookingData.refundAmount} sẽ được hoàn về phương thức thanh toán ban đầu của bạn.`
+                  t('support.cancelSuccessTitle'),
+                  t('support.cancelSuccessDesc', { ref: bookingData.refCode, refund: bookingData.refundAmount })
                 );
 
                 // Cập nhật thẻ trên chat sang trạng thái đã hủy
@@ -227,15 +231,15 @@ export default function TravelAssistantScreen({
                     sender: 'bot',
                     senderName: 'WanderStay AI',
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    text: `✅ Đơn đặt phòng **${bookingData.refCode}** đã được hủy thành công trên hệ thống. Số tiền hoàn trả $${bookingData.refundAmount} đã được xử lý theo quy định BR05.`,
+                    text: t('support.cancelSuccessMessage', { ref: bookingData.refCode, refund: bookingData.refundAmount }),
                   },
                 ]);
                 scrollToBottom();
               } else {
-                Alert.alert('Không thể hủy', 'Đã xảy ra lỗi khi hủy đặt phòng. Vui lòng thử lại sau.');
+                Alert.alert(t('support.cancelFailedTitle'), t('support.cancelFailedDesc'));
               }
             } catch (err: any) {
-              Alert.alert('Lỗi', err?.message || 'Lỗi hệ thống khi hủy phòng.');
+              Alert.alert(t('common.error'), err?.message || t('support.cancelErrorDesc'));
             } finally {
               setCancellingBookingId(null);
             }
@@ -253,7 +257,7 @@ export default function TravelAssistantScreen({
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       sender: 'user',
-      senderName: 'You',
+      senderName: t('support.you'),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       text: trimmed,
     };
@@ -284,7 +288,7 @@ export default function TravelAssistantScreen({
         throw error;
       }
 
-      const replyText = data?.reply || 'Tôi đã xử lý yêu cầu của bạn.';
+      const replyText = data?.reply || t('support.defaultReply');
       const actionCard = data?.actionCard || null;
       const executedTools = data?.executedTools || [];
 
@@ -301,7 +305,7 @@ export default function TravelAssistantScreen({
         actionCard,
         executedTools,
         hasAttachment: isAskingInvoice,
-        attachmentName: isAskingInvoice ? 'Hóa đơn điện tử VAT' : undefined,
+        attachmentName: isAskingInvoice ? t('support.vatAttachmentName') : undefined,
         attachmentSize: isAskingInvoice ? '142 KB • VAT Compliant' : undefined,
       };
 
@@ -314,7 +318,7 @@ export default function TravelAssistantScreen({
         sender: 'bot',
         senderName: 'WanderStay AI',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: `WanderStay AI đã nhận được câu hỏi của bạn. Nếu bạn cần hủy phòng, chính sách BR05 áp dụng:\n• Trước 48h: Hoàn tiền 100% miễn phí.\n• Trong vòng 48h: Phạt 1 đêm.\n• Sau check-in: Không hoàn tiền.`,
+        text: t('support.fallbackBr05'),
       };
       setMessages((prev) => [...prev, fallbackReply]);
     } finally {
@@ -324,15 +328,15 @@ export default function TravelAssistantScreen({
   };
 
   const handleQuickChipPress = (chipType: string) => {
-    if (chipType === 'Chuyến đi của tôi') {
-      sendMessage('Kiểm tra các chuyến đi tôi đã đặt');
-    } else if (chipType === 'Hủy & Hoàn tiền') {
-      sendMessage('Tôi muốn kiểm tra chính sách hủy phòng và số tiền hoàn lại nếu hủy đơn');
-    } else if (chipType === 'Hóa đơn VAT') {
-      sendMessage('Tôi muốn xuất hóa đơn VAT điện tử cho chuyến đi');
-    } else if (chipType === 'Xe đón $35') {
-      sendMessage('Dịch vụ xe riêng đón sân bay $35 USD của Balian Treehouse có tiện ích gì?');
-    } else if (chipType === 'Gặp Chuyên viên') {
+    if (chipType === t('support.quickTrip') || chipType === 'Chuyến đi của tôi' || chipType === 'My Bookings') {
+      sendMessage(i18n.language === 'vi' ? 'Kiểm tra các chuyến đi tôi đã đặt' : 'Check my booked reservations');
+    } else if (chipType === t('support.quickCancel') || chipType === 'Hủy & Hoàn tiền' || chipType === 'Cancel & Refund') {
+      sendMessage(i18n.language === 'vi' ? 'Tôi muốn kiểm tra chính sách hủy phòng và số tiền hoàn lại nếu hủy đơn' : 'I want to check the cancellation policy and refund amount');
+    } else if (chipType === t('support.quickInvoice') || chipType === 'Hóa đơn VAT' || chipType === 'VAT Invoice') {
+      sendMessage(i18n.language === 'vi' ? 'Tôi muốn xuất hóa đơn VAT điện tử cho chuyến đi' : 'I want to request an electronic VAT invoice for my trip');
+    } else if (chipType === t('support.quickTransfer') || chipType === 'Xe đón $35' || chipType === 'Xe đưa đón' || chipType === 'Airport Shuttle') {
+      sendMessage(i18n.language === 'vi' ? 'Dịch vụ xe riêng đón sân bay $35 USD của Balian Treehouse có tiện ích gì?' : 'What does the $35 USD private airport shuttle include?');
+    } else if (chipType === t('support.quickAgent') || chipType === 'Gặp Chuyên viên' || chipType === 'Human Agent') {
       handleHandoverAgent();
     }
   };
@@ -447,10 +451,10 @@ export default function TravelAssistantScreen({
 
               <Pressable
                 className="bg-indigo-50 border border-indigo-200 rounded-full px-3.5 py-2 shadow-xs flex-row items-center gap-1.5 active:opacity-70"
-                onPress={() => handleQuickChipPress('Gặp Chuyên viên')}
+                onPress={() => handleQuickChipPress(t('support.quickAgent'))}
               >
                 <Ionicons name="person-outline" size={14} color="#4F46E5" />
-                <Text className="text-xs font-bold text-[#4F46E5]">Gặp Chuyên viên</Text>
+                <Text className="text-xs font-bold text-[#4F46E5]">{t('support.quickAgent')}</Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -508,7 +512,7 @@ export default function TravelAssistantScreen({
                             <View className="flex-row items-center gap-1.5">
                               <Ionicons name="warning-outline" size={16} color="#DC2626" />
                               <Text className="text-xs font-black text-red-700">
-                                Xác nhận Hủy phòng ({actionCard.data.refCode})
+                                {t('support.confirmCancelCard', { ref: actionCard.data.refCode })}
                               </Text>
                             </View>
                             <View className="px-2 py-0.5 rounded-full bg-red-100">
@@ -526,20 +530,20 @@ export default function TravelAssistantScreen({
                           {/* Bảng kê số tiền hoàn & phạt */}
                           <View className="bg-white rounded-xl p-2.5 border border-red-100 gap-1.5 my-1">
                             <View className="flex-row justify-between">
-                              <Text className="text-xs text-[#5A6478]">Tổng tiền ban đầu:</Text>
+                              <Text className="text-xs text-[#5A6478]">{t('support.originalTotal')}</Text>
                               <Text className="text-xs font-bold text-[#131B2E]">
                                 ${actionCard.data.totalAmount} USD
                               </Text>
                             </View>
                             <View className="flex-row justify-between">
-                              <Text className="text-xs text-[#5A6478]">Phí phạt theo luật BR05:</Text>
+                              <Text className="text-xs text-[#5A6478]">{t('support.cancellationFee')}</Text>
                               <Text className="text-xs font-bold text-red-600">
                                 -${actionCard.data.cancellationFee} USD
                               </Text>
                             </View>
                             <View className="h-[1px] bg-[#E6E3F5] my-0.5" />
                             <View className="flex-row justify-between items-center">
-                              <Text className="text-xs font-bold text-[#131B2E]">Số tiền hoàn lại:</Text>
+                              <Text className="text-xs font-bold text-[#131B2E]">{t('support.refundAmount')}</Text>
                               <Text className="text-sm font-black text-emerald-600">
                                 +${actionCard.data.refundAmount} USD
                               </Text>
@@ -562,7 +566,7 @@ export default function TravelAssistantScreen({
                               <>
                                 <Ionicons name="trash-outline" size={15} color="#FFFFFF" />
                                 <Text className="text-xs font-bold text-white">
-                                  Xác nhận hủy đơn {actionCard.data.refCode}
+                                  {t('support.confirmCancelBooking', { ref: actionCard.data.refCode })}
                                 </Text>
                               </>
                             )}
@@ -577,7 +581,7 @@ export default function TravelAssistantScreen({
                             <View className="flex-row items-center gap-1.5">
                               <Ionicons name="checkmark-circle" size={16} color="#059669" />
                               <Text className="text-xs font-black text-brand">
-                                Đơn đặt phòng: {actionCard.data.refCode}
+                                {t('support.bookingRef', { ref: actionCard.data.refCode })}
                               </Text>
                             </View>
                             <View className="px-2 py-0.5 rounded-full bg-emerald-100">
@@ -600,10 +604,10 @@ export default function TravelAssistantScreen({
                                 {actionCard.data.placeTitle}
                               </Text>
                               <Text className="text-[11px] text-[#5A6478] mt-0.5">
-                                {actionCard.data.dates} ({actionCard.data.nights} đêm)
+                                {actionCard.data.dates} {t('support.bookingNights', { nights: actionCard.data.nights })}
                               </Text>
                               <Text className="text-xs font-black text-brand mt-1">
-                                Tổng: ${actionCard.data.total} USD
+                                {t('support.bookingTotal', { total: actionCard.data.total })}
                               </Text>
                             </View>
                           </View>
@@ -611,7 +615,7 @@ export default function TravelAssistantScreen({
                           <View className="mt-1 bg-white rounded-xl p-2.5 border border-[#E6E3F5] flex-row justify-between items-center">
                             <View className="flex-row items-center gap-1.5">
                               <Ionicons name="key-outline" size={15} color="#4F46E5" />
-                              <Text className="text-xs font-semibold text-[#131B2E]">Mã Smart Key PIN:</Text>
+                              <Text className="text-xs font-semibold text-[#131B2E]">{t('support.smartKeyPin')}</Text>
                             </View>
                             <Text className="text-xs font-black text-brand tracking-widest">
                               {actionCard.data.pinCode}
@@ -627,7 +631,7 @@ export default function TravelAssistantScreen({
                             }}
                           >
                             <Ionicons name="key" size={13} color="#FFFFFF" />
-                            <Text className="text-xs font-bold text-white">Xem chi tiết Smart Key & Nhận phòng</Text>
+                            <Text className="text-xs font-bold text-white">{t('support.viewSmartKey')}</Text>
                           </Pressable>
                         </View>
                       ) : null}
@@ -658,7 +662,7 @@ export default function TravelAssistantScreen({
                             ) : (
                               <>
                                 <Ionicons name="download-outline" size={12} color="#FFFFFF" />
-                                <Text className="text-[11px] font-bold text-white">Tải về</Text>
+                                <Text className="text-[11px] font-bold text-white">{t('support.download')}</Text>
                               </>
                             )}
                           </Pressable>
@@ -693,7 +697,7 @@ export default function TravelAssistantScreen({
               </View>
               <View className="bg-white rounded-2xl rounded-tl-none px-3.5 py-2.5 border border-[#E6E3F5] flex-row items-center gap-2">
                 <ActivityIndicator size="small" color="#4F46E5" />
-                <Text className="text-xs text-[#5A6478]">WanderStay AI đang trả lời...</Text>
+                <Text className="text-xs text-[#5A6478]">{t('support.typing')}</Text>
               </View>
             </View>
           ) : null}
@@ -705,7 +709,7 @@ export default function TravelAssistantScreen({
           <View className="h-12 rounded-full bg-[#F8F7FF] px-2 flex-row items-center gap-1 border border-[#E6E3F5]">
             <Pressable
               className="w-8 h-8 rounded-full items-center justify-center active:opacity-70"
-              onPress={() => Alert.alert('Đính kèm', 'Chọn hình ảnh hoặc tệp tài liệu để gửi cho hỗ trợ.')}
+              onPress={() => Alert.alert(t('support.attachTitle'), t('support.attachDesc'))}
             >
               <Ionicons name="attach-outline" size={20} color="#5A6478" />
             </Pressable>

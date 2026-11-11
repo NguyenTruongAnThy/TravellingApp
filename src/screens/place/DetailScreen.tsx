@@ -52,7 +52,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
   const loadPlace = useCallback(async () => {
     if (!placeId) {
-      setErrorMessage('Could not find this stay.');
+      setErrorMessage(t('reviews.errorNotFound'));
       setLoading(false);
       return;
     }
@@ -60,7 +60,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     setErrorMessage('');
     const { data, error } = await getPlaceById(placeId);
     if (error || !data) {
-      setErrorMessage('Could not load the stay details. Please try again.');
+      setErrorMessage(t('placeDetail.errorLoadDetails'));
     } else {
       setPlace(data);
     }
@@ -99,7 +99,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
     return (
       <View className="flex-1 bg-appBg items-center justify-center px-6">
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="mt-3 text-sm text-textMuted">Loading stay details...</Text>
+        <Text className="mt-3 text-sm text-textMuted">{t('placeDetail.loadingDetails')}</Text>
       </View>
     );
   }
@@ -107,10 +107,10 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   if (errorMessage || !place) {
     return (
       <View className="flex-1 bg-appBg items-center justify-center px-6">
-        <Text className="text-lg font-bold text-textMain text-center">Could not load details</Text>
+        <Text className="text-lg font-bold text-textMain text-center">{t('placeDetail.errorTitle')}</Text>
         <Text className="mt-2 text-sm text-textMuted text-center">{errorMessage}</Text>
         <View className="mt-6 w-full">
-          <AppButton title="Try again" onPress={loadPlace} />
+          <AppButton title={t('reviews.tryAgain')} onPress={loadPlace} />
         </View>
       </View>
     );
@@ -164,7 +164,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
       setSaveCollections(cols);
       setInCollectionIds(new Set(await getCollectionsContainingPlace(session.user.id, place.id)));
     } catch {
-      setSaveError('Could not load your collections. Please try again.');
+      setSaveError(t('placeDetail.collectionsLoadError'));
     }
     setSaveModalVisible(true);
   };
@@ -182,7 +182,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         setInCollectionIds((prev) => new Set(prev).add(collection.id));
       }
     } catch {
-      setSaveError('Could not save to this collection. Please try again.');
+      setSaveError(t('placeDetail.saveCollectionError'));
     } finally {
       setSaveBusy(false);
     }
@@ -191,7 +191,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
   const createAndSaveToCollection = async () => {
     if (!session) { navigation.navigate('Login'); return; }
     if (!newSaveName.trim()) {
-      setSaveError('Please enter a name.');
+      setSaveError(t('placeDetail.enterCollectionName'));
       return;
     }
     setSaveBusy(true);
@@ -203,7 +203,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
       setInCollectionIds((prev) => new Set(prev).add(created.id));
       setNewSaveName('');
     } catch {
-      setSaveError('Could not create the collection. Please try again.');
+      setSaveError(t('placeDetail.createCollectionError'));
     } finally {
       setSaveBusy(false);
     }
@@ -258,6 +258,12 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
             <Ionicons name="location-outline" size={18} color="#4F46E5" />
             <Text className="ml-1 text-base text-textMuted flex-1">{place.location}</Text>
           </View>
+          {place.rating != null && Number(place.rating) >= 4.8 && (place.review_count ?? 0) >= 5 ? (
+            <View className="mt-2 flex-row items-center self-start px-2.5 py-1 rounded-full bg-[#FFB020]">
+              <Ionicons name="star" size={12} color="#131B2E" />
+              <Text className="ml-1 text-[11px] font-bold text-[#131B2E]">{t('common.guestFavourite')}</Text>
+            </View>
+          ) : null}
           {place.original_price && Number(place.original_price) > Number(place.price_per_night) ? (
             <View className="mt-2">
               <View className="flex-row items-center">
@@ -281,7 +287,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           )}
           <Pressable className="mt-3 flex-row items-center self-start px-3 py-2 rounded-full bg-appBg border border-borderLight" onPress={openSaveModal}>
             <Ionicons name={inCollectionIds.size > 0 ? 'bookmark' : 'bookmark-outline'} size={16} color="#4F46E5" />
-            <Text className="ml-1.5 text-sm font-bold text-brand">{inCollectionIds.size > 0 ? 'Saved to collection' : 'Save to collection'}</Text>
+            <Text className="ml-1.5 text-sm font-bold text-brand">{inCollectionIds.size > 0 ? t('placeDetail.savedToCollection') : t('placeDetail.saveToCollection')}</Text>
           </Pressable>
         </View>
 
@@ -292,14 +298,14 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
             <>
               <Text className="ml-2 text-lg font-bold text-textMain">{Number(place.rating).toFixed(1)} / 5</Text>
               <Text className="ml-2 text-sm font-bold text-brand">
-                {Number(place.rating) >= 4.8 ? 'Exceptional' : Number(place.rating) >= 4.5 ? 'Excellent' : 'Very good'}
+                {Number(place.rating) >= 4.8 ? t('placeDetail.ratingExceptional') : Number(place.rating) >= 4.5 ? t('placeDetail.ratingExcellent') : t('placeDetail.ratingVeryGood')}
               </Text>
-              <Text className="ml-2 text-sm text-textMuted">{place.review_count} reviews ›</Text>
+              <Text className="ml-2 text-sm text-textMuted">{t('placeDetail.reviewsCount', { count: place.review_count })}</Text>
             </>
           ) : (
             <>
-              <Text className="ml-2 text-lg font-bold text-textMain">New</Text>
-              <Text className="ml-2 text-sm text-textMuted">Chưa có đánh giá ›</Text>
+              <Text className="ml-2 text-lg font-bold text-textMain">{t('common.newBadge')}</Text>
+              <Text className="ml-2 text-sm text-textMuted">{t('placeDetail.noReviews')}</Text>
             </>
           )}
         </Pressable>
@@ -307,10 +313,10 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         {/* Figma capacity pills in a white card. No bathrooms column in DB, so no bath pill is invented. */}
         <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-4">
           <View className="flex-row flex-wrap">
-            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="people-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.guests_capacity} guests</Text></View> : null}
-            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="home-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.rooms} rooms</Text></View> : null}
-            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="bed-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.beds} beds</Text></View> : null}
-            {place.place_type || place.category ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="business-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.place_type || place.category}</Text></View> : null}
+            {place.guests_capacity != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="people-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.guests_capacity} {t('common.guests')}</Text></View> : null}
+            {place.rooms != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="home-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.rooms} {t('common.rooms')}</Text></View> : null}
+            {place.beds != null ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="bed-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.beds} {t('common.beds')}</Text></View> : null}
+            {place.place_type || place.category ? <View className="mr-2 mb-2 px-3 py-2 rounded-full bg-appBg border border-borderLight flex-row items-center"><Ionicons name="business-outline" size={16} color="#4F46E5" /><Text className="ml-1.5 text-sm text-textMain">{place.place_type ? t(`place_types.${place.place_type}`, { defaultValue: place.place_type }) : place.category}</Text></View> : null}
           </View>
         </View>
 
@@ -318,8 +324,8 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         {place.description ? (
           <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
             <View className="flex-row items-center justify-between">
-              <Text className="text-base font-bold text-textMain">Description</Text>
-              <Pressable onPress={() => setDescExpanded(!descExpanded)}><Text className="text-sm font-bold text-brand">{descExpanded ? 'Show less ›' : 'View more ›'}</Text></Pressable>
+              <Text className="text-base font-bold text-textMain">{t('placeDetail.descriptionTitle')}</Text>
+              <Pressable onPress={() => setDescExpanded(!descExpanded)}><Text className="text-sm font-bold text-brand">{descExpanded ? t('placeDetail.showLess') : t('placeDetail.viewMore')}</Text></Pressable>
             </View>
             <Text className="mt-2 text-base text-textMuted leading-6" numberOfLines={descExpanded ? undefined : 3}>{place.description}</Text>
           </View>
@@ -327,29 +333,29 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
         {Array.isArray(place.amenities) && place.amenities.length > 0 ? (
           <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
-            <Text className="text-base font-bold text-textMain">Facilities</Text>
+            <Text className="text-base font-bold text-textMain">{t('placeDetail.facilitiesTitle')}</Text>
             <View className="mt-2">
               {(facExpanded ? place.amenities : place.amenities.slice(0, 3)).map((item, i, arr) => (
                 <View key={item} className="flex-row items-center py-2.5" style={{ borderBottomWidth: i === arr.length - 1 ? 0 : 1, borderBottomColor: '#E6E3F5' }}>
                   <Ionicons name={amenityIcon(item)} size={18} color="#4F46E5" />
-                  <Text className="ml-3 text-base text-textMain">{item}</Text>
+                  <Text className="ml-3 text-base text-textMain">{t(`amenities.${item}`, { defaultValue: item })}</Text>
                 </View>
               ))}
             </View>
             {place.amenities.length > 3 ? (
-              <Pressable className="mt-2" onPress={() => setFacExpanded(!facExpanded)}><Text className="text-sm font-bold text-brand">{facExpanded ? 'Show less ›' : `Show all ${place.amenities.length} facilities ›`}</Text></Pressable>
+              <Pressable className="mt-2" onPress={() => setFacExpanded(!facExpanded)}><Text className="text-sm font-bold text-brand">{facExpanded ? t('placeDetail.showLess') : t('placeDetail.showAllFacilities', { count: place.amenities.length })}</Text></Pressable>
             ) : null}
           </View>
         ) : null}
         <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
-          <Text className="text-base font-bold text-textMain">Policies</Text>
+          <Text className="text-base font-bold text-textMain">{t('placeDetail.policiesTitle')}</Text>
           {[
-            { icon: 'log-in-outline', title: 'Check-in', text: `From ${place.check_in_time || '14:00'}` },
-            { icon: 'log-out-outline', title: 'Check-out', text: `Until ${place.check_out_time || '12:00'}` },
-            { icon: 'ban-outline', title: 'No smoking', text: 'No smoking inside' },
-            { icon: 'moon-outline', title: 'Quiet hours', text: 'Quiet hours after 22:00' },
-            { icon: 'paw-outline', title: 'Pets', text: 'Pets: upon request' },
-            { icon: 'shield-checkmark-outline', title: 'Free cancellation', text: 'Free cancellation from 48 hours before check-in. Cancelling within 48 hours costs 1 night, refund = total − 1 night price. No refund after check-in or for a no-show.' },
+            { icon: 'log-in-outline', title: t('placeDetail.checkIn'), text: t('placeDetail.checkInDesc', { time: place.check_in_time || '14:00' }) },
+            { icon: 'log-out-outline', title: t('placeDetail.checkOut'), text: t('placeDetail.checkOutDesc', { time: place.check_out_time || '12:00' }) },
+            { icon: 'ban-outline', title: t('placeDetail.noSmoking'), text: t('placeDetail.noSmokingDesc') },
+            { icon: 'moon-outline', title: t('placeDetail.quietHours'), text: t('placeDetail.quietHoursDesc') },
+            { icon: 'paw-outline', title: t('placeDetail.pets'), text: t('placeDetail.petsDesc') },
+            { icon: 'shield-checkmark-outline', title: t('placeDetail.freeCancellation'), text: t('placeDetail.freeCancellationDesc') },
           ].map((row) => (
             <View key={row.title} className="mt-3 flex-row items-start">
               <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: '#EDE9FE' }}>
@@ -365,17 +371,17 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
 
         <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-bold text-textMain">Reviews</Text>
-            <Pressable onPress={() => navigation.navigate('Reviews', { placeId: place.id })}><Text className="text-sm font-bold text-brand">Show all reviews ›</Text></Pressable>
+            <Text className="text-base font-bold text-textMain">{t('reviews.title')}</Text>
+            <Pressable onPress={() => navigation.navigate('Reviews', { placeId: place.id })}><Text className="text-sm font-bold text-brand">{t('placeDetail.showAllReviews')}</Text></Pressable>
           </View>
           {reviewsError ? (
-            <Text className="mt-2 text-base text-textMuted">Could not load reviews. Please try again later.</Text>
+            <Text className="mt-2 text-base text-textMuted">{t('placeDetail.reviewsLoadError')}</Text>
           ) : reviews.length === 0 ? (
-            <Text className="mt-2 text-base text-textMuted">No reviews for this stay yet.</Text>
+            <Text className="mt-2 text-base text-textMuted">{t('reviews.noReviews')}</Text>
           ) : (
             <View className="mt-2">
               {reviews.slice(0, 2).map((review) => {
-                const guestName = review.reviewer_name || review.users?.name || 'Guest';
+                const guestName = review.reviewer_name || review.users?.name || t('reviews.guest');
                 return (
                 <View key={review.id} className="mt-3 rounded-2xl border border-borderLight p-4" style={{ backgroundColor: '#EDE9FE' }}>
                   <View className="flex-row justify-between items-center">
@@ -388,7 +394,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
                     <View className="flex-row items-center"><Ionicons name="star" size={13} color="#FFB020" /><Text className="ml-1 text-sm font-bold text-textMain">{review.rating}/5</Text></View>
                   </View>
                   {review.created_at ? <Text className="mt-1 text-xs text-textMuted">{review.created_at.slice(0, 10)}</Text> : null}
-                  <Text className="mt-2 text-base text-textMuted">{review.comment || '(No comment)'}</Text>
+                  <Text className="mt-2 text-base text-textMuted">{review.comment || t('reviews.noComment')}</Text>
                   <Pressable className="mt-3 self-start flex-row items-center px-3 py-1.5 rounded-full bg-white border border-borderLight" onPress={() => onLike(review)}>
                     <Ionicons name={likedIds.has(review.id) ? 'heart' : 'heart-outline'} size={16} color={likedIds.has(review.id) ? '#EF4444' : '#4F46E5'} />
                     <Text className="ml-1 text-sm font-bold text-textMain">{review.helpful_count || 0}</Text>
@@ -401,7 +407,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
         </View>
 
         <View className="mx-5 mt-4 rounded-3xl bg-white border border-borderLight p-5">
-          <Text className="text-base font-bold text-textMain">Location</Text>
+          <Text className="text-base font-bold text-textMain">{t('placeDetail.locationTitle')}</Text>
           <View className="mt-2 flex-row items-center">
             <Ionicons name="location-outline" size={18} color="#4F46E5" />
             <Text className="ml-1 text-base font-bold text-textMain flex-1">{place.location}</Text>
@@ -415,16 +421,16 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
               <Ionicons name="map-outline" size={24} color="#4F46E5" />
             </View>
             <View className="flex-1 ml-3">
-              <Text className="text-base font-bold text-textMain">Open map</Text>
+              <Text className="text-base font-bold text-textMain">{t('placeDetail.openMap')}</Text>
               <Text className="mt-1 text-sm text-textMuted">
                 {place.latitude != null && place.longitude != null
-                  ? 'See this stay on an interactive map.'
-                  : 'Map location is not available for this stay.'}
+                  ? t('placeDetail.mapAvailable')
+                  : t('placeDetail.mapUnavailable')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#5A6478" />
           </Pressable>
-          <Text className="mt-2 text-sm text-textMuted">{session ? 'You are signed in, tap Reserve below to continue.' : 'You are browsing as a guest. Sign in to book.'}</Text>
+          <Text className="mt-2 text-sm text-textMuted">{session ? t('placeDetail.signedInHint') : t('placeDetail.guestHint')}</Text>
         </View>
 
         {/* Chỗ nghỉ gợi ý tương tự (Thuật toán độ tương đồng + Dải lướt ngang Phương án 1) */}
@@ -450,7 +456,7 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
           <Text className="text-xs text-textMuted">{t('common.perNight')}</Text>
         </View>
         <View className="flex-1 ml-4">
-          <AppButton title={i18n.language === 'vi' ? 'Đặt phòng ngay' : 'Reserve Now'} onPress={handleBook} />
+          <AppButton title={t('placeDetail.reserveNow')} onPress={handleBook} />
         </View>
       </View>
 
@@ -458,12 +464,12 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
       <Modal visible={saveModalVisible} animationType="slide" transparent onRequestClose={() => setSaveModalVisible(false)}>
         <Pressable className="flex-1 justify-end" style={{ backgroundColor: 'rgba(19,27,46,0.5)' }} onPress={() => setSaveModalVisible(false)}>
           <Pressable className="bg-white rounded-t-3xl p-5" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-textMain">Save to collection</Text>
+            <Text className="text-lg font-bold text-textMain">{t('placeDetail.saveToCollection')}</Text>
             <Text className="mt-1 text-sm text-textMuted" numberOfLines={1}>{place.title}</Text>
             {saveError ? <Text className="mt-2 text-sm text-red-500">{saveError}</Text> : null}
             <ScrollView style={{ maxHeight: 320 }} className="mt-3" showsVerticalScrollIndicator={false}>
               {saveCollections.length === 0 ? (
-                <Text className="py-3 text-base text-textMuted">No collections yet.</Text>
+                <Text className="py-3 text-base text-textMuted">{t('placeDetail.noCollectionsYet')}</Text>
               ) : (
                 saveCollections.map((collection) => {
                   const saved = inCollectionIds.has(collection.id);
@@ -481,19 +487,19 @@ export default function DetailScreen({ route, navigation }: { route: any; naviga
               <View className="flex-row items-center mt-3">
                 <TextInput
                   className="flex-1 px-4 py-3 rounded-2xl border border-borderLight bg-appBg text-base text-textMain"
-                  placeholder="New collection name"
+                  placeholder={t('placeDetail.newCollectionName')}
                   placeholderTextColor="#8A90A6"
                   value={newSaveName}
                   onChangeText={(text) => { setNewSaveName(text); setSaveError(''); }}
                   maxLength={50}
                 />
                 <Pressable className="ml-2 px-4 py-3 rounded-full bg-brand items-center" onPress={createAndSaveToCollection} disabled={saveBusy}>
-                  <Text className="text-base font-bold text-white">Add</Text>
+                  <Text className="text-base font-bold text-white">{t('placeDetail.add')}</Text>
                 </Pressable>
               </View>
             </ScrollView>
             <Pressable className="mt-4 py-3 rounded-full bg-brand items-center" onPress={() => setSaveModalVisible(false)}>
-              <Text className="text-base font-bold text-white">Done</Text>
+              <Text className="text-base font-bold text-white">{t('placeDetail.done')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

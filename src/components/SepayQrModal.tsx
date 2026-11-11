@@ -159,7 +159,7 @@ export default function SepayQrModal({
   }, [visible, booking?.id, onPaymentSuccess]);
 
   const handleCopy = (label: string, textToCopy: string) => {
-    Alert.alert('Đã sao chép', `${label}: ${textToCopy} đã được sao chép vào bộ nhớ tạm.`);
+    Alert.alert(t('sepay.copiedTitle'), t('sepay.copiedDesc', { label, text: textToCopy }));
   };
 
   const handleCheckNow = async () => {
@@ -175,15 +175,15 @@ export default function SepayQrModal({
 
     // Nếu webhook chưa kịp về hoặc đang thử nghiệm
     Alert.alert(
-      'Kiểm tra giao dịch SePay',
-      `Hệ thống chưa nhận được thông báo từ ngân hàng BIDV cho mã "${cleanRefCode}".\n\nNếu bạn đã chuyển khoản thành công trên app ngân hàng, bạn có muốn xác nhận ngay bây giờ không?`,
+      t('sepay.checkTitle'),
+      t('sepay.checkDesc', { ref: cleanRefCode }),
       [
         {
-          text: 'Chờ thêm chút',
+          text: t('sepay.waitMore'),
           style: 'cancel',
         },
         {
-          text: 'Xác nhận ngay',
+          text: t('sepay.confirmNow'),
           onPress: async () => {
             setChecking(true);
             const res = await simulateConfirmPayment(booking.id);
@@ -191,7 +191,7 @@ export default function SepayQrModal({
             if (res.success) {
               onPaymentSuccess({ ...booking, payment_status: 'paid', status: 'booked' });
             } else {
-              Alert.alert('Lỗi', 'Không thể cập nhật trạng thái đơn đặt phòng.');
+              Alert.alert(t('common.error'), t('sepay.updateFailed'));
             }
           },
         },
@@ -218,8 +218,8 @@ export default function SepayQrModal({
               <Ionicons name="qr-code" size={18} color="#4F46E5" />
             </View>
             <View>
-              <Text className="text-base font-bold text-textMain">Thanh toán VietQR SePay</Text>
-              <Text className="text-[11px] text-textMuted">Tự động xác nhận 100% qua Ngân hàng</Text>
+              <Text className="text-base font-bold text-textMain">{t('sepay.title')}</Text>
+              <Text className="text-[11px] text-textMuted">{t('sepay.autoConfirmDesc')}</Text>
             </View>
           </View>
 
@@ -254,7 +254,7 @@ export default function SepayQrModal({
             {/* Chủ tài khoản & STK */}
             <View className="pt-3">
               <Text className="text-[11px] text-textMuted uppercase font-medium">
-                Chủ tài khoản
+                {t('sepay.accountHolder')}
               </Text>
               <Text className="text-sm font-bold text-textMain mt-0.5">
                 {SEPAY_CONFIG.ACCOUNT_NAME}
@@ -263,7 +263,7 @@ export default function SepayQrModal({
               <View className="flex-row items-center justify-between mt-2.5 bg-appBg p-3 rounded-2xl border border-borderLight">
                 <View>
                   <Text className="text-[10px] text-textMuted uppercase font-semibold">
-                    Số tài khoản BIDV
+                    {t('sepay.accountNumber')}
                   </Text>
                   <Text className="text-base font-black text-brand tracking-wider">
                     {SEPAY_CONFIG.ACCOUNT_NUMBER}
@@ -271,11 +271,11 @@ export default function SepayQrModal({
                 </View>
 
                 <Pressable
-                  onPress={() => handleCopy('Số tài khoản', SEPAY_CONFIG.ACCOUNT_NUMBER)}
+                  onPress={() => handleCopy(t('sepay.copyAccountNumber'), SEPAY_CONFIG.ACCOUNT_NUMBER)}
                   className="flex-row items-center px-3 py-1.5 rounded-full bg-white border border-brand/30 shadow-xs"
                 >
                   <Ionicons name="copy-outline" size={13} color="#4F46E5" />
-                  <Text className="ml-1 text-xs font-bold text-brand">Sao chép</Text>
+                  <Text className="ml-1 text-xs font-bold text-brand">{t('sepay.copy')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -283,9 +283,9 @@ export default function SepayQrModal({
 
           {/* Khung quét mã VietQR */}
           <View className="bg-white rounded-3xl p-5 border border-borderLight shadow-sm items-center mb-4">
-            <Text className="text-sm font-bold text-textMain">Quét mã QR để thanh toán</Text>
+            <Text className="text-sm font-bold text-textMain">{t('sepay.scanQrTitle')}</Text>
             <Text className="text-xs text-textMuted mt-0.5 text-center">
-              Mở ứng dụng Ngân hàng bất kỳ (BIDV, VCB, MB, Techcombank...) để quét mã
+              {t('sepay.scanQrDesc')}
             </Text>
 
             {/* Mã VietQR SePay */}
@@ -304,7 +304,7 @@ export default function SepayQrModal({
             <View className="flex-row items-center bg-indigo-50 px-3.5 py-1.5 rounded-full">
               <ActivityIndicator size="small" color="#4F46E5" style={{ marginRight: 6 }} />
               <Text className="text-xs font-bold text-brand">
-                Đang chờ chuyển khoản • {formatTimer(countdown)}
+                {t('sepay.waitingTransfer', { time: formatTimer(countdown) })}
               </Text>
             </View>
           </View>
@@ -312,42 +312,42 @@ export default function SepayQrModal({
           {/* Chi tiết chuyển khoản chính xác */}
           <View className="bg-white rounded-3xl p-4 border border-borderLight shadow-sm mb-5">
             <Text className="text-sm font-bold text-textMain mb-2.5">
-              Thông tin giao dịch chính xác
+              {t('sepay.txnDetails')}
             </Text>
 
             {/* Số tiền cần chuyển */}
             <View className="flex-row items-center justify-between py-2 border-b border-borderLight">
               <View>
-                <Text className="text-xs text-textMuted">Số tiền cần chuyển:</Text>
+                <Text className="text-xs text-textMuted">{t('sepay.amountToTransfer')}</Text>
                 <Text className="text-lg font-black text-[#FF6B00]">
                   {formatVnd(demoAmountVnd)}
                 </Text>
               </View>
 
               <Pressable
-                onPress={() => handleCopy('Số tiền', String(demoAmountVnd))}
+                onPress={() => handleCopy(t('sepay.copyAmount'), String(demoAmountVnd))}
                 className="flex-row items-center px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200"
               >
                 <Ionicons name="copy-outline" size={13} color="#FF6B00" />
-                <Text className="ml-1 text-xs font-bold text-[#FF6B00]">Sao chép</Text>
+                <Text className="ml-1 text-xs font-bold text-[#FF6B00]">{t('sepay.copy')}</Text>
               </Pressable>
             </View>
 
             {/* Nội dung chuyển khoản */}
             <View className="flex-row items-center justify-between pt-2.5">
               <View className="flex-1 mr-2">
-                <Text className="text-xs text-textMuted">Nội dung chuyển khoản (bắt buộc):</Text>
+                <Text className="text-xs text-textMuted">{t('sepay.transferContent')}</Text>
                 <Text className="text-base font-black text-brand tracking-wider">
                   {cleanRefCode}
                 </Text>
               </View>
 
               <Pressable
-                onPress={() => handleCopy('Nội dung chuyển khoản', cleanRefCode)}
+                onPress={() => handleCopy(t('sepay.copyContent'), cleanRefCode)}
                 className="flex-row items-center px-3 py-1.5 rounded-full bg-brand/10 border border-brand/30"
               >
                 <Ionicons name="copy-outline" size={13} color="#4F46E5" />
-                <Text className="ml-1 text-xs font-bold text-brand">Sao chép</Text>
+                <Text className="ml-1 text-xs font-bold text-brand">{t('sepay.copy')}</Text>
               </Pressable>
             </View>
 
@@ -355,9 +355,8 @@ export default function SepayQrModal({
             <View className="mt-3.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 flex-row items-start">
               <Ionicons name="warning" size={16} color="#D97706" style={{ marginTop: 2 }} />
               <Text className="ml-2 flex-1 text-[11px] text-amber-800 leading-4">
-                <Text className="font-bold">Lưu ý quan trọng:</Text> Vui lòng giữ nguyên nội dung{' '}
-                <Text className="font-black text-amber-900">{cleanRefCode}</Text> khi quét QR để
-                SePay tự động kích hoạt đơn đặt phòng ngay khi nhận được tiền.
+                <Text className="font-bold">{t('sepay.importantNoteTitle')}</Text> {t('sepay.importantNotePrefix')}{' '}
+                <Text className="font-black text-amber-900">{cleanRefCode}</Text> {t('sepay.importantNoteSuffix')}
               </Text>
             </View>
           </View>
@@ -369,7 +368,7 @@ export default function SepayQrModal({
             onPress={onClose}
             className="flex-1 py-3 rounded-full bg-gray-100 items-center justify-center active:opacity-80"
           >
-            <Text className="text-sm font-bold text-textMuted">Hủy / Để sau</Text>
+            <Text className="text-sm font-bold text-textMuted">{t('sepay.cancelLater')}</Text>
           </Pressable>
 
           <Pressable
@@ -382,7 +381,7 @@ export default function SepayQrModal({
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
-                <Text className="text-sm font-bold text-white">Kiểm tra ngay</Text>
+                <Text className="text-sm font-bold text-white">{t('sepay.checkNow')}</Text>
               </>
             )}
           </Pressable>

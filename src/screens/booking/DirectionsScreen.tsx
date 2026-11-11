@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 interface DirectionsScreenProps {
   navigation?: any;
@@ -24,14 +25,15 @@ interface DirectionsScreenProps {
 }
 
 export default function DirectionsScreen({ navigation, route }: DirectionsScreenProps) {
+  const { t, i18n } = useTranslation();
   const [sharingLocation, setSharingLocation] = useState(false);
 
   const booking = route?.params?.booking;
   const place = booking?.places;
-  const placeTitle = place?.title || 'Chỗ nghỉ của bạn';
-  const placeLocation = place?.location || 'Việt Nam';
+  const placeTitle = place?.title || (i18n.language === 'vi' ? 'Chỗ nghỉ của bạn' : 'Your Stay');
+  const placeLocation = place?.location || (i18n.language === 'vi' ? 'Việt Nam' : 'Vietnam');
   const address = place?.address || place?.location || 'Jl. Pantai Balian No. 18, Banjar Pengembungan, Tabanan, Bali 82162, Indonesia';
-  const hostName = place?.host_name || 'Chủ nhà';
+  const hostName = place?.host_name || (i18n.language === 'vi' ? 'Chủ nhà' : 'Host');
   const hostPhone = place?.host_phone || '+62 812 3456 7890';
   const pinCode = booking?.pin_code || place?.smart_lock_pin || '4821#';
   const latitude = place?.latitude != null ? Number(place.latitude) : 21.0285;
@@ -41,7 +43,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
   const handleShare = async () => {
     try {
       await Share.share({
-        title: `Directions to ${placeTitle}`,
+        title: `${t('directions.title')} - ${placeTitle}`,
         message:
           `WanderStay Directions & Arrival Guide for ${placeTitle}\n` +
           `Address: ${address}\n` +
@@ -55,25 +57,25 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
   };
 
   const handleMoreOptions = () => {
-    Alert.alert('Directions Options', placeTitle, [
+    Alert.alert(t('directions.directionsOptions'), placeTitle, [
       {
-        text: 'Copy Full Address',
-        onPress: () => Alert.alert('Copied', 'Address copied to clipboard.'),
+        text: t('directions.copyAddress'),
+        onPress: () => Alert.alert(t('smartKey.copied'), t('directions.addressCopied')),
       },
       {
-        text: 'Copy GPS Coordinates',
-        onPress: () => Alert.alert('Copied', `${gpsCoords} copied to clipboard.`),
+        text: t('directions.copyGps'),
+        onPress: () => Alert.alert(t('smartKey.copied'), t('directions.gpsCopied')),
       },
       {
-        text: `Message Host ${hostName}`,
+        text: t('directions.messageHost', { name: hostName }),
         onPress: handleBookTransfer,
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const handleCopy = (label: string, text: string) => {
-    Alert.alert('Copied', `${label} copied to clipboard:\n${text}`);
+    Alert.alert(t('smartKey.copied'), `${label}:\n${text}`);
   };
 
   const handleOpenGoogleMaps = () => {
@@ -97,10 +99,12 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
     if (navigation?.navigate) {
       navigation.navigate('HostChat', {
         booking,
-        initialMessage: `Hi ${hostName}, I would like to request the $35 USD private airport SUV transfer from DPS airport.`,
+        initialMessage: i18n.language === 'vi'
+          ? `Xin chào ${hostName}, tôi muốn đặt dịch vụ xe riêng đưa đón sân bay $35 USD.`
+          : `Hi ${hostName}, I would like to request the $35 USD private airport SUV transfer from DPS airport.`,
       });
     } else {
-      Alert.alert('Book Transfer', 'Transfer request dispatched to host Wayan via inbox message.');
+      Alert.alert(t('directions.airportShuttle'), 'Transfer request dispatched to host via inbox.');
     }
   };
 
@@ -109,18 +113,22 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
     setTimeout(() => {
       setSharingLocation(false);
       Alert.alert(
-        `Location Shared with ${hostName}`,
-        `Your live GPS tracking coordinates and estimated arrival time have been shared with ${hostName}. They will be ready to greet you at the entrance.`,
+        t('directions.locationShared', { name: hostName }),
+        t('directions.locationSharedDesc', { name: hostName }),
         [{ text: 'OK' }]
       );
     }, 1000);
   };
 
   const handleCallHost = () => {
-    Alert.alert('Call Host', `Calling ${hostName} / Assigned Driver (${hostPhone})...`, [
-      { text: 'Call Now', onPress: () => {} },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      t('smartKey.callHost'),
+      t('smartKey.callHostDesc', { name: hostName, phone: hostPhone }),
+      [
+        { text: t('smartKey.callNow'), onPress: () => {} },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]
+    );
   };
 
   return (
@@ -138,7 +146,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
           >
             <Ionicons name="chevron-back" size={20} color="#131B2E" />
           </Pressable>
-          <Text className="text-lg font-bold text-textMain ml-1">Directions</Text>
+          <Text className="text-lg font-bold text-textMain ml-1">{t('directions.title')}</Text>
         </View>
 
         <View className="flex-row items-center gap-2">
@@ -241,10 +249,10 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                 <View className="w-8 h-8 rounded-full bg-blue-500/20 items-center justify-center">
                   <Ionicons name="map-outline" size={16} color="#2563EB" />
                 </View>
-                <Text className="text-lg font-semibold text-[#131B2E]">Arrival Route</Text>
+                <Text className="text-lg font-semibold text-[#131B2E]">{t('directions.arrivalRoute')}</Text>
               </View>
               <View className="px-2.5 py-0.5 rounded-full bg-[#A2EEFF]/30">
-                <Text className="text-[11px] font-bold text-[#006877]">Fastest Path</Text>
+                <Text className="text-[11px] font-bold text-[#006877]">{i18n.language === 'vi' ? 'Tối ưu nhất' : 'Fastest Path'}</Text>
               </View>
             </View>
 
@@ -263,7 +271,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
               <View className="self-start px-3 py-1.5 rounded-lg bg-white/95 backdrop-blur-md flex-row items-center gap-2 shadow-sm">
                 <Ionicons name="car-outline" size={15} color="#131B2E" />
                 <Text className="text-xs font-semibold text-[#131B2E]">
-                  Lộ trình di chuyển đến chỗ nghỉ
+                  {t('directions.arrivalRoute')}
                 </Text>
               </View>
             </View>
@@ -292,7 +300,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
           <View className="gap-2">
             <View className="flex-row items-center gap-2 px-1">
               <Ionicons name="car-sport-outline" size={18} color="#131B2E" />
-              <Text className="text-lg font-semibold text-[#131B2E]">Transport Options</Text>
+              <Text className="text-lg font-semibold text-[#131B2E]">{t('directions.transportOptions')}</Text>
             </View>
 
             <View className="gap-3">
@@ -303,19 +311,21 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                 </View>
                 <View className="flex-1">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-lg font-semibold text-[#131B2E]">Private Transfer</Text>
+                    <Text className="text-lg font-semibold text-[#131B2E]">{t('directions.airportShuttle')}</Text>
                     <View className="px-2 py-0.5 rounded-full bg-[#A2EEFF]/30">
                       <Text className="text-xs font-semibold text-[#006877]">$35 USD</Text>
                     </View>
                   </View>
                   <Text className="text-sm text-[#3C494C] leading-5 mt-1">
-                    Chủ nhà  hỗ trợ bố trí xe đưa đón tận nơi kèm bảng tên đón bạn tại điểm đến.
+                    {i18n.language === 'vi'
+                      ? 'Chủ nhà hỗ trợ bố trí xe đưa đón tận nơi kèm bảng tên đón bạn tại điểm đến.'
+                      : 'Private airport SUV pickup with personalized arrival greeting board.'}
                   </Text>
                   <Pressable
                     className="flex-row items-center gap-1 mt-2 self-start active:opacity-70"
                     onPress={handleBookTransfer}
                   >
-                    <Text className="text-[11px] font-bold text-[#006877]">Book via host message</Text>
+                    <Text className="text-[11px] font-bold text-[#006877]">{t('directions.messageHost', { name: hostName })}</Text>
                     <Ionicons name="arrow-forward" size={12} color="#006877" />
                   </Pressable>
                 </View>
@@ -327,11 +337,11 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                   <Ionicons name="navigate-outline" size={18} color="#2563EB" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-lg font-semibold text-[#131B2E]">Grab & Gojek Drop-off</Text>
+                  <Text className="text-lg font-semibold text-[#131B2E]">Grab & Gojek</Text>
                   <Text className="text-sm text-[#3C494C] leading-5 mt-1">
-                    Set drop-off point to{' '}
-                    <Text className="font-semibold text-[#131B2E]">Surf Cafe Balian Entrance</Text>
-                    . The narrow final lane has scooter-only access; walk 90m down the cobblestones to the gate.
+                    {i18n.language === 'vi'
+                      ? 'Điểm trả khách tại cổng Surf Cafe Balian. Đi bộ 90m theo đường lát đá để vào cổng riêng.'
+                      : 'Set drop-off point to Surf Cafe Balian Entrance. Walk 90m down the cobblestones to the gate.'}
                   </Text>
                 </View>
               </View>
@@ -344,12 +354,14 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                 <View className="flex-1">
                   <View className="flex-row items-center justify-between">
                     <Text className="text-lg font-semibold text-[#131B2E]">
-                      Driving & Scooter Parking
+                      {i18n.language === 'vi' ? 'Bãi đỗ ô tô & xe máy' : 'Driving & Scooter Parking'}
                     </Text>
-                    <Text className="text-[11px] font-bold text-[#4D44E3]">Complimentary</Text>
+                    <Text className="text-[11px] font-bold text-[#4D44E3]">{i18n.language === 'vi' ? 'Miễn phí' : 'Complimentary'}</Text>
                   </View>
                   <Text className="text-sm text-[#3C494C] leading-5 mt-1">
-                    Dedicated covered parking directly fronting the private bamboo gate. Safe & monitored 24/7 with CCTV.
+                    {i18n.language === 'vi'
+                      ? 'Bãi đỗ xe có mái che ngay trước cổng rào. An toàn và giám sát camera 24/7.'
+                      : 'Dedicated covered parking directly fronting the private bamboo gate. Safe & monitored 24/7.'}
                   </Text>
                 </View>
               </View>
@@ -361,9 +373,9 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
             <View className="flex-row items-center justify-between px-1">
               <View className="flex-row items-center gap-2">
                 <Ionicons name="trail-sign-outline" size={18} color="#131B2E" />
-                <Text className="text-lg font-semibold text-[#131B2E]">Arrival Landmarks</Text>
+                <Text className="text-lg font-semibold text-[#131B2E]">{t('directions.landmarks')}</Text>
               </View>
-              <Text className="text-[11px] font-bold text-[#3C494C]">Step 1 to 3</Text>
+              <Text className="text-[11px] font-bold text-[#3C494C]">1 - 3</Text>
             </View>
 
             <View className="gap-4">
@@ -490,7 +502,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
                   <>
                     <Ionicons name="paper-plane-outline" size={17} color="#FFFFFF" />
                     <Text className="text-sm font-semibold text-white">
-                      Share Location with Host
+                      {t('directions.shareLiveLocation')}
                     </Text>
                   </>
                 )}
@@ -502,7 +514,7 @@ export default function DirectionsScreen({ navigation, route }: DirectionsScreen
               >
                 <Ionicons name="call-outline" size={17} color="#131B2E" />
                 <Text className="text-sm font-semibold text-[#131B2E]">
-                  Call Host / Assigned Driver
+                  {t('smartKey.callHost')}
                 </Text>
               </Pressable>
             </View>

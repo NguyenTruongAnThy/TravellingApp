@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { SecurityDevice } from '../../services/profileService';
@@ -24,12 +25,15 @@ interface SecurityScreenProps {
 }
 
 export default function SecurityScreen({ navigation }: SecurityScreenProps) {
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const userId = session?.user?.id;
   const userEmail = session?.user?.email || 'user@wanderstay.com';
 
   const [userPhone, setUserPhone] = useState<string>('');
-  const [masterPasswordLastUpdated, setMasterPasswordLastUpdated] = useState<string>('Gần đây');
+  const [masterPasswordLastUpdated, setMasterPasswordLastUpdated] = useState<string>(
+    i18n.language === 'vi' ? 'Gần đây' : 'Recently'
+  );
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(true);
   const [updatingPassword, setUpdatingPassword] = useState<boolean>(false);
 
@@ -38,23 +42,23 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
     Platform.OS === 'ios'
       ? 'Apple iPhone'
       : Platform.OS === 'android'
-      ? 'Thiết bị Android'
-      : 'Thiết bị di động';
+      ? (i18n.language === 'vi' ? 'Thiết bị Android' : 'Android Device')
+      : (i18n.language === 'vi' ? 'Thiết bị di động' : 'Mobile Device');
 
   const [devices, setDevices] = useState<SecurityDevice[]>([
     {
       id: 'dev-current',
       name: currentDeviceName,
-      location: 'Hà Nội, Việt Nam',
-      lastActive: 'Đang hoạt động',
+      location: i18n.language === 'vi' ? 'Hà Nội, Việt Nam' : 'Hanoi, Vietnam',
+      lastActive: i18n.language === 'vi' ? 'Đang hoạt động' : 'Active now',
       isCurrent: true,
       deviceType: 'phone',
     },
     {
       id: 'dev-chrome',
-      name: 'Chrome trên Windows / Web',
-      location: 'Việt Nam',
-      lastActive: 'Hoạt động 2 giờ trước',
+      name: 'Chrome Windows / Web',
+      location: i18n.language === 'vi' ? 'Việt Nam' : 'Vietnam',
+      lastActive: i18n.language === 'vi' ? 'Hoạt động 2 giờ trước' : '2 hours ago',
       isCurrent: false,
       deviceType: 'laptop',
     },
@@ -149,29 +153,29 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
   const totalSafeguards = 4;
   const status =
     score >= 90
-      ? 'Tối ưu (Optimal)'
+      ? (i18n.language === 'vi' ? 'Tối ưu' : 'Optimal')
       : score >= 70
-      ? 'Mạnh (Strong)'
-      : 'Cần xem xét (Needs Review)';
+      ? (i18n.language === 'vi' ? 'Mạnh' : 'Strong')
+      : (i18n.language === 'vi' ? 'Cần xem xét' : 'Needs Review');
   const level = score >= 90 ? 'Optimal' : score >= 70 ? 'Strong' : 'Moderate';
 
   const formattedPhone =
     userPhone && userPhone.length >= 6
       ? `${userPhone.slice(0, 3)} ••• ••${userPhone.slice(-3)}`
-      : 'Chưa liên kết SĐT';
+      : t('personalInfo.notSet');
 
   // Handle Real Password Update in Supabase Auth
   const handleUpdatePassword = async () => {
     if (!newPassword.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập mật khẩu mới.');
+      Alert.alert(t('common.error'), i18n.language === 'vi' ? 'Vui lòng nhập mật khẩu mới.' : 'Please enter your new password.');
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Mật khẩu yếu', 'Mật khẩu mới phải có ít nhất 6 ký tự.');
+      Alert.alert(t('common.error'), i18n.language === 'vi' ? 'Mật khẩu mới phải có ít nhất 6 ký tự.' : 'Password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Không trùng khớp', 'Mật khẩu xác nhận không khớp với mật khẩu mới.');
+      Alert.alert(t('common.error'), i18n.language === 'vi' ? 'Mật khẩu xác nhận không khớp.' : 'Confirmation password does not match.');
       return;
     }
 
@@ -180,11 +184,11 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
 
       if (error) {
-        Alert.alert('Lỗi cập nhật', error.message);
+        Alert.alert(t('common.error'), error.message);
         return;
       }
 
-      const nowText = 'Vừa xong';
+      const nowText = i18n.language === 'vi' ? 'Vừa xong' : 'Just now';
       setMasterPasswordLastUpdated(nowText);
       if (userId) {
         await AsyncStorage.setItem(`@wanderstay_pass_updated_${userId}`, nowText);
@@ -194,29 +198,33 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      Alert.alert('Thành công', 'Mật khẩu chính của bạn đã được cập nhật thành công trên tài khoản Supabase.');
+      Alert.alert(t('common.success'), i18n.language === 'vi' ? 'Mật khẩu chính đã được cập nhật thành công.' : 'Master password updated successfully.');
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể cập nhật mật khẩu lúc này.');
+      Alert.alert(t('common.error'), err.message || 'Error updating password');
     } finally {
       setUpdatingPassword(false);
     }
   };
 
   const handleDisconnectGoogle = () => {
-    Alert.alert('Ngắt kết nối Google', 'Bạn có chắc chắn muốn hủy liên kết tài khoản Google này?', [
-      {
-        text: 'Hủy liên kết',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('Đã ngắt kết nối', 'Tài khoản Google đã được hủy liên kết.');
+    Alert.alert(
+      t('security.disconnect'),
+      i18n.language === 'vi' ? 'Bạn có chắc chắn muốn hủy liên kết tài khoản Google này?' : 'Are you sure you want to disconnect this Google account?',
+      [
+        {
+          text: t('security.disconnect'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(t('common.success'), i18n.language === 'vi' ? 'Tài khoản Google đã được hủy liên kết.' : 'Google account disconnected.');
+          },
         },
-      },
-      { text: 'Hủy', style: 'cancel' },
-    ]);
+        { text: t('common.cancel'), style: 'cancel' },
+      ]
+    );
   };
 
   const handleManageApple = () => {
-    Alert.alert('Apple ID', 'Đăng nhập Apple ID với tính năng ẩn email đang hoạt động.');
+    Alert.alert(t('security.appleId'), t('security.appleIdDesc'));
   };
 
   const handleToggle2FA = async (val: boolean) => {
@@ -226,92 +234,90 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
     }
 
     Alert.alert(
-      val ? 'Đã bật 2FA' : 'Đã tắt 2FA',
+      val ? t('security.twoFactorOnTitle') : t('security.twoFactorOffTitle'),
       val
-        ? 'Xác thực 2 yếu tố đã được kích hoạt. Điểm bảo mật của bạn đạt mức tối đa 100/100!'
-        : 'Cảnh báo: Việc tắt 2FA sẽ làm giảm điểm bảo mật tài khoản xuống còn ' +
-            (score - 25) +
-            '/100.'
+        ? t('security.twoFactorOnDesc')
+        : t('security.twoFactorOffDesc', { score: score - 25 })
     );
   };
 
   const handleLogoutDevice = (device: SecurityDevice) => {
-    Alert.alert('Đăng xuất thiết bị', `Thu hồi quyền truy cập của ${device.name}?`, [
+    Alert.alert(t('security.signOutDeviceTitle'), t('security.signOutDeviceDesc', { device: device.name }), [
       {
-        text: 'Đăng xuất',
+        text: t('security.signOutDevice'),
         style: 'destructive',
         onPress: () => {
           setDevices((prev) => prev.filter((d) => d.id !== device.id));
-          Alert.alert('Đã kết thúc phiên', `${device.name} đã được đăng xuất khỏi tài khoản.`);
+          Alert.alert(t('security.sessionEndedTitle'), t('security.sessionEndedDesc', { device: device.name }));
         },
       },
-      { text: 'Hủy', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const handleLogoutAllOther = () => {
     Alert.alert(
-      'Đăng xuất tất cả phiên khác',
-      `Thao tác này sẽ ngắt kết nối tất cả các thiết bị khác, chỉ giữ lại ${currentDeviceName} này.`,
+      t('security.signOutAllTitle'),
+      t('security.signOutAllDesc', { device: currentDeviceName }),
       [
         {
-          text: 'Đăng xuất tất cả',
+          text: t('security.signOutAll'),
           style: 'destructive',
           onPress: () => {
             setDevices((prev) => prev.filter((d) => d.isCurrent));
-            Alert.alert('Thành công', 'Đã đăng xuất toàn bộ các thiết bị khác.');
+            Alert.alert(t('common.success'), t('security.signOutAllSuccessDesc'));
           },
         },
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
 
   const handleDownloadData = () => {
     Alert.alert(
-      'Tải xuống dữ liệu tài khoản',
-      'Bản sao lưu dữ liệu an toàn sẽ được tổng hợp và gửi đến email của bạn trong vòng 24 giờ.',
+      t('security.downloadDataTitle'),
+      t('security.downloadDataDesc'),
       [
         {
-          text: 'Yêu cầu bản sao',
-          onPress: () => Alert.alert('Đã gửi yêu cầu', 'Dữ liệu đang được tổng hợp.'),
+          text: t('security.requestCopy'),
+          onPress: () => Alert.alert(t('security.requestSentTitle'), t('security.requestSentDesc')),
         },
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Tạm dừng hoặc Xóa tài khoản',
-      'Bạn muốn tạm dừng sử dụng tạm thời hay xóa vĩnh viễn tài khoản WanderStay?',
+      t('security.pauseOrDeleteTitle'),
+      t('security.pauseOrDeleteDesc'),
       [
         {
-          text: 'Tạm dừng',
-          onPress: () => Alert.alert('Đã tạm dừng', 'Tài khoản của bạn đang được tạm khóa.'),
+          text: t('security.pause'),
+          onPress: () => Alert.alert(t('security.pausedTitle'), t('security.pausedDesc')),
         },
         {
-          text: 'Xóa vĩnh viễn',
+          text: t('security.deleteForever'),
           style: 'destructive',
           onPress: () =>
             Alert.alert(
-              'Thông báo',
-              'Vui lòng liên hệ bộ phận hỗ trợ WanderStay Support để hoàn tất quy trình xóa tài khoản.'
+              t('common.notice'),
+              t('security.deleteNoticeDesc')
             ),
         },
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
 
   const handleMoreOptions = () => {
-    Alert.alert('Tùy chọn bảo mật', 'Tiêu chuẩn bảo mật & Quyền riêng tư', [
+    Alert.alert(t('security.optionsTitle'), t('security.optionsDesc'), [
       {
-        text: 'Xem nhật ký kiểm tra',
-        onPress: () => Alert.alert('Nhật ký', 'Không phát hiện lượt đăng nhập bất thường nào trong 90 ngày qua.'),
+        text: t('security.viewAuditLog'),
+        onPress: () => Alert.alert(t('security.auditLogTitle'), t('security.auditLogDesc')),
       },
-      { text: 'Quy chuẩn an toàn', onPress: () => {} },
-      { text: 'Đóng', style: 'cancel' },
+      { text: t('security.safetyStandards'), onPress: () => {} },
+      { text: t('common.close'), style: 'cancel' },
     ]);
   };
 
@@ -565,10 +571,10 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-[#131B2E]">
-                    Backup Recovery Codes
+                    {t('security.backupCodes')}
                   </Text>
                   <Text className="text-xs text-[#3C494C] mt-0.5">
-                    8 unused backup codes generated
+                    {t('security.backupCodesDesc')}
                   </Text>
                 </View>
               </View>
@@ -718,7 +724,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl p-6 shadow-2xl">
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-textMain">Update Master Password</Text>
+              <Text className="text-lg font-bold text-textMain">{t('security.updatePasswordTitle')}</Text>
               <Pressable
                 className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
                 onPress={() => setPasswordModalVisible(false)}
@@ -730,9 +736,9 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
 
             <View className="gap-3 mb-6">
               <View>
-                <Text className="text-xs font-semibold text-[#6C797D] mb-1">Mật khẩu mới (Tối thiểu 6 ký tự)</Text>
+                <Text className="text-xs font-semibold text-[#6C797D] mb-1">{t('security.newPasswordLabel')}</Text>
                 <TextInput
-                  placeholder="Nhập ít nhất 6 ký tự"
+                  placeholder={t('security.enterNewPassword')}
                   placeholderTextColor="#8A90A6"
                   secureTextEntry
                   value={newPassword}
@@ -742,9 +748,9 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
               </View>
 
               <View>
-                <Text className="text-xs font-semibold text-[#6C797D] mb-1">Xác nhận mật khẩu mới</Text>
+                <Text className="text-xs font-semibold text-[#6C797D] mb-1">{t('security.confirmPasswordLabel')}</Text>
                 <TextInput
-                  placeholder="Nhập lại mật khẩu mới"
+                  placeholder={t('security.enterConfirmPassword')}
                   placeholderTextColor="#8A90A6"
                   secureTextEntry
                   value={confirmPassword}
@@ -774,7 +780,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl p-6 shadow-2xl">
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-lg font-bold text-textMain">Backup Recovery Codes</Text>
+              <Text className="text-lg font-bold text-textMain">{t('security.backupCodes')}</Text>
               <Pressable
                 className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
                 onPress={() => setBackupCodesVisible(false)}
@@ -784,7 +790,7 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
             </View>
 
             <Text className="text-xs text-[#3C494C] mb-4 leading-4">
-              Keep these one-time codes in a safe place. You can use each code once to log in if you lose access to your primary 2FA device.
+              {t('security.backupCodesModalDesc')}
             </Text>
 
             <View className="flex-row flex-wrap gap-2.5 mb-6">
@@ -802,10 +808,10 @@ export default function SecurityScreen({ navigation }: SecurityScreenProps) {
               className="h-12 rounded-full bg-[#4D44E3] items-center justify-center shadow-md active:opacity-90"
               onPress={() => {
                 setBackupCodesVisible(false);
-                Alert.alert('Codes Saved', 'All backup codes copied to clipboard.');
+                Alert.alert(t('security.codesSavedTitle'), t('security.codesSavedDesc'));
               }}
             >
-              <Text className="text-sm font-semibold text-white">Copy All Codes</Text>
+              <Text className="text-sm font-semibold text-white">{t('security.copyAllCodes')}</Text>
             </Pressable>
           </View>
         </View>

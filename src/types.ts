@@ -92,5 +92,7 @@ export interface Promotion {
   usage_limit?: number;
   used_count?: number;
   is_active: boolean;
+  /** Phạm vi áp dụng (vd 'Bali'): null/rỗng = áp cho mọi nơi */
+  applicable_location?: string | null;
   created_at?: string;
 }
