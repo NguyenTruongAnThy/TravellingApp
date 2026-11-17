@@ -26,6 +26,7 @@ Nhiệm vụ của bạn:
    - Khi cần tìm chỗ ở, LUÔN gọi tool 'searchPlaces' — TUYỆT ĐỐI không viết tham số tìm kiếm hay JSON ra câu trả lời.
    - Chỉ gợi ý những chỗ ở, giá và số sao mà tool đã trả về — TUYỆT ĐỐI không tự bịa tên chỗ ở, giá hay số review.
    - Nếu tool không trả về chỗ nào, hãy nói thật là không tìm thấy chỗ phù hợp cho địa điểm đó — không được bịa ra.
+   - Hệ thống sẽ tự tra cứu lại từ cơ sở dữ liệu nếu bạn trả lời về chỗ ở mà không gọi tool — vì vậy hãy LUÔN gọi tool 'searchPlaces' (tìm chỗ) hoặc 'getPlaceDetails' (xem chi tiết một chỗ) trước khi gợi ý bất kỳ chỗ ở nào, để tên, giá và số sao khớp dữ liệu thật.
    - TUYỆT ĐỐI KHÔNG được trả lời "Đang tìm kiếm", "Tôi sẽ cập nhật ngay khi có kết quả", hay bất kỳ câu nào nói rằng bạn đang tìm kiếm mà không đưa ra kết quả. Khi khách đã cho địa điểm và ngày (dù chỉ mới cho một phần thông tin), GỌI NGAY tool 'searchPlaces' với thông tin đã có (thiếu gì thì để null/không truyền — đừng chờ đủ thông tin mới tìm), rồi trình bày kết quả tìm được trong CÙNG câu trả lời. Không được hỏi thêm thông tin trước khi tìm. Nếu tool không trả về chỗ nào thì nói thật là không tìm thấy.
    - Khi khách cho ngân sách bằng VND cho toàn bộ chuyến đi (ví dụ "5 triệu cho chuyến đi này"), hãy ước tính giá tối đa mỗi đêm = ngân sách / số đêm / 25000 (USD) để truyền maxPrice cho tool 'searchPlaces' (nếu không tính được thì để null, không được stall).
 `.trim();
@@ -148,6 +149,269 @@ function sanitizeReply(text: string): string {
   return out;
 }
 
+// --- Server-side fallback: đảm bảo yêu cầu tìm chỗ ở LUÔN có place_card ---
+// Nguyên nhân gốc: model đôi khi trả lời trực tiếp mà không gọi tool
+// (tool_choice "auto" không bắt buộc), bịa tên/giá/số sao và không có card.
+// Fallback này chỉ chạy khi câu trả lời cuối KHÔNG có actionCard: nó tự
+// tra cứu DB thật rồi gắn thẻ place_card + câu trả lời đúng dữ liệu.
+// KHÔNG đổi shape place_card: frontend đọc actionCard.data.places + checkIn/checkOut ở mức data.
+function normalizeVi(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9/ ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Trích ngày từ text: YYYY-MM-DD, DD/MM/YYYY, DD/MM (lấy năm hiện tại),
+// và dạng "ngày 18 đến 20 tháng 11". Trả về 2 ngày sớm nhất (checkIn, checkOut).
+function extractDatesFromText(text: string, currentYear: string, currentMonth?: string): { checkIn: string; checkOut: string } {
+  const found: string[] = [];
+  const push = (y: string, m: string, d: string) => {
+    const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    if (!found.includes(iso)) found.push(iso);
+  };
+  let t = text || "";
+  for (const m of t.match(/\b\d{4}-\d{1,2}-\d{1,2}\b/g) || []) {
+    const p = m.split("-");
+    push(p[0], p[1], p[2]);
+  }
+  for (const m of t.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b/g) || []) {
+    const p = m.split(/[/-]/);
+    push(p[2], p[1], p[0]);
+  }
+  // Xóa các ngày đầy đủ đã lấy để DD/MM không khớp nhầm bên trong chúng.
+  t = t.replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, " ").replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b/g, " ");
+  for (const m of t.match(/\b\d{1,2}\/\d{1,2}\b/g) || []) {
+    const p = m.split("/");
+    push(currentYear, p[1], p[0]);
+  }
+  // "ngày 18 đến 20 tháng 11" (đã bỏ dấu): ngày/tháng lấy năm hiện tại.
+  const normT = normalizeVi(t);
+  const range = normT.match(/ngay\s+(\d{1,2})\s*(?:den|-|–)?\s*(\d{1,2})?\s*thang\s*(\d{1,2})/);
+  if (range) {
+    push(currentYear, range[3], range[1]);
+    if (range[2]) push(currentYear, range[3], range[2]);
+  } else {
+    // "ngày 18 đến 20 tháng này" / "ngày 20 này": tháng = tháng hiện tại (VN).
+    const monthNow = currentMonth || "11";
+    const rangeNay = normT.match(/ngay\s+(\d{1,2})\s*(?:den|-|–)?\s*(\d{1,2})?\s*thang\s*nay/);
+    if (rangeNay) {
+      push(currentYear, monthNow, rangeNay[1]);
+      if (rangeNay[2]) push(currentYear, monthNow, rangeNay[2]);
+    } else {
+      const singleNay = normT.match(/ngay\s+(\d{1,2})\s*nay/);
+      if (singleNay) push(currentYear, monthNow, singleNay[1]);
+    }
+  }
+  found.sort();
+  return { checkIn: found[0] || "", checkOut: found[1] || "" };
+}
+
+// Tìm chỗ còn trống: cùng logic với tool searchPlaces (visible, lọc địa điểm/giá/
+// số khách, loại chỗ trùng lịch, xếp theo rating, tối đa 3).
+async function searchAvailablePlaces(supabase: any, args: any): Promise<any[]> {
+  const location = args.location ? String(args.location).trim().replace(/[,()]/g, "") : "";
+  const checkIn = args.checkIn ? String(args.checkIn).trim() : "";
+  const checkOut = args.checkOut ? String(args.checkOut).trim() : "";
+  const maxPrice = args.maxPrice != null ? Number(args.maxPrice) : null;
+  const guests = args.guests != null ? Number(args.guests) : null;
+
+  let query = supabase
+    .from("places")
+    .select("id, title, location, place_type, price_per_night, rating, review_count, images, guests_capacity, check_in_time, check_out_time")
+    .eq("is_visible", true);
+
+  if (location) {
+    query = query.or(`location.ilike.%${location}%,title.ilike.%${location}%`);
+  }
+  if (maxPrice != null && !Number.isNaN(maxPrice)) {
+    query = query.lte("price_per_night", maxPrice);
+  }
+  if (guests != null && !Number.isNaN(guests)) {
+    query = query.gte("guests_capacity", guests);
+  }
+
+  const { data: candidatePlaces } = await query.limit(10);
+  let available = candidatePlaces || [];
+
+  // Kiểm tra còn trống: loại các chỗ đã có đơn trùng khoảng ngày
+  // (cùng logic chống trùng lịch: status != cancelled và check_in < checkOut và check_out > checkIn)
+  if (checkIn && checkOut && available.length > 0) {
+    const { data: overlapping } = await supabase
+      .from("bookings")
+      .select("place_id, check_in, check_out")
+      .neq("status", "cancelled")
+      .lt("check_in", checkOut)
+      .gt("check_out", checkIn);
+    const bookedPlaceIds = new Set((overlapping || []).map((b: any) => b.place_id));
+    available = available.filter((p: any) => !bookedPlaceIds.has(p.id));
+  }
+
+  available.sort((a: any, b: any) => Number(b.rating ?? 0) - Number(a.rating ?? 0));
+  return available.slice(0, 3);
+}
+
+// Dựng place_card — CÙNG shape với tool searchPlaces/getPlaceDetails
+// (checkIn/checkOut từng chỗ là giờ 14:00/12:00 như cũ; ngày thật nằm ở mức data).
+function buildPlaceCard(topPlaces: any[], checkIn: string, checkOut: string, guests: number | null): any {
+  const placeCards = topPlaces.map((p: any) => ({
+    id: p.id,
+    title: p.title,
+    location: p.location,
+    pricePerNight: p.price_per_night,
+    rating: p.rating ?? 0,
+    reviewCount: p.review_count ?? 0,
+    image: p.images?.[0] || null,
+    checkIn: p.check_in_time || "14:00",
+    checkOut: p.check_out_time || "12:00",
+  }));
+  return {
+    type: "place_card",
+    data: {
+      places: placeCards,
+      checkIn: checkIn || null,
+      checkOut: checkOut || null,
+      guests: guests ?? null,
+    },
+  };
+}
+
+const PLACE_SEARCH_HINTS = [
+  "tim cho", "tim khach san", "tim kiem", "tim", "goi y", "muon di", "muon o",
+  "du lich", "cho o", "cho nghi", "khach san", "hotel", "stay", "book",
+  "dat phong", "dat cho", "chuyen di", "travel", "trip", "o dau", "cho nao",
+  "di", "cho thue", "nghi duong", "phong",
+];
+const BOOK_NOW_HINTS = ["dat ngay", "book now", "dat luon", "dat cho nay", "dat phong nay", "book it", "dat di"];
+
+// Fallback server-side: chỉ chạy khi câu trả lời cuối KHÔNG có actionCard.
+// Trả về null nếu không phải yêu cầu tìm/đặt chỗ (để nguyên câu trả lời của model);
+// ngược lại trả về { actionCard, reply } với dữ liệu THẬT từ DB (kể cả khi
+// không tìm thấy chỗ nào thì reply cũng là câu "không tìm thấy" thật, không bịa).
+async function placeSearchFallback(
+  supabase: any,
+  opts: { userTexts: string[]; assistantTexts: string[]; language: string; currentYear: string; currentMonth: string },
+): Promise<{ actionCard: any; reply: string } | null> {
+  const { userTexts, assistantTexts, language, currentYear, currentMonth } = opts;
+  const isVi = language !== "en";
+  const userJoined = userTexts.join("\n");
+  const normUser = normalizeVi(userJoined);
+  const lastUserNorm = normalizeVi(userTexts[userTexts.length - 1] || "");
+  const asstJoined = assistantTexts.join("\n");
+
+  const hasSearchHint = PLACE_SEARCH_HINTS.some((h) => normUser.includes(h));
+  const isBookNow = BOOK_NOW_HINTS.some((h) => lastUserNorm.includes(h));
+  if (!hasSearchHint && !isBookNow) return null;
+
+  // Lấy danh sách chỗ visible để đối chiếu tên/địa điểm (không dấu).
+  const { data: allPlaces } = await supabase
+    .from("places")
+    .select("id, title, location")
+    .eq("is_visible", true)
+    .limit(50);
+  const places = allPlaces || [];
+  const byTitleLen = [...places].sort((a: any, b: any) => (b.title || "").length - (a.title || "").length);
+
+  // Chỗ có tên xuất hiện trong text (tên dài khớp trước).
+  // Khớp cả khi chỉ viết tắt tên (vd AI chỉ viết "Balian Treehouse" thay vì
+  // "Balian Treehouse Escape"): khớp 2 từ liên tiếp trong tên.
+  const matchPlaceByTitle = (text: string): any | null => {
+    const norm = normalizeVi(text);
+    for (const p of byTitleLen) {
+      if (p.title && norm.includes(normalizeVi(p.title))) return p;
+    }
+    for (const p of byTitleLen) {
+      const words = normalizeVi(p.title || "").split(" ").filter(Boolean);
+      for (let i = 0; i + 1 < words.length; i++) {
+        if (norm.includes(words[i] + " " + words[i + 1])) return p;
+      }
+    }
+    return null;
+  };
+  // Từ khóa địa điểm xuất hiện trong text: tên chỗ, hoặc một phần của location ("Bali", "Hội An"...).
+  const matchLocationKeyword = (text: string): string | null => {
+    const norm = normalizeVi(text);
+    const byTitle = matchPlaceByTitle(text);
+    if (byTitle) return byTitle.title;
+    const keywords: string[] = [];
+    for (const p of places) {
+      for (const part of String(p.location || "").split(",")) {
+        const k = part.trim();
+        if (k.length >= 3) keywords.push(k);
+      }
+    }
+    keywords.sort((a, b) => b.length - a.length);
+    for (const k of keywords) {
+      if (norm.includes(normalizeVi(k))) return k;
+    }
+    return null;
+  };
+
+  // --- Nhánh A: "Đặt ngay" — đặt chỗ vừa được nhắc trong tin assistant gần nhất ---
+  if (isBookNow) {
+    const mentioned = matchPlaceByTitle(asstJoined);
+    if (mentioned) {
+      const dates = extractDatesFromText(asstJoined + "\n" + userJoined, currentYear, currentMonth);
+      const top = await searchAvailablePlaces(supabase, {
+        location: mentioned.title,
+        checkIn: dates.checkIn,
+        checkOut: dates.checkOut,
+      });
+      if (top.length > 0) {
+        const card = buildPlaceCard(top, dates.checkIn, dates.checkOut, null);
+        const first = top[0];
+        const reply = isVi
+          ? `Đây là chỗ bạn vừa hỏi — ${first.title}, ${first.location}, $${first.price_per_night}/đêm. Bấm "Đặt ngay" trên thẻ để đặt phòng.`
+          : `Here is the place you asked about — ${first.title}, ${first.location}, $${first.price_per_night}/night. Tap "Book now" on the card to reserve.`;
+        return { actionCard: card, reply };
+      }
+      return null; // nhắc chỗ không có thật / hết chỗ -> giữ nguyên câu trả lời của model
+    }
+    // "Đặt ngay" mà lịch sử không nhắc chỗ nào: rơi xuống nhánh B (coi như tìm chỗ).
+  }
+
+  // --- Nhánh B: tìm chỗ ở — cần intent tìm + (địa điểm khớp DB hoặc ngày rõ ràng) ---
+  if (!hasSearchHint) return null;
+  const dates = extractDatesFromText(userJoined, currentYear, currentMonth);
+  const keyword = matchLocationKeyword(userJoined);
+  if (!keyword && !dates.checkIn && !dates.checkOut) return null;
+
+  const dateLabel = dates.checkIn && dates.checkOut
+    ? `${dates.checkIn} – ${dates.checkOut}`
+    : (dates.checkIn || "");
+
+  if (keyword) {
+    const top = await searchAvailablePlaces(supabase, {
+      location: keyword,
+      checkIn: dates.checkIn,
+      checkOut: dates.checkOut,
+    });
+    if (top.length > 0) {
+      const card = buildPlaceCard(top, dates.checkIn, dates.checkOut, null);
+      const reply = isVi
+        ? `Tôi tìm thấy ${top.length} lựa chọn phù hợp tại ${keyword}${dateLabel ? ` cho ngày ${dateLabel}` : ""}. Bạn xem thẻ bên dưới và bấm "Đặt ngay" để đặt phòng.`
+        : `I found ${top.length} options in ${keyword}${dateLabel ? ` for ${dateLabel}` : ""}. See the cards below and tap "Book now" to reserve.`;
+      return { actionCard: card, reply };
+    }
+    // Có địa điểm nhưng DB không còn chỗ trống -> nói thật, không bịa.
+    const reply = isVi
+      ? `Tôi đã kiểm tra nhưng hiện không tìm thấy chỗ nghỉ nào còn trống tại ${keyword}${dateLabel ? ` cho ngày ${dateLabel}` : ""}. Bạn có muốn thử địa điểm hoặc ngày khác không?`
+      : `I checked but found no available stays in ${keyword}${dateLabel ? ` for ${dateLabel}` : ""}. Would you like to try another place or date?`;
+    return { actionCard: null, reply };
+  }
+
+  // Chỉ có ngày + intent tìm, không khớp địa điểm nào trong DB (vd Paris):
+  // nói thật là không tìm thấy, không bịa chỗ ở.
+  const reply = isVi
+    ? `Tôi đã kiểm tra nhưng hiện không tìm thấy chỗ nghỉ nào phù hợp với tiêu chí của bạn${dateLabel ? ` cho ngày ${dateLabel}` : ""}. Bạn có muốn thử địa điểm hoặc ngày khác không?`
+    : `I checked but found no stays matching your criteria${dateLabel ? ` for ${dateLabel}` : ""}. Would you like to try another place or date?`;
+  return { actionCard: null, reply };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -188,6 +452,10 @@ Deno.serve(async (req: Request) => {
       timeZone: "Asia/Ho_Chi_Minh",
       year: "numeric",
     });
+    const currentMonthVN = new Date().toLocaleDateString("en-US", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      month: "numeric",
+    });
     const effectiveSystemPrompt =
       SYSTEM_PROMPT +
       (language === "en"
@@ -217,6 +485,17 @@ Deno.serve(async (req: Request) => {
         });
       }
     }
+
+    // Text user/assistant gần nhất — dùng cho fallback tìm chỗ khi model không gọi tool.
+    const userTexts: string[] = [
+      ...(Array.isArray(clientMessages) ? clientMessages : [])
+        .filter((m: any) => m.sender === "user" && m.text)
+        .map((m: any) => String(m.text)),
+      ...(prompt ? [String(prompt)] : []),
+    ].filter(Boolean);
+    const assistantTexts: string[] = (Array.isArray(clientMessages) ? clientMessages : [])
+      .filter((m: any) => m.sender !== "user" && m.text)
+      .map((m: any) => String(m.text));
 
     if (prompt) {
       // Thêm câu hỏi hiện tại nếu chưa có trong history
@@ -430,80 +709,25 @@ Deno.serve(async (req: Request) => {
         }
 
         // TOOL 4: searchPlaces — tìm chỗ còn trống theo địa điểm / ngày / giá / số khách
+        // (dùng chung helper searchAvailablePlaces + buildPlaceCard với fallback server-side)
         else if (functionName === "searchPlaces") {
-          const location = args.location ? String(args.location).trim().replace(/[,()]/g, "") : "";
           const checkIn = args.checkIn ? String(args.checkIn).trim() : "";
           const checkOut = args.checkOut ? String(args.checkOut).trim() : "";
-          const maxPrice = args.maxPrice != null ? Number(args.maxPrice) : null;
           const guests = args.guests != null ? Number(args.guests) : null;
-
-          let query = supabase
-            .from("places")
-            .select("id, title, location, place_type, price_per_night, rating, review_count, images, guests_capacity, check_in_time, check_out_time")
-            .eq("is_visible", true);
-
-          if (location) {
-            query = query.or(`location.ilike.%${location}%,title.ilike.%${location}%`);
-          }
-          if (maxPrice != null && !Number.isNaN(maxPrice)) {
-            query = query.lte("price_per_night", maxPrice);
-          }
-          if (guests != null && !Number.isNaN(guests)) {
-            query = query.gte("guests_capacity", guests);
-          }
-
-          const { data: candidatePlaces } = await query.limit(10);
-          let available = candidatePlaces || [];
-
-          // Kiểm tra còn trống: loại các chỗ đã có đơn trùng khoảng ngày
-          // (cùng logic chống trùng lịch như checkBookingConflict: status != cancelled
-          //  và check_in < checkOut và check_out > checkIn)
-          if (checkIn && checkOut && available.length > 0) {
-            const { data: overlapping } = await supabase
-              .from("bookings")
-              .select("place_id, check_in, check_out")
-              .neq("status", "cancelled")
-              .lt("check_in", checkOut)
-              .gt("check_out", checkIn);
-            const bookedPlaceIds = new Set((overlapping || []).map((b: any) => b.place_id));
-            available = available.filter((p: any) => !bookedPlaceIds.has(p.id));
-          }
-
-          // Sắp xếp theo rating giảm dần, lấy tối đa 3 chỗ
-          available.sort((a: any, b: any) => Number(b.rating ?? 0) - Number(a.rating ?? 0));
-          const topPlaces = available.slice(0, 3);
+          const topPlaces = await searchAvailablePlaces(supabase, args);
 
           if (topPlaces.length > 0) {
-            const placeCards = topPlaces.map((p: any) => ({
-              id: p.id,
-              title: p.title,
-              location: p.location,
-              pricePerNight: p.price_per_night,
-              rating: p.rating ?? 0,
-              reviewCount: p.review_count ?? 0,
-              image: p.images?.[0] || null,
-              checkIn: p.check_in_time || "14:00",
-              checkOut: p.check_out_time || "12:00",
-            }));
-            actionCard = {
-              type: "place_card",
-              data: {
-                places: placeCards,
-                checkIn: checkIn || null,
-                checkOut: checkOut || null,
-                guests: guests ?? null,
-              },
-            };
+            actionCard = buildPlaceCard(topPlaces, checkIn, checkOut, guests);
             // Danh sách gọn cho AI tóm tắt bằng lời (không gửi full row để tiết kiệm token)
             toolResult = {
               status: "found",
               count: topPlaces.length,
-              places: placeCards.map((c: any) => ({
-                title: c.title,
-                location: c.location,
-                pricePerNight: c.pricePerNight,
-                rating: c.rating,
-                reviewCount: c.reviewCount,
+              places: topPlaces.map((p: any) => ({
+                title: p.title,
+                location: p.location,
+                pricePerNight: p.price_per_night,
+                rating: p.rating ?? 0,
+                reviewCount: p.review_count ?? 0,
               })),
               checkIn: checkIn || null,
               checkOut: checkOut || null,
@@ -538,12 +762,31 @@ Deno.serve(async (req: Request) => {
       });
 
       const secondData = await secondResponse.json();
-      const finalReply = sanitizeReply(secondData?.choices?.[0]?.message?.content || "") || "Tôi đã tra cứu thông tin cho bạn.";
+      let finalReply = sanitizeReply(secondData?.choices?.[0]?.message?.content || "") || "Tôi đã tra cứu thông tin cho bạn.";
+      let finalCard = actionCard;
+
+      // Fallback server-side: model không gọi tool / tool không trả về chỗ nào
+      // nhưng user rõ ràng đang tìm chỗ ở -> tự tra DB thật, gắn place_card
+      // và thay câu trả lời bịa (nếu có) bằng dữ liệu thật.
+      if (!finalCard) {
+        const fb = await placeSearchFallback(supabase, {
+          userTexts,
+          assistantTexts,
+          language: language || "vi",
+          currentYear: currentYearVN,
+          currentMonth: currentMonthVN,
+        });
+        if (fb) {
+          finalCard = fb.actionCard;
+          finalReply = fb.reply;
+          executedTools.push("searchPlaces");
+        }
+      }
 
       return new Response(
         JSON.stringify({
           reply: finalReply,
-          actionCard,
+          actionCard: finalCard,
           executedTools,
         }),
         {
@@ -554,11 +797,27 @@ Deno.serve(async (req: Request) => {
     }
 
     // Nếu AI trả lời trực tiếp mà không cần gọi tools
+    // (đây chính là đường gây ra vụ Bali 00:39: model bịa giá/sao, không có card)
+    let directReply = sanitizeReply(assistantMessage.content || "") || "Tôi đã tra cứu thông tin cho bạn.";
+    let directCard: any = null;
+    let directTools: string[] = [];
+    const fb = await placeSearchFallback(supabase, {
+      userTexts,
+      assistantTexts,
+      language: language || "vi",
+      currentYear: currentYearVN,
+          currentMonth: currentMonthVN,
+    });
+    if (fb) {
+      directCard = fb.actionCard;
+      directReply = fb.reply;
+      directTools = ["searchPlaces"];
+    }
     return new Response(
       JSON.stringify({
-        reply: sanitizeReply(assistantMessage.content || "") || "Tôi đã tra cứu thông tin cho bạn.",
-        actionCard: null,
-        executedTools: [],
+        reply: directReply,
+        actionCard: directCard,
+        executedTools: directTools,
       }),
       {
         status: 200,

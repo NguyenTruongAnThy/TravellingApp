@@ -3,13 +3,30 @@ import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { getPlaceById } from '../../services/placesService';
-import { createReview, getReviewsByPlace, hasCompletedBooking, incrementHelpful, uploadReviewPhotos } from '../../services/reviewService';
+import { createReview, getReviewEligibility, getReviewsByPlace, incrementHelpful, uploadReviewPhotos } from '../../services/reviewService';
 import type { Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import AppButton from '../../components/AppButton';
 import { useTranslation } from 'react-i18next';
 
 type Filter = 'all' | 'photos' | '1' | '2' | '3' | '4' | '5';
+
+// Lay message that cua loi (Supabase StorageError / PostgrestError / Error / chuoi)
+// de hien cho user thay vi chi cau chung chung — lan test toi chup lai la biet
+// ket o dau (policy? bucket? doc file? trung booking_id? mang?) thay vi doan mo.
+// PostgrestError con co `code` (vd '23505' = trung unique) va `details` (vd
+// "Key (booking_id)=(...) already exists") — lay them de chan doan cho nhanh.
+function getErrorMessage(err: unknown): string {
+  if (!err) return '';
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message;
+  const maybe = err as { message?: unknown; code?: unknown; details?: unknown };
+  const base = typeof maybe.message === 'string' ? maybe.message : String(err);
+  const code = typeof maybe.code === 'string' ? maybe.code : '';
+  const details = typeof maybe.details === 'string' ? maybe.details : '';
+  const extra = [code ? `[${code}]` : '', details].filter(Boolean).join(' ');
+  return extra ? `${base} ${extra}` : base;
+}
 
 export default function ReviewsScreen({ route, navigation }: { route: any; navigation: any }) {
   const { t, i18n } = useTranslation();
@@ -33,11 +50,17 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
   const [draftPhotos, setDraftPhotos] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  // Gate BR07: chi true khi user da co don completed cho place nay (null = dang kiem tra).
+  // Gate BR07: chi true khi user da co don completed CHUA co danh gia cho place
+  // nay (null = dang kiem tra). alreadyReviewed = co don completed nhung tat ca
+  // deu da co danh gia — khoa nut voi thong bao rieng thay vi cau "chua hoan thanh".
   const [canReview, setCanReview] = useState<boolean | null>(null);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const lockedText = i18n.language === 'vi'
     ? 'Hoàn thành chuyến đi để viết đánh giá'
     : 'Complete your stay to leave a review';
+  const alreadyReviewedText = i18n.language === 'vi'
+    ? 'Bạn đã đánh giá chuyến đi này rồi'
+    : 'You have already reviewed this stay';
 
   const load = useCallback(async () => {
     if (!placeId) { setErrorMessage(t('reviews.errorNotFound')); setLoading(false); return; }
@@ -51,15 +74,22 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
   useEffect(() => { load(); }, [load]);
 
   // Gate BR07 (moi): form viet review chi hien khi vao tu don da hoan thanh
-  // (params co bookingId) VA hasCompletedBooking = true. Mo tu Detail (khong co
-  // bookingId) thi canReview = false va bottom bar cung khong hien nut/dong khoa.
+  // (params co bookingId) VA con don completed chua co danh gia. Mo tu Detail
+  // (khong co bookingId) thi canReview = false va bottom bar cung khong hien
+  // nut/dong khoa. Neu tat ca don completed deu da co danh gia thi khoa nut
+  // voi thong bao "da danh gia" thay vi "chua hoan thanh".
   useEffect(() => {
-    if (!placeId || !bookingId || !session?.user?.id) { setCanReview(false); return; }
+    if (!placeId || !bookingId || !session?.user?.id) { setCanReview(false); setAlreadyReviewed(false); return; }
     let alive = true;
     setCanReview(null);
-    hasCompletedBooking(placeId, session.user.id)
-      .then((ok) => { if (alive) setCanReview(ok); })
-      .catch(() => { if (alive) setCanReview(false); });
+    setAlreadyReviewed(false);
+    getReviewEligibility(placeId, session.user.id)
+      .then((eligibility) => {
+        if (!alive) return;
+        setCanReview(eligibility === 'can_review');
+        setAlreadyReviewed(eligibility === 'reviewed');
+      })
+      .catch(() => { if (alive) { setCanReview(false); setAlreadyReviewed(false); } });
     return () => { alive = false; };
   }, [placeId, bookingId, session]);
 
@@ -152,7 +182,8 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
       const { urls, error: uploadError } = await uploadReviewPhotos(place.id, session.user.id, draftPhotos);
       if (uploadError) {
         setSubmitting(false);
-        setSubmitError(t('reviews.uploadPhotosError'));
+        const detail = getErrorMessage(uploadError);
+        setSubmitError(detail ? `${t('reviews.uploadPhotosError')} (${detail})` : t('reviews.uploadPhotosError'));
         return;
       }
       photoUrls = urls;
@@ -160,8 +191,17 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
     const { error } = await createReview(place.id, session.user.id, draftRating, draftComment.trim(), photoUrls, bookingId);
     setSubmitting(false);
     if (error) {
-      const message = (error as Error)?.message ?? '';
-      setSubmitError(message.includes('Completed') ? lockedText : t('reviews.submitError'));
+      const message = getErrorMessage(error);
+      // Tat ca don completed deu da co danh gia thi hien thong bao rieng;
+      // chua du dieu kien (chua co don completed) thi hien dong khoa nhu cu;
+      // cac loi khac thi hien cau chung chung + loi that de chan doan.
+      if (message.includes('already_reviewed')) {
+        setSubmitError(alreadyReviewedText);
+      } else if (message.includes('Completed')) {
+        setSubmitError(lockedText);
+      } else {
+        setSubmitError(message ? `${t('reviews.submitError')} (${message})` : t('reviews.submitError'));
+      }
       return;
     }
     setModalVisible(false);
@@ -283,7 +323,7 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
           session && canReview === false ? (
             <View className="flex-1 rounded-full py-3.5 px-3 items-center bg-appBg border border-borderLight flex-row justify-center">
               <Ionicons name="lock-closed-outline" size={18} color="#8A90A6" />
-              <Text className="ml-2 text-sm font-bold text-textMuted">{lockedText}</Text>
+              <Text className="ml-2 text-sm font-bold text-textMuted">{alreadyReviewed ? alreadyReviewedText : lockedText}</Text>
             </View>
           ) : (
             <Pressable

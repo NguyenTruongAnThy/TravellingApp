@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { supabase } from '../lib/supabase';
 import type { Review } from '../types';
 
@@ -30,52 +30,70 @@ export async function incrementHelpful(reviewId: string, currentCount: number): 
   }
 }
 
-// BR07: tim don completed cua user cho place nay. Dung chung cho gate o UI
-// (ReviewsScreen / DetailScreen) va cho createReview, de khoi viet lap lai query.
-export async function getCompletedBooking(
+// BR07: lay cac don completed cua user cho place nay (moi nhat truoc, toi da 10)
+// kem tap booking_id da co danh gia. Dung chung cho getCompletedBooking va
+// getReviewEligibility de khoi query lap lai.
+async function getCompletedBookingsWithReviewState(
   placeId: string,
   userId: string,
-): Promise<{ id: string } | null> {
-  const { data } = await supabase
+): Promise<{ bookings: { id: string }[]; reviewedIds: Set<string> }> {
+  const { data: bookings } = await supabase
     .from('bookings')
     .select('id')
     .eq('place_id', placeId)
     .eq('user_id', userId)
     .eq('status', 'completed')
-    .limit(1)
-    .maybeSingle();
-  return (data as { id: string } | null) ?? null;
+    .order('check_out', { ascending: false })
+    .limit(10);
+  const list = (bookings as { id: string }[] | null) ?? [];
+  if (list.length === 0) return { bookings: [], reviewedIds: new Set<string>() };
+  const { data: reviewed } = await supabase
+    .from('reviews')
+    .select('booking_id')
+    .in('booking_id', list.map((b) => b.id));
+  const reviewedIds = new Set(
+    ((reviewed as { booking_id: string | null }[] | null) ?? [])
+      .map((r) => r.booking_id)
+      .filter((id): id is string => id != null),
+  );
+  return { bookings: list, reviewedIds };
 }
 
-// Chi true khi user da co don completed cho place nay; loi mang thi mac dinh false (khoa).
+// Don completed DAU TIEN CHUA co danh gia (moi nhat truoc). Tra null khi khong co
+// don completed nao, hoac tat ca don completed deu da co danh gia.
+// Vi sao phai loc: reviews.booking_id la UNIQUE — gan danh gia moi vao 1 don da
+// co danh gia thi insert loi 23505 (da gap that: booking b0000001-...-0002).
+export async function getCompletedBooking(
+  placeId: string,
+  userId: string,
+): Promise<{ id: string } | null> {
+  const { bookings, reviewedIds } = await getCompletedBookingsWithReviewState(placeId, userId);
+  return bookings.find((b) => !reviewedIds.has(b.id)) ?? null;
+}
+
+// Trang thai review cua user cho 1 place, de UI phan biet 2 truong hop khoa nut
+// "Viet danh gia": 'none' = chua co don completed nao; 'reviewed' = co don
+// completed nhung tat ca deu da co danh gia; 'can_review' = co don completed
+// chua co danh gia.
+export type ReviewEligibility = 'none' | 'reviewed' | 'can_review';
+
+export async function getReviewEligibility(
+  placeId: string,
+  userId: string,
+): Promise<ReviewEligibility> {
+  const { bookings, reviewedIds } = await getCompletedBookingsWithReviewState(placeId, userId);
+  if (bookings.length === 0) return 'none';
+  return bookings.some((b) => !reviewedIds.has(b.id)) ? 'can_review' : 'reviewed';
+}
+
+// Chi true khi user da co don completed CHUA co danh gia cho place nay;
+// loi mang thi mac dinh false (khoa).
 export async function hasCompletedBooking(placeId: string, userId: string): Promise<boolean> {
   try {
     return (await getCompletedBooking(placeId, userId)) != null;
   } catch {
     return false;
   }
-}
-
-// Giai ma base64 thanh byte (thuan JS, khong them dependency).
-const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-function base64ToUint8Array(base64: string): Uint8Array {
-  const clean = base64.replace(/[^A-Za-z0-9+/=]/g, '');
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bits = 0;
-  for (let i = 0; i < clean.length; i += 1) {
-    const ch = clean[i];
-    if (ch === '=') break;
-    const value = BASE64_ALPHABET.indexOf(ch);
-    if (value === -1) continue;
-    buffer = (buffer << 6) | value;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((buffer >> bits) & 0xff);
-    }
-  }
-  return new Uint8Array(bytes);
 }
 
 export async function uploadReviewPhotos(
@@ -87,14 +105,13 @@ export async function uploadReviewPhotos(
     const urls: string[] = [];
     for (let i = 0; i < photoUris.length; i += 1) {
       const uri = photoUris[i];
-      // Doc file thanh base64 roi upload dang nhi phan: FileSystem doc duoc ca
-      // content:// (Android, image-picker tra dang nay) lan file:// (iOS).
-      // Cach cu dung fetch(uri) -> blob() khong doc duoc content:// nen tren
-      // Android luon loi "Network request failed" va khong dang anh duoc.
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const bytes = base64ToUint8Array(base64);
+      // Doc file thanh nhi phan bang API File moi cua expo-file-system.
+      // API cu FileSystem.readAsStringAsync (import tu 'expo-file-system') chi
+      // con la stub deprecated tren SDK 58 — goi la throw ngay tai runtime
+      // ("Method readAsStringAsync ... is deprecated") nen upload luon loi
+      // du bucket/policy da dung. File moi doc duoc ca content:// (Android,
+      // image-picker tra dang nay) lan file:// (iOS).
+      const bytes = new Uint8Array(await new File(uri).arrayBuffer());
       const path = `${placeId}/${userId}/${Date.now()}-${i}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('review-photos')
@@ -151,12 +168,19 @@ export async function createReview(
     }
 
     if (!completedBooking) {
+      // Phan biet 2 truong hop: chua co don completed nao, hay tat ca don
+      // completed deu da co danh gia — de UI hien dung thong bao.
+      const eligibility = await getReviewEligibility(placeId, userId);
+      if (eligibility === 'reviewed') {
+        return { data: null, error: new Error('already_reviewed') };
+      }
       return {
         data: null,
         error: new Error('Chỉ khách hàng đã hoàn thành kỳ nghỉ (Completed) mới có thể gửi đánh giá nhận xét.'),
       };
     }
 
+    const reviewSelect = 'id, rating, comment, photos, helpful_count, created_at, user_id, reviewer_name, users(name)';
     const { data, error } = await supabase
       .from('reviews')
       .insert({
@@ -169,8 +193,21 @@ export async function createReview(
         photos,
         reviewer_name: reviewerName,
       })
-      .select('id, rating, comment, photos, helpful_count, created_at, user_id, reviewer_name, users(name)')
+      .select(reviewSelect)
       .single();
+    if (error && (error as { code?: unknown }).code === '23505') {
+      // Don nay da co danh gia roi (vd mo lai form tu 1 don da danh gia, hoac 2
+      // lan gui trung nhau) — cap nhat danh gia cu thay vi bao loi, de nut
+      // "Danh gia" tro thanh "sua lai danh gia". Chi doi rating/comment/photos/
+      // reviewer_name, KHONG doi helpful_count (giu nguyen so like cu).
+      const { data: updated, error: updateError } = await supabase
+        .from('reviews')
+        .update({ rating, comment, photos, reviewer_name: reviewerName })
+        .eq('booking_id', completedBooking.id)
+        .select(reviewSelect)
+        .single();
+      return { data: (updated as Review | null) ?? null, error: updateError };
+    }
     return { data: (data as Review | null) ?? null, error };
   } catch (err) {
     return { data: null, error: err };
