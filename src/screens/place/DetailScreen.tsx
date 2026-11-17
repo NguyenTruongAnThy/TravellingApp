@@ -22,7 +22,7 @@ function amenityIcon(name: string): any {
 }
 
 export default function DetailScreen({ route, navigation }: { route: any; navigation: any }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { session } = useAuth();
   const placeId = route?.params?.placeId as string | undefined;
   const [place, setPlace] = useState<Place | null>(null);

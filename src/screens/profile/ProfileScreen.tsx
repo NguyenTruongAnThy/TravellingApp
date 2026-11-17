@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -6,9 +6,11 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,6 +50,48 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
 
   // Language modal state
   const [langModalVisible, setLangModalVisible] = useState(false);
+
+  // Settings toggles (persisted in AsyncStorage)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+
+  // Load saved toggle states once on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedNotifications = await AsyncStorage.getItem('@wanderstay_notifications');
+        if (savedNotifications !== null) {
+          setNotificationsEnabled(savedNotifications === 'true');
+        }
+        const savedDarkMode = await AsyncStorage.getItem('@wanderstay_dark_mode');
+        if (savedDarkMode !== null) {
+          setDarkModeEnabled(savedDarkMode === 'true');
+        }
+      } catch (err) {
+        // Keep defaults if reading settings fails
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleToggleNotifications = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    try {
+      await AsyncStorage.setItem('@wanderstay_notifications', String(value));
+    } catch (err) {
+      // Ignore persistence errors; the toggle still updates on screen
+    }
+  };
+
+  const handleToggleDarkMode = async (value: boolean) => {
+    setDarkModeEnabled(value);
+    try {
+      await AsyncStorage.setItem('@wanderstay_dark_mode', String(value));
+    } catch (err) {
+      // Ignore persistence errors; the toggle still updates on screen
+    }
+  };
 
   const loadProfile = useCallback(async () => {
     if (!userId) return;
@@ -338,13 +382,23 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
           <Text className="text-base text-textMain">
             {i18n.language === 'vi' ? 'Thông báo ứng dụng' : 'Notifications'}
           </Text>
-          <Text className="text-sm text-textMuted">ON</Text>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={handleToggleNotifications}
+            trackColor={{ false: '#E6E3F5', true: '#4F46E5' }}
+            thumbColor="#FFFFFF"
+          />
         </View>
         <View className="flex-row items-center justify-between py-4" style={{ borderBottomWidth: 1, borderBottomColor: '#E6E3F5' }}>
           <Text className="text-base text-textMain">
             {i18n.language === 'vi' ? 'Giao diện tối' : 'Dark Appearance'}
           </Text>
-          <Text className="text-sm text-textMuted">OFF</Text>
+          <Switch
+            value={darkModeEnabled}
+            onValueChange={handleToggleDarkMode}
+            trackColor={{ false: '#E6E3F5', true: '#4F46E5' }}
+            thumbColor="#FFFFFF"
+          />
         </View>
         <Pressable
           className="flex-row items-center justify-between py-4"
@@ -354,12 +408,15 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
           <Text className="text-base text-textMain">{t('profile.helpCenter')}</Text>
           <Text className="text-base text-textMuted">›</Text>
         </Pressable>
-        <View className="flex-row items-center justify-between py-4">
+        <Pressable
+          className="flex-row items-center justify-between py-4"
+          onPress={() => setTermsModalVisible(true)}
+        >
           <Text className="text-base text-textMain">
             {i18n.language === 'vi' ? 'Điều khoản & Quyền riêng tư' : 'Terms & Privacy'}
           </Text>
           <Text className="text-base text-textMuted">›</Text>
-        </View>
+        </Pressable>
       </View>
 
       <Pressable className="mt-8 mb-6 items-center" onPress={() => signOut()}>
@@ -446,6 +503,60 @@ export default function ProfileScreen({ navigation: propNavigation }: { navigati
             {/* Close Button */}
             <Pressable
               onPress={() => setLangModalVisible(false)}
+              className="mt-6 py-3.5 rounded-full bg-gray-100 items-center justify-center"
+            >
+              <Text className="text-sm font-semibold text-textMain">{t('common.close')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Terms & Privacy Bottom Sheet Modal */}
+      <Modal
+        visible={termsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTermsModalVisible(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-end"
+          onPress={() => setTermsModalVisible(false)}
+        >
+          <Pressable
+            className="bg-white rounded-t-3xl p-6 shadow-xl"
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View className="items-center pb-2">
+              <View className="w-12 h-1.5 rounded-full bg-gray-300 mb-4" />
+              <Text className="text-lg font-bold text-textMain">
+                {i18n.language === 'vi' ? 'Điều khoản & Quyền riêng tư' : 'Terms & Privacy'}
+              </Text>
+            </View>
+
+            {/* Terms of Use */}
+            <Text className="mt-4 text-base font-bold text-textMain">
+              {i18n.language === 'vi' ? 'Điều khoản sử dụng' : 'Terms of Use'}
+            </Text>
+            <Text className="mt-2 text-sm leading-5 text-textMuted">
+              {i18n.language === 'vi'
+                ? 'Bạn đặt phòng trực tiếp trên ứng dụng WanderStay và thanh toán qua mã QR SePay. Khi hủy phòng, chính sách hoàn tiền được áp dụng theo quy định: hủy trước giờ check-in từ 48 giờ trở lên được hoàn 100%; hủy trong vòng 48 giờ trước check-in bị phạt đúng 1 đêm; hủy sau giờ check-in hoặc vắng mặt sẽ không được hoàn tiền.'
+                : 'You book directly in the WanderStay app and pay via SePay QR. Our refund policy applies when you cancel: cancel at least 48 hours before check-in for a 100% refund; cancel within 48 hours before check-in and a one-night penalty applies; cancel after check-in or no-show and no refund is given.'}
+            </Text>
+
+            {/* Privacy Policy */}
+            <Text className="mt-5 text-base font-bold text-textMain">
+              {i18n.language === 'vi' ? 'Quyền riêng tư' : 'Privacy Policy'}
+            </Text>
+            <Text className="mt-2 text-sm leading-5 text-textMuted">
+              {i18n.language === 'vi'
+                ? 'Ứng dụng lưu trữ tên, email, số điện thoại và thông tin đặt phòng của bạn trên Supabase để phục vụ việc đặt phòng và hỗ trợ khách hàng. Chúng tôi không bán dữ liệu cá nhân của bạn cho bất kỳ bên thứ ba nào.'
+                : 'The app stores your name, email, phone number and booking details on Supabase to provide bookings and customer support. We do not sell your personal data to any third party.'}
+            </Text>
+
+            {/* Close Button */}
+            <Pressable
+              onPress={() => setTermsModalVisible(false)}
               className="mt-6 py-3.5 rounded-full bg-gray-100 items-center justify-center"
             >
               <Text className="text-sm font-semibold text-textMain">{t('common.close')}</Text>

@@ -94,13 +94,15 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
     setRefreshing(false);
   }, [userId]);
 
-  // Real-time ticker: Mỗi 3 giây kiểm tra các đơn chờ thanh toán nếu bộ đếm giờ về 0:00 thì tự động xóa khỏi DB và Upcoming
+  // Real-time ticker: Mỗi 3 giây kiểm tra (1) các đơn chờ thanh toán nếu bộ đếm giờ về 0:00 thì tự động xóa khỏi DB và Upcoming, và (2) các đơn 'booked' đã qua 12:00 ngày check-out thì chuyển sang Completed.
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
       const expiredPendingIds: string[] = [];
+      const completedIds: string[] = [];
       setBookings((prev) => {
         let hasExpired = false;
+        let hasCompleted = false;
         const remainingBookings = prev.filter((b) => {
           const isPending = b.payment_status === 'pending' || b.payment_status === 'unpaid';
           if (isPending && b.created_at) {
@@ -114,9 +116,24 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
           return true;
         });
 
+        // Qua 12:00 ngày check-out -> Completed (đổi cả trạng thái local để tab chuyển ngay)
+        const updatedBookings = remainingBookings.map((b) => {
+          if (b.status === 'booked' && b.check_out && new Date(`${b.check_out}T12:00:00`).getTime() < now) {
+            completedIds.push(b.id);
+            hasCompleted = true;
+            return { ...b, status: 'completed' as const };
+          }
+          return b;
+        });
+
         if (hasExpired && expiredPendingIds.length > 0) {
           supabase.from('bookings').delete().in('id', expiredPendingIds).then(() => {});
-          return remainingBookings;
+        }
+        if (hasCompleted && completedIds.length > 0) {
+          supabase.from('bookings').update({ status: 'completed' }).in('id', completedIds).eq('status', 'booked').then(() => {});
+        }
+        if (hasExpired || hasCompleted) {
+          return updatedBookings;
         }
         return prev;
       });
@@ -731,7 +748,7 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                             <Pressable
                               onPress={() => {
                                 if (place) {
-                                  navigation?.navigate?.('Detail', { place });
+                                  navigation?.navigate?.('Detail', { placeId: place.id });
                                 } else {
                                   navigation?.navigate?.('Search');
                                 }
@@ -741,6 +758,20 @@ export default function BookingsScreen({ navigation: propNavigation }: { navigat
                               <Ionicons name="refresh-outline" size={12} color="#4F46E5" />
                               <Text className="text-xs font-bold text-brand" numberOfLines={1}>
                                 {t('bookings.rebookStay')}
+                              </Text>
+                            </Pressable>
+
+                            <Pressable
+                              onPress={() => {
+                                if (place) {
+                                  navigation?.navigate?.('Reviews', { placeId: place.id, bookingId: b.id });
+                                }
+                              }}
+                              className="flex-row items-center gap-1 py-1"
+                            >
+                              <Ionicons name="star-outline" size={12} color="#4F46E5" />
+                              <Text className="text-xs font-bold text-brand" numberOfLines={1}>
+                                {t('reviews.writeReview')}
                               </Text>
                             </Pressable>
                           </View>

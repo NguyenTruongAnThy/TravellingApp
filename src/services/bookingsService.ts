@@ -159,18 +159,17 @@ export async function getUserBookings(
 
     if (error || !data) return { data: (data as any) || [], error };
 
-    // Auto-complete: đơn 'booked' mà ngày check-out đã qua thì chuyển
+    // Auto-complete: đơn 'booked' mà đã qua 12:00 ngày check-out thì chuyển
     // thành 'completed' (UC012/UC013). Ghi ngược lên DB để reviewService
     // (check status='completed') và các màn khác thấy đúng trạng thái.
-    // So theo ngày (không so giờ): trong ngày check-out vẫn là Upcoming.
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // So theo giờ (giờ trả phòng 12:00): qua 12:00 ngày check-out là Completed.
+    const now = new Date();
     const expiredIds = (data as Booking[])
       .filter(
         (b) =>
           b.status === 'booked' &&
           b.check_out &&
-          new Date(`${b.check_out}T00:00:00`) < today
+          new Date(`${b.check_out}T12:00:00`) < now
       )
       .map((b) => b.id);
 

@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { getPlaceById } from '../../services/placesService';
-import { createReview, getReviewsByPlace, incrementHelpful, uploadReviewPhotos } from '../../services/reviewService';
+import { createReview, getReviewsByPlace, hasCompletedBooking, incrementHelpful, uploadReviewPhotos } from '../../services/reviewService';
 import type { Place, Review } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import AppButton from '../../components/AppButton';
@@ -12,9 +12,12 @@ import { useTranslation } from 'react-i18next';
 type Filter = 'all' | 'photos' | '1' | '2' | '3' | '4' | '5';
 
 export default function ReviewsScreen({ route, navigation }: { route: any; navigation: any }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const placeId = route?.params?.placeId as string | undefined;
+  // Chi mo tu don da hoan thanh (tab Completed) moi co bookingId; mo tu Detail thi khong.
+  const bookingId = route?.params?.bookingId as string | undefined;
+  const fromBooking = bookingId != null;
   const [place, setPlace] = useState<Place | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +33,11 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
   const [draftPhotos, setDraftPhotos] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Gate BR07: chi true khi user da co don completed cho place nay (null = dang kiem tra).
+  const [canReview, setCanReview] = useState<boolean | null>(null);
+  const lockedText = i18n.language === 'vi'
+    ? 'Hoàn thành chuyến đi để viết đánh giá'
+    : 'Complete your stay to leave a review';
 
   const load = useCallback(async () => {
     if (!placeId) { setErrorMessage(t('reviews.errorNotFound')); setLoading(false); return; }
@@ -41,6 +49,19 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
   }, [placeId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Gate BR07 (moi): form viet review chi hien khi vao tu don da hoan thanh
+  // (params co bookingId) VA hasCompletedBooking = true. Mo tu Detail (khong co
+  // bookingId) thi canReview = false va bottom bar cung khong hien nut/dong khoa.
+  useEffect(() => {
+    if (!placeId || !bookingId || !session?.user?.id) { setCanReview(false); return; }
+    let alive = true;
+    setCanReview(null);
+    hasCompletedBooking(placeId, session.user.id)
+      .then((ok) => { if (alive) setCanReview(ok); })
+      .catch(() => { if (alive) setCanReview(false); });
+    return () => { alive = false; };
+  }, [placeId, bookingId, session]);
 
   const dist = useMemo(() => {
     const c = [0, 0, 0, 0, 0, 0];
@@ -86,6 +107,7 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
 
   const openWriteReview = () => {
     if (!session) { navigation.navigate('Login'); return; }
+    if (!canReview) return;
     setDraftRating(0);
     setDraftComment('');
     setDraftPhotos([]);
@@ -135,10 +157,11 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
       }
       photoUrls = urls;
     }
-    const { error } = await createReview(place.id, session.user.id, draftRating, draftComment.trim(), photoUrls);
+    const { error } = await createReview(place.id, session.user.id, draftRating, draftComment.trim(), photoUrls, bookingId);
     setSubmitting(false);
     if (error) {
-      setSubmitError(t('reviews.submitError'));
+      const message = (error as Error)?.message ?? '';
+      setSubmitError(message.includes('Completed') ? lockedText : t('reviews.submitError'));
       return;
     }
     setModalVisible(false);
@@ -256,10 +279,23 @@ export default function ReviewsScreen({ route, navigation }: { route: any; navig
 
       {/* Figma bottom bar: Write a Review (outlined) + Book (solid) */}
       <View className="bg-white border-t border-borderLight px-5 py-3 flex-row items-center">
-        <Pressable className="flex-1 rounded-full py-3.5 items-center bg-white border border-brand" onPress={openWriteReview}>
-          <Text className="text-base font-bold text-brand">{t('reviews.writeReview')}</Text>
-        </Pressable>
-        <Pressable className="flex-1 ml-3 rounded-full py-3.5 items-center bg-brand" onPress={handleBook}>
+        {fromBooking ? (
+          session && canReview === false ? (
+            <View className="flex-1 rounded-full py-3.5 px-3 items-center bg-appBg border border-borderLight flex-row justify-center">
+              <Ionicons name="lock-closed-outline" size={18} color="#8A90A6" />
+              <Text className="ml-2 text-sm font-bold text-textMuted">{lockedText}</Text>
+            </View>
+          ) : (
+            <Pressable
+              className={`flex-1 rounded-full py-3.5 items-center bg-white border border-brand ${session && canReview === null ? 'opacity-50' : ''}`}
+              onPress={openWriteReview}
+              disabled={!!session && canReview === null}
+            >
+              <Text className="text-base font-bold text-brand">{t('reviews.writeReview')}</Text>
+            </Pressable>
+          )
+        ) : null}
+        <Pressable className={`flex-1 rounded-full py-3.5 items-center bg-brand ${fromBooking ? 'ml-3' : ''}`} onPress={handleBook}>
           <Text className="text-base font-bold text-white">{t('reviews.book')}</Text>
         </Pressable>
       </View>

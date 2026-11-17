@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { cancelBooking } from '../../services/bookingsService';
@@ -62,6 +63,8 @@ export default function TravelAssistantScreen({
   const { session } = useAuth();
   const userId = session?.user?.id;
   const userName = session?.user?.user_metadata?.name || 'Bạn';
+  const hookNavigation = useNavigation<any>();
+  const nav = navigation ?? hookNavigation;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -79,8 +82,16 @@ export default function TravelAssistantScreen({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const scrollViewRef = useRef<any>(null);
+  const historyLoadedRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  const canGoBack = navigation?.canGoBack && navigation.canGoBack();
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const canGoBack = nav?.canGoBack && nav.canGoBack();
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -249,6 +260,60 @@ export default function TravelAssistantScreen({
     );
   };
 
+  // Lưu 1 tin nhắn chat AI lên Supabase (fire-and-forget: lỗi chỉ warn, không làm hỏng chat)
+  const saveChatMessage = async (
+    role: 'user' | 'assistant',
+    content: string,
+    actionCard: ActionCardData | null
+  ) => {
+    if (!userId) return;
+    try {
+      const { error } = await supabase.from('ai_chat_messages').insert({
+        user_id: userId,
+        role,
+        content,
+        action_card: actionCard || null,
+      });
+      if (error) {
+        console.warn('Không lưu được lịch sử chat AI:', error.message);
+      }
+    } catch (err) {
+      console.warn('Không lưu được lịch sử chat AI:', err);
+    }
+  };
+
+  // Tải lịch sử chat AI đã lưu trên Supabase khi có userId (chỉ chạy 1 lần)
+  useEffect(() => {
+    if (!userId || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+    const loadHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('ai_chat_messages')
+          .select('id, role, content, action_card, created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: true })
+          .limit(50);
+        if (error || !data || !mountedRef.current) return;
+        if (data.length > 0) {
+          const mapped: ChatMessage[] = data.map((row: any) => ({
+            id: `db-${row.id}`,
+            sender: row.role === 'user' ? 'user' : 'bot',
+            senderName: row.role === 'user' ? t('support.you') : 'WanderStay AI',
+            time: new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            text: row.content,
+            actionCard: row.action_card || null,
+          }));
+          setMessages(mapped);
+          scrollToBottom();
+        }
+      } catch (err) {
+        console.warn('Không tải được lịch sử chat AI:', err);
+      }
+    };
+    loadHistory();
+  }, [userId]);
+
   // Gửi tin nhắn và gọi Supabase Edge Function AI Chat với Tool Calling
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
@@ -267,6 +332,7 @@ export default function TravelAssistantScreen({
     setInputText('');
     scrollToBottom();
     setIsTyping(true);
+    saveChatMessage('user', trimmed, null);
 
     try {
       // Chuẩn bị lịch sử tin nhắn dạng compact cho AI
@@ -281,6 +347,7 @@ export default function TravelAssistantScreen({
           prompt: trimmed,
           userId: userId || undefined,
           messages: historyPayload,
+          language: i18n.language,
         },
       });
 
@@ -310,6 +377,7 @@ export default function TravelAssistantScreen({
       };
 
       setMessages((prev) => [...prev, botReply]);
+      saveChatMessage('assistant', replyText, actionCard);
     } catch (err: any) {
       console.warn('Lỗi gọi Supabase Edge Function ai-chat:', err);
       // Fallback thông minh nếu mất kết nối
@@ -321,6 +389,7 @@ export default function TravelAssistantScreen({
         text: t('support.fallbackBr05'),
       };
       setMessages((prev) => [...prev, fallbackReply]);
+      saveChatMessage('assistant', t('support.fallbackBr05'), null);
     } finally {
       setIsTyping(false);
       scrollToBottom();
@@ -349,7 +418,7 @@ export default function TravelAssistantScreen({
             {canGoBack ? (
               <Pressable
                 className="w-10 h-10 rounded-full items-center justify-center active:opacity-70 bg-[#F8F7FF] border border-[#E6E3F5]"
-                onPress={() => navigation.goBack()}
+                onPress={() => nav.goBack()}
               >
                 <Ionicons name="chevron-back" size={20} color="#131B2E" />
               </Pressable>
@@ -625,14 +694,76 @@ export default function TravelAssistantScreen({
                           <Pressable
                             className="mt-1 py-2 px-3 rounded-xl bg-[#4F46E5] items-center justify-center flex-row gap-1.5 active:opacity-80"
                             onPress={() => {
-                              if (navigation?.navigate) {
-                                navigation.navigate('SmartKey', { booking: actionCard.data });
+                              if (nav?.navigate) {
+                                nav.navigate('SmartKey', { booking: actionCard.data });
                               }
                             }}
                           >
                             <Ionicons name="key" size={13} color="#FFFFFF" />
                             <Text className="text-xs font-bold text-white">{t('support.viewSmartKey')}</Text>
                           </Pressable>
+                        </View>
+                      ) : null}
+
+                      {/* --- RICH UI CARD 2b: PLACE CARD (Gợi ý chỗ ở từ AI) --- */}
+                      {actionCard?.type === 'place_card' && actionCard.data?.places?.length ? (
+                        <View className="mt-3 bg-[#F8F7FF] rounded-2xl p-3 border border-[#E6E3F5] gap-2">
+                          <View className="flex-row items-center gap-1.5">
+                            <Ionicons name="bed-outline" size={16} color="#4F46E5" />
+                            <Text className="text-xs font-black text-[#131B2E]">
+                              {i18n.language === 'vi' ? 'Gợi ý chỗ ở' : 'Suggested stays'}
+                            </Text>
+                          </View>
+
+                          {actionCard.data.places.map((place: any) => (
+                            <View
+                              key={place.id}
+                              className="mt-1 bg-white rounded-2xl p-2.5 border border-[#E6E3F5] gap-2"
+                            >
+                              <View className="flex-row gap-2.5 items-center">
+                                {place.image ? (
+                                  <Image
+                                    source={{ uri: place.image }}
+                                    className="w-14 h-14 rounded-xl bg-black/10"
+                                    resizeMode="cover"
+                                  />
+                                ) : null}
+                                <View className="flex-1">
+                                  <Text className="text-xs font-bold text-[#131B2E]" numberOfLines={1}>
+                                    {place.title}
+                                  </Text>
+                                  <Text className="text-[11px] text-[#5A6478] mt-0.5" numberOfLines={1}>
+                                    {place.location}
+                                  </Text>
+                                  <Text className="text-[11px] font-semibold text-[#131B2E] mt-0.5">
+                                    ★ {place.rating ?? 0} ({place.reviewCount ?? 0}{' '}
+                                    {i18n.language === 'vi' ? 'đánh giá' : 'reviews'})
+                                  </Text>
+                                  <Text className="text-xs font-black text-brand mt-0.5">
+                                    ${place.pricePerNight}/{i18n.language === 'vi' ? 'đêm' : 'night'}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <Pressable
+                                className="py-2 px-3 rounded-xl bg-[#4F46E5] items-center justify-center flex-row gap-1.5 active:opacity-80"
+                                onPress={() => {
+                                  if (nav?.navigate) {
+                                    nav.navigate('Detail', {
+                                      placeId: place.id,
+                                      ...(actionCard.data.checkIn ? { checkIn: actionCard.data.checkIn } : {}),
+                                      ...(actionCard.data.checkOut ? { checkOut: actionCard.data.checkOut } : {}),
+                                    });
+                                  }
+                                }}
+                              >
+                                <Ionicons name="calendar-outline" size={13} color="#FFFFFF" />
+                                <Text className="text-xs font-bold text-white">
+                                  {i18n.language === 'vi' ? 'Đặt ngay' : 'Book now'}
+                                </Text>
+                              </Pressable>
+                            </View>
+                          ))}
                         </View>
                       ) : null}
 
